@@ -28,51 +28,63 @@ public class DaemonClient {
         self.connection = newConnection
     }
     
-    private var daemon: NowFocusDaemonProtocol? {
+    /// Builds a fresh proxy for a single call, with an error handler scoped to
+    /// that call. `remoteObjectProxyWithErrorHandler`'s error handler fires
+    /// *instead of* the reply block on failure, never both — callers must
+    /// route both paths through the same completion or it silently never
+    /// fires when the daemon is unreachable.
+    private func remoteDaemon(onError: @escaping (Error) -> Void) -> NowFocusDaemonProtocol? {
         if connection == nil {
             setupConnection()
         }
-        return connection?.remoteObjectProxyWithErrorHandler { error in
-            print("Daemon XPC Error: \(error)")
-        } as? NowFocusDaemonProtocol
+        return connection?.remoteObjectProxyWithErrorHandler(onError) as? NowFocusDaemonProtocol
     }
-    
+
     public func apply(policy: BlockPolicy) {
-        guard let daemon = self.daemon else { return }
-        
+        guard let daemon = remoteDaemon(onError: { error in
+            print("Daemon XPC error while applying policy: \(error)")
+        }) else { return }
+
         do {
             let data = try JSONEncoder().encode(policy)
             daemon.applyPolicy(jsonPayload: data) { success, error in
                 if !success {
                     print("Failed to apply policy: \(String(describing: error))")
-                } else {
-                    print("Policy applied successfully.")
                 }
             }
         } catch {
             print("Failed to encode policy: \(error)")
         }
     }
-    
+
     public func clear() {
-        guard let daemon = self.daemon else { return }
+        guard let daemon = remoteDaemon(onError: { error in
+            print("Daemon XPC error while clearing policy: \(error)")
+        }) else { return }
+
         daemon.clearPolicy { success, error in
             if !success {
                 print("Failed to clear policy: \(String(describing: error))")
-            } else {
-                print("Policy cleared successfully.")
             }
         }
     }
-    
+
     public func checkHealth(completion: @escaping (Bool) -> Void) {
-        guard let daemon = self.daemon else {
+        var didReply = false
+        let reply: (Bool) -> Void = { success in
+            guard !didReply else { return }
+            didReply = true
+            completion(success)
+        }
+
+        guard let daemon = remoteDaemon(onError: { error in
+            print("Daemon XPC error during health check: \(error)")
+            reply(false)
+        }) else {
             completion(false)
             return
         }
-        
-        daemon.ping { success in
-            completion(success)
-        }
+
+        daemon.ping { success in reply(success) }
     }
 }

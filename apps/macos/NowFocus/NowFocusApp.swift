@@ -1,6 +1,5 @@
 import SwiftUI
 import NowFocusCore
-import ServiceManagement
 
 @main
 struct NowFocusApp: App {
@@ -10,7 +9,8 @@ struct NowFocusApp: App {
         MenuBarExtra("NowFocus", systemImage: "clock") {
             MenuBarView()
         }
-        
+        .menuBarExtraStyle(.window)
+
         Settings {
             PreferencesView()
         }
@@ -18,51 +18,63 @@ struct NowFocusApp: App {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var sessionMonitor: Timer?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Initialize DB
         _ = DatabaseManager.shared
-        
+
         // Seed default policy on first launch
         DatabaseManager.shared.seedDefaultPolicyIfNeeded()
-        
+
         // Register Daemon
-        let daemonService = SMAppService.daemon(plistName: "com.getnowfocus.daemon.plist")
-        do {
-            try daemonService.register()
-            print("Daemon registered successfully (or already registered)")
-        } catch {
-            print("Failed to register daemon: \(error)")
-        }
-        
+        DaemonRegistrationStatus.shared.refresh()
+
         // Session Recovery
         recoverSession()
+
+        // Keep enforcement in sync with session expiry even if the menu is
+        // never reopened — see SessionController's doc comment.
+        sessionMonitor = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.checkSessionExpiry()
+        }
     }
-    
+
     private func recoverSession() {
         do {
-            guard var session = try DatabaseManager.shared.fetchActiveSession() else { return }
-            
+            guard var session = try DatabaseManager.shared.fetchActiveSession() else {
+                // No active session on record. Clear enforcement unconditionally:
+                // if a prior session ended while the app was closed, this is what
+                // unsticks a /etc/hosts block or overlay left over from it.
+                SessionController.stopEnforcement()
+                return
+            }
+
             let engine = SessionEngine()
             engine.evaluateState(for: &session)
-            
+
             if engine.isActive(session) {
-                // Session is still valid, let's fetch policy and enforce
                 guard let policy = try DatabaseManager.shared.fetchPolicy(id: session.policyId) else { return }
-                
-                // Re-apply to daemon
-                DaemonClient.shared.apply(policy: policy)
-                
-                // Re-apply app blocking
-                let appNames = policy.applications.filter { $0.enabled }.map { $0.nativeIdentifier }
-                AppBlocker.shared.updatePolicy(isSessionActive: true, blockedApps: appNames)
+                SessionController.startEnforcement(policy: policy)
             } else {
-                // Session expired while we were closed
-                try DatabaseManager.shared.saveSession(session)
-                DaemonClient.shared.clear()
-                AppBlocker.shared.updatePolicy(isSessionActive: false, blockedApps: [])
+                // Session expired while we were closed.
+                SessionController.endSession(session)
             }
         } catch {
             print("Failed to recover session: \(error)")
+        }
+    }
+
+    private func checkSessionExpiry() {
+        do {
+            guard var session = try DatabaseManager.shared.fetchActiveSession() else { return }
+            let engine = SessionEngine()
+            engine.evaluateState(for: &session)
+            if !engine.isActive(session) {
+                SessionController.endSession(session)
+            }
+        } catch {
+            print("Failed to check session expiry: \(error)")
         }
     }
 }
