@@ -6,7 +6,7 @@ public class AppBlocker {
     public static let shared = AppBlocker()
     
     private var cancellables = Set<AnyCancellable>()
-    private var overlayPanel = BlockOverlayPanel()
+    private var overlayPanels: [BlockOverlayPanel] = []
     
     private var activeBlockedApps: Set<String> = []
     private var isSessionActive: Bool = false
@@ -23,7 +23,7 @@ public class AppBlocker {
         if let frontmost = NSWorkspace.shared.frontmostApplication {
             checkApplication(frontmost)
         } else {
-            overlayPanel.hide()
+            hideOverlay()
         }
     }
     
@@ -42,26 +42,43 @@ public class AppBlocker {
     }
     
     public func checkHealth() -> Bool {
-        // Simple heuristic: if we are initialized, we assume NSWorkspace notifications are working.
-        // In a more complex setup we could track the last notification timestamp.
+        // ponytail: NSWorkspace activation notifications can't fail to register and need
+        // no special permission, so there's no real failure mode to detect yet. If overlay
+        // display ever starts depending on Accessibility/Screen Recording permission,
+        // check that here instead of hardcoding true.
         return true
     }
     
     private func checkApplication(_ app: NSRunningApplication) {
         guard isSessionActive, let bundleID = app.bundleIdentifier else {
-            overlayPanel.hide()
+            hideOverlay()
             return
         }
-        
+
         if activeBlockedApps.contains(bundleID) {
-            // App is blocked. Show overlay over the app's window area.
-            // Since we can't easily get the app's exact window rect without accessibility permissions,
-            // a common approach for soft blocking is showing it over the main screen or full screen.
-            if let screen = NSScreen.main {
-                overlayPanel.show(over: screen.frame)
-            }
+            showOverlay()
         } else {
-            overlayPanel.hide()
+            hideOverlay()
         }
+    }
+
+    // Since we can't easily get the app's exact window rect without accessibility
+    // permissions, cover every connected screen rather than guessing which one
+    // has the blocked app's window — a single-screen overlay leaves the app
+    // fully usable on any other display.
+    private func showOverlay() {
+        if overlayPanels.count != NSScreen.screens.count {
+            overlayPanels.forEach { $0.hide() }
+            overlayPanels = NSScreen.screens.map { _ in BlockOverlayPanel() }
+        }
+        for (panel, screen) in zip(overlayPanels, NSScreen.screens) {
+            // visibleFrame excludes the menu bar and Dock, so the user is never
+            // trapped needing Cmd-Tab to reach NowFocus's own menu.
+            panel.show(over: screen.visibleFrame)
+        }
+    }
+
+    private func hideOverlay() {
+        overlayPanels.forEach { $0.hide() }
     }
 }

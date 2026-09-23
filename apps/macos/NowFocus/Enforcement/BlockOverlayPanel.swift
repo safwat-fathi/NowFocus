@@ -19,7 +19,7 @@ public class BlockOverlayPanel: NSPanel {
     }
     
     private func setupUI() {
-        let textLabel = NSTextField(labelWithString: "This application is blocked by Focus")
+        let textLabel = NSTextField(labelWithString: "This application is blocked by NowFocus")
         textLabel.font = .systemFont(ofSize: 24, weight: .bold)
         textLabel.textColor = .labelColor
         textLabel.alignment = .center
