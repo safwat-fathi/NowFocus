@@ -1,0 +1,74 @@
+name: NowFocus
+options:
+  bundleIdPrefix: app.getnowfocus.macos
+  developmentLanguage: en
+  deploymentTarget:
+    macOS: "14.0"
+
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 6.27.0
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.6.0
+
+targets:
+  NowFocusCore:
+    type: framework
+    platform: macOS
+    sources:
+      - NowFocusCore
+    dependencies:
+      - package: GRDB
+    settings:
+      CODE_SIGN_IDENTITY: "-"
+      GENERATE_INFOPLIST_FILE: YES
+
+  NowFocus:
+    type: application
+    platform: macOS
+    sources:
+      - path: NowFocus
+      - path: NowFocusShared
+    dependencies:
+      - target: NowFocusCore
+      - target: NowFocusDaemon
+      - package: Sparkle
+    settings:
+      CODE_SIGN_IDENTITY: "-"
+      ENABLE_HARDENED_RUNTIME: YES
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      INFOPLIST_KEY_LSUIElement: YES
+      GENERATE_INFOPLIST_FILE: YES
+    postBuildScripts:
+      - name: "Embed Daemon"
+        script: |
+          # Determine the correct output app bundle path
+          if [ -n "$INSTALL_DIR" ]; then
+            APP_DIR="$INSTALL_DIR/$FULL_PRODUCT_NAME"
+          else
+            APP_DIR="$BUILT_PRODUCTS_DIR/$FULL_PRODUCT_NAME"
+          fi
+          
+          DAEMON_DIR="$APP_DIR/Contents/Library/LaunchDaemons"
+          mkdir -p "$DAEMON_DIR"
+          
+          # Copy the Daemon executable
+          cp "$BUILT_PRODUCTS_DIR/NowFocusDaemon" "$DAEMON_DIR/NowFocusDaemon"
+          
+          # Copy the plist
+          cp "$SRCROOT/NowFocusDaemon/com.getnowfocus.daemon.plist" "$DAEMON_DIR/"
+
+  NowFocusDaemon:
+    type: tool
+    platform: macOS
+    sources:
+      - path: NowFocusDaemon
+      - path: NowFocusShared
+    dependencies:
+      - target: NowFocusCore
+    settings:
+      CODE_SIGN_IDENTITY: "-"
+      ENABLE_HARDENED_RUNTIME: YES
+      LD_RUNPATH_SEARCH_PATHS: "@executable_path/../../Frameworks"

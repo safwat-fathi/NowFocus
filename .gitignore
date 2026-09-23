@@ -1,0 +1,4 @@
+.DS_Store
+apps/macos/build/
+apps/macos/*.xcodeproj/
+graphify-out/cache/

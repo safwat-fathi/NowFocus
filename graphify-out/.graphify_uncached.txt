@@ -1,0 +1,5 @@
+/Users/safwat/Coding/Projects/side-projects/focus-app/README.md
+/Users/safwat/Coding/Projects/side-projects/focus-app/apps/macos/project.yml
+/Users/safwat/Coding/Projects/side-projects/focus-app/focus_app_technical_architecture.md
+/Users/safwat/Coding/Projects/side-projects/focus-app/native_tech_stack_spec.md
+/Users/safwat/Coding/Projects/side-projects/focus-app/product_plans.md

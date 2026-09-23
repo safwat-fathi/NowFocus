@@ -1,0 +1,122 @@
+{
+  "apps/macos/NowFocus/Enforcement/AppBlocker.swift": {
+    "mtime": 1789865686.038184,
+    "seen": 1789865979.526449,
+    "ast_hash": "8c8b894502bb8eae2d7fa3fb58ecfd8e",
+    "semantic_hash": "8c8b894502bb8eae2d7fa3fb58ecfd8e"
+  },
+  "apps/macos/NowFocus/Enforcement/BlockOverlayPanel.swift": {
+    "mtime": 1789865346.5164838,
+    "seen": 1789865979.5264509,
+    "ast_hash": "a35f578a9d743ebc42fe16fe81d7e882",
+    "semantic_hash": "a35f578a9d743ebc42fe16fe81d7e882"
+  },
+  "apps/macos/NowFocus/NowFocusApp.swift": {
+    "mtime": 1789865670.9548237,
+    "seen": 1789865979.526453,
+    "ast_hash": "1753957e2901901c613b1d85d6373643",
+    "semantic_hash": "1753957e2901901c613b1d85d6373643"
+  },
+  "apps/macos/NowFocus/UI/MenuBarView.swift": {
+    "mtime": 1789865678.6423023,
+    "seen": 1789865979.526453,
+    "ast_hash": "4a82cf6558d2f2484e376e7a85ed0326",
+    "semantic_hash": "4a82cf6558d2f2484e376e7a85ed0326"
+  },
+  "apps/macos/NowFocus/UI/PreferencesView.swift": {
+    "mtime": 1789865275.8495178,
+    "seen": 1789865979.526454,
+    "ast_hash": "a1581a6be00c244774e7e7b77e88794d",
+    "semantic_hash": "a1581a6be00c244774e7e7b77e88794d"
+  },
+  "apps/macos/NowFocusCore/BlockPolicy.swift": {
+    "mtime": 1789865199.1933053,
+    "seen": 1789865979.526455,
+    "ast_hash": "a1c6dfee0109dc91c9526f1651431391",
+    "semantic_hash": "a1c6dfee0109dc91c9526f1651431391"
+  },
+  "apps/macos/NowFocusCore/FocusSession.swift": {
+    "mtime": 1789865189.2531233,
+    "seen": 1789865979.526455,
+    "ast_hash": "eddb045b3be359101af151203099a905",
+    "semantic_hash": "eddb045b3be359101af151203099a905"
+  },
+  "apps/macos/NowFocusCore/Persistence/DatabaseManager.swift": {
+    "mtime": 1789865723.6928205,
+    "seen": 1789865979.526456,
+    "ast_hash": "a7149658bf1e4e9615a40aacefba131d",
+    "semantic_hash": "a7149658bf1e4e9615a40aacefba131d"
+  },
+  "apps/macos/NowFocusCore/Persistence/DatabaseRecords.swift": {
+    "mtime": 1789865242.8747995,
+    "seen": 1789865979.526456,
+    "ast_hash": "7ce0337449c822e32bddd4aca37460d3",
+    "semantic_hash": "7ce0337449c822e32bddd4aca37460d3"
+  },
+  "apps/macos/NowFocusCore/SessionEngine.swift": {
+    "mtime": 1789865206.859304,
+    "seen": 1789865979.526457,
+    "ast_hash": "e881ac9d8e0eaa7adbdae8be01390e63",
+    "semantic_hash": "e881ac9d8e0eaa7adbdae8be01390e63"
+  },
+  "apps/macos/NowFocusDaemon/DaemonXPCDelegate.swift": {
+    "mtime": 1789865694.4045691,
+    "seen": 1789865979.526457,
+    "ast_hash": "041f6caee78138f9a066702eed0d2a3c",
+    "semantic_hash": "041f6caee78138f9a066702eed0d2a3c"
+  },
+  "apps/macos/NowFocusDaemon/NetworkEnforcer.swift": {
+    "mtime": 1789865701.9147809,
+    "seen": 1789865979.526458,
+    "ast_hash": "d3eca6af7fb0d5947aba108a341b6604",
+    "semantic_hash": "d3eca6af7fb0d5947aba108a341b6604"
+  },
+  "apps/macos/NowFocusDaemon/main.swift": {
+    "mtime": 1789865709.0474813,
+    "seen": 1789865979.526459,
+    "ast_hash": "dc9aa22f10a3747b22cc57b534f667b8",
+    "semantic_hash": "dc9aa22f10a3747b22cc57b534f667b8"
+  },
+  "apps/macos/NowFocusShared/XPCProtocol.swift": {
+    "mtime": 1789865716.687467,
+    "seen": 1789865979.526459,
+    "ast_hash": "cb405aba4d84bd6e8308be92861532a2",
+    "semantic_hash": "cb405aba4d84bd6e8308be92861532a2"
+  },
+  "apps/macos/scripts/build_dmg.sh": {
+    "mtime": 1789865732.6110566,
+    "seen": 1789865979.52646,
+    "ast_hash": "2dd6effae4652f98f7a49d00f2c538dc",
+    "semantic_hash": "2dd6effae4652f98f7a49d00f2c538dc"
+  },
+  "README.md": {
+    "mtime": 1789865590.9967837,
+    "seen": 1789865979.52646,
+    "ast_hash": "ebe428fde642f1308837c28f0c830094",
+    "semantic_hash": "ebe428fde642f1308837c28f0c830094"
+  },
+  "apps/macos/project.yml": {
+    "mtime": 1789865651.0992112,
+    "seen": 1789865979.526461,
+    "ast_hash": "dedc80cb10d5b8a5de4b8ff17877e2a7",
+    "semantic_hash": "dedc80cb10d5b8a5de4b8ff17877e2a7"
+  },
+  "focus_app_technical_architecture.md": {
+    "mtime": 1789865628.059696,
+    "seen": 1789865979.526461,
+    "ast_hash": "f519213a56ebde8fbd817e8eb37acb8b",
+    "semantic_hash": "f519213a56ebde8fbd817e8eb37acb8b"
+  },
+  "native_tech_stack_spec.md": {
+    "mtime": 1789865619.6071742,
+    "seen": 1789865979.5264618,
+    "ast_hash": "0fbbf4c940218c7bc59c4b545165d91b",
+    "semantic_hash": "0fbbf4c940218c7bc59c4b545165d91b"
+  },
+  "product_plans.md": {
+    "mtime": 1789865599.6833243,
+    "seen": 1789865979.5264618,
+    "ast_hash": "157a795574f33816edb477b1254bc056",
+    "semantic_hash": "157a795574f33816edb477b1254bc056"
+  }
+}
