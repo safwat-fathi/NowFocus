@@ -17,11 +17,18 @@ class NetworkEnforcer {
         if !policy.domains.isEmpty {
             var blockContent = "\(startMarker)\n"
             for rule in policy.domains where rule.enabled {
-                blockContent += "127.0.0.1 \(rule.domain)\n"
+                // Trust boundary: the XPC caller isn't verified (see
+                // DaemonXPCDelegate), so re-validate here even though the UI
+                // already does. This writes to /etc/hosts as root.
+                guard let domain = DomainValidation.normalize(rule.domain) else {
+                    print("Skipping invalid domain in policy: \(rule.domain)")
+                    continue
+                }
+                blockContent += "127.0.0.1 \(domain)\n"
                 if rule.includeSubdomains {
-                    blockContent += "127.0.0.1 www.\(rule.domain)\n"
-                    blockContent += "127.0.0.1 m.\(rule.domain)\n"
-                    blockContent += "127.0.0.1 mobile.\(rule.domain)\n"
+                    blockContent += "127.0.0.1 www.\(domain)\n"
+                    blockContent += "127.0.0.1 m.\(domain)\n"
+                    blockContent += "127.0.0.1 mobile.\(domain)\n"
                 }
             }
             blockContent += "\(endMarker)\n"
