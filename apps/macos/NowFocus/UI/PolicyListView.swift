@@ -19,6 +19,11 @@ struct PolicyListView: View {
                         }
                         .padding(.vertical, 2)
                     }
+                    .contextMenu {
+                        Button("Delete Policy", role: .destructive) {
+                            delete(policy)
+                        }
+                    }
                 }
                 .onDelete(perform: deletePolicies)
             }
@@ -88,19 +93,31 @@ struct PolicyListView: View {
         }
     }
     
+    private func delete(_ policy: BlockPolicy) {
+        guard let index = policies.firstIndex(where: { $0.id == policy.id }) else { return }
+        deletePolicies(at: IndexSet(integer: index))
+    }
+
     private func deletePolicies(at offsets: IndexSet) {
-        for index in offsets {
-            let policy = policies[index]
+        let idsToDelete = Set(offsets.map { policies[$0].id })
+
+        // Clear selection before mutating the array, so the detail pane's
+        // `$policies[index]` binding is never computed against a stale index.
+        if let selectedId = selectedPolicyId, idsToDelete.contains(selectedId) {
+            selectedPolicyId = nil
+        }
+
+        for id in idsToDelete {
             do {
-                try DatabaseManager.shared.deletePolicy(id: policy.id)
+                try DatabaseManager.shared.deletePolicy(id: id)
             } catch {
                 print("Failed to delete policy: \(error)")
             }
         }
+
         policies.remove(atOffsets: offsets)
-        
-        // Clear selection if the selected policy was deleted
-        if let selectedId = selectedPolicyId, !policies.contains(where: { $0.id == selectedId }) {
+
+        if selectedPolicyId == nil {
             selectedPolicyId = policies.first?.id
         }
     }

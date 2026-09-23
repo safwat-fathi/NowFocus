@@ -7,12 +7,18 @@ struct PolicyDetailView: View {
     let onSave: (BlockPolicy) -> Void
     
     @State private var newDomain: String = ""
-    
+    @FocusState private var nameFieldFocused: Bool
+
     var body: some View {
         Form {
             Section("Policy Name") {
                 TextField("Name", text: $policy.name)
                     .textFieldStyle(.roundedBorder)
+                    .focused($nameFieldFocused)
+                    .onSubmit { save() }
+                    .onChange(of: nameFieldFocused) { _, isFocused in
+                        if !isFocused { save() }
+                    }
             }
             
             Section("Blocked Websites") {
@@ -80,19 +86,12 @@ struct PolicyDetailView: View {
     }
     
     private func addDomain() {
-        let domain = newDomain.trimmingCharacters(in: .whitespaces)
-            .lowercased()
-            .replacingOccurrences(of: "https://", with: "")
-            .replacingOccurrences(of: "http://", with: "")
-            .replacingOccurrences(of: "www.", with: "")
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        
-        guard !domain.isEmpty else { return }
+        guard let domain = DomainValidation.normalize(newDomain) else { return }
         guard !policy.domains.contains(where: { $0.domain == domain }) else {
             newDomain = ""
             return
         }
-        
+
         policy.domains.append(DomainRule(domain: domain, includeSubdomains: true))
         newDomain = ""
         save()
@@ -125,6 +124,7 @@ struct PolicyDetailView: View {
     }
     
     private func save() {
+        policy.updatedAt = Date()
         onSave(policy)
     }
 }

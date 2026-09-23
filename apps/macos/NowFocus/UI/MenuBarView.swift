@@ -1,10 +1,13 @@
 import SwiftUI
 import NowFocusCore
+import ServiceManagement
 
 struct MenuBarView: View {
+    @Environment(\.openSettings) private var openSettings
+
     @State private var isActive: Bool = false
     @State private var activeSession: FocusSession?
-    @State private var healthStatus: String = "Unknown"
+    @State private var healthStatus: EnforcementStatus = .unknown
     
     @State private var policies: [BlockPolicy] = []
     @State private var selectedPolicyId: String?
@@ -36,9 +39,10 @@ struct MenuBarView: View {
                         .foregroundColor(.green)
                 }
                 
-                Text(timeRemaining(for: session))
+                Text(timerInterval: session.startAt...session.endAt, countsDown: true)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .monospacedDigit()
                 
                 Button("Stop Session") {
                     stopSession()
@@ -81,20 +85,18 @@ struct MenuBarView: View {
                 Circle()
                     .fill(healthColor)
                     .frame(width: 6, height: 6)
-                Text("Health: \(healthStatus)")
+                Text("Health: \(healthStatus.rawValue.capitalized)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
+
+            registrationWarning
+
             Divider()
             
             Button("Preferences...") {
                 NSApp.activate(ignoringOtherApps: true)
-                if #available(macOS 13.0, *) {
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                } else {
-                    NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-                }
+                openSettings()
             }
             
             Button("Quit") {
@@ -109,24 +111,33 @@ struct MenuBarView: View {
         }
     }
     
-    private var healthColor: Color {
-        switch healthStatus {
-        case "Active": return .green
-        case "Degraded": return .yellow
-        default: return .red
+    @ViewBuilder
+    private var registrationWarning: some View {
+        switch DaemonRegistrationStatus.shared.state {
+        case .requiresApproval:
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Website blocking needs approval")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                Button("Open Login Items Settings") {
+                    SMAppService.openSystemSettingsLoginItems()
+                }
+                .font(.caption)
+            }
+        case .failed:
+            Text("Website blocking unavailable — daemon failed to register")
+                .font(.caption)
+                .foregroundColor(.red)
+        case .unknown, .registered:
+            EmptyView()
         }
     }
-    
-    private func timeRemaining(for session: FocusSession) -> String {
-        let remaining = session.endAt.timeIntervalSince(Date())
-        guard remaining > 0 else { return "Ending..." }
-        let minutes = Int(remaining) / 60
-        let hours = minutes / 60
-        let mins = minutes % 60
-        if hours > 0 {
-            return "\(hours)h \(mins)m remaining"
-        } else {
-            return "\(mins)m remaining"
+
+    private var healthColor: Color {
+        switch healthStatus {
+        case .active: return .green
+        case .degraded: return .yellow
+        case .unavailable, .unknown: return .red
         }
     }
     
@@ -152,7 +163,7 @@ struct MenuBarView: View {
                 } else {
                     isActive = false
                     activeSession = nil
-                    try DatabaseManager.shared.saveSession(session)
+                    SessionController.endSession(session)
                 }
             } else {
                 isActive = false
@@ -166,11 +177,11 @@ struct MenuBarView: View {
             DispatchQueue.main.async {
                 let appHealth = AppBlocker.shared.checkHealth()
                 if isHealthy && appHealth {
-                    self.healthStatus = "Active"
+                    self.healthStatus = .active
                 } else if isHealthy || appHealth {
-                    self.healthStatus = "Degraded"
+                    self.healthStatus = .degraded
                 } else {
-                    self.healthStatus = "Unavailable"
+                    self.healthStatus = .unavailable
                 }
             }
         }
@@ -189,32 +200,16 @@ struct MenuBarView: View {
         
         do {
             try DatabaseManager.shared.saveSession(session)
-            
-            DaemonClient.shared.apply(policy: policy)
-            AppBlocker.shared.updatePolicy(
-                isSessionActive: true,
-                blockedApps: policy.applications.filter { $0.enabled }.map { $0.nativeIdentifier }
-            )
-            
+            SessionController.startEnforcement(policy: policy)
             refreshState()
         } catch {
             print("Failed to start session: \(error)")
         }
     }
-    
+
     private func stopSession() {
-        guard var session = activeSession else { return }
-        session.status = .completed
-        
-        do {
-            try DatabaseManager.shared.saveSession(session)
-            
-            DaemonClient.shared.clear()
-            AppBlocker.shared.updatePolicy(isSessionActive: false, blockedApps: [])
-            
-            refreshState()
-        } catch {
-            print("Failed to stop session: \(error)")
-        }
+        guard let session = activeSession else { return }
+        SessionController.endSession(session)
+        refreshState()
     }
 }
