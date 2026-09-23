@@ -12,9 +12,11 @@ public class DatabaseManager {
             let databaseURL = appSupportURL.appendingPathComponent("NowFocus.sqlite")
             
             var configuration = Configuration()
+            #if DEBUG
             configuration.prepareDatabase { db in
                 db.trace { print($0) }
             }
+            #endif
             
             dbQueue = try DatabaseQueue(path: databaseURL.path, configuration: configuration)
             try migrator.migrate(dbQueue)

@@ -1,6 +1,7 @@
 import Foundation
 
 public enum EnforcementStatus: String, Codable {
+    case unknown
     case active
     case degraded
     case unavailable
