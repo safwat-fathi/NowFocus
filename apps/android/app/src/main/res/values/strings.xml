@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_description">NowFocus uses this only to see which app is opened during a focus session, so it can block apps in your policy. It does not read screen content and nothing leaves your device.</string>
+</resources>
