@@ -31,7 +31,7 @@ class BlockedActivity : ComponentActivity() {
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
-                    ShieldScreen(until = until, onReturn = { goHome() })
+                    ShieldScreen(until = until, onReturn = { goHome() }, onNeedIt = { goUnlock() })
                 }
             }
         }
@@ -41,10 +41,21 @@ class BlockedActivity : ComponentActivity() {
         startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         finish()
     }
+
+    // Whether this actually offers an exit depends on the session's mode,
+    // decided by MainActivity/UnlockScreen — this screen doesn't need to know.
+    private fun goUnlock() {
+        startActivity(
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(MainActivity.EXTRA_ROUTE, MainActivity.ROUTE_UNLOCK)
+        )
+        finish()
+    }
 }
 
 @Composable
-private fun ShieldScreen(until: String, onReturn: () -> Unit) {
+private fun ShieldScreen(until: String, onReturn: () -> Unit, onNeedIt: () -> Unit) {
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
         Text("Shielded by NowFocus", style = kickerStyle(NowFocusColors.neutral400))
         Spacer(Modifier.height(NowFocusSpace.s8))
@@ -58,8 +69,9 @@ private fun ShieldScreen(until: String, onReturn: () -> Unit) {
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 17.sp, color = NowFocusColors.neutral300),
         )
         Spacer(Modifier.weight(1f))
-        // "I really need it" / Strict-Locked exit friction is added once Unlock exists (M2/M4).
         PrimaryButton("Back to focus", onClick = onReturn)
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        GhostButton("I really need it", onClick = onNeedIt)
         Spacer(Modifier.height(NowFocusSpace.s4))
     }
 }
