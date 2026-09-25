@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -15,11 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,10 +25,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun PolicyListScreen(
@@ -40,25 +40,28 @@ fun PolicyListScreen(
     onDelete: (String) -> Unit,
     onBack: () -> Unit,
 ) {
-    LazyColumn(Modifier.fillMaxSize().padding(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = onBack) { Text("‹ Back") }
-                Text("Policies", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = onAdd) { Text("+ Add") }
+            Spacer(Modifier.height(NowFocusSpace.s2))
+            Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
+                Text("Rules", style = headingStyle(28.sp), modifier = Modifier.weight(1f))
+                SecondaryButton("+ New profile", onClick = onAdd)
             }
+            Text("FOCUS PROFILES", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s4, bottom = NowFocusSpace.s1))
+            SectionRule()
         }
         items(policies, key = { it.id }) { policy ->
             Row(
-                Modifier.fillMaxWidth().clickable { onOpen(policy.id) }.padding(vertical = 8.dp),
+                Modifier.fillMaxWidth().clickable { onOpen(policy.id) }.padding(vertical = NowFocusSpace.s3),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(policy.name, style = MaterialTheme.typography.titleMedium)
-                    Text("${policy.domains.size} sites · ${policy.apps.size} apps", style = MaterialTheme.typography.bodySmall)
+                    Text(policy.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text("${policy.domains.size} sites · ${policy.apps.size} apps", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
                 }
-                TextButton(onClick = { onDelete(policy.id) }) { Text("Delete", color = Color.Red) }
+                GhostButton("Remove") { onDelete(policy.id) }
             }
+            SectionRule()
         }
     }
 }
@@ -75,44 +78,47 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Unit, onBac
         newDomain = ""
     }
 
-    LazyColumn(Modifier.fillMaxSize().padding(16.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
-            TextButton(onClick = onBack) { Text("‹ Policies") }
+            Spacer(Modifier.height(NowFocusSpace.s2))
+            GhostButton("‹ Rules", onClick = onBack)
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it; onSave(policy.copy(name = it)) },
-                label = { Text("Policy Name") },
-                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Profile name") },
+                modifier = Modifier.fillMaxWidth().padding(top = NowFocusSpace.s2),
             )
-            Spacer(Modifier.padding(8.dp))
-            Text("Blocked Websites", style = MaterialTheme.typography.titleMedium)
+            Text("BLOCKED WEBSITES", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+            SectionRule(thick = true)
         }
         items(policy.domains, key = { "d:$it" }) { domain ->
             RuleRow(domain, "+ subdomains") { onSave(policy.copy(domains = policy.domains - domain)) }
         }
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(top = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = newDomain,
                     onValueChange = { newDomain = it },
-                    label = { Text("Add domain (e.g. youtube.com)") },
+                    label = { Text("Add a site, e.g. youtube.com") },
                     singleLine = true,
                     isError = newDomain.isNotBlank() && DomainValidation.normalize(newDomain) == null,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { addDomain() }),
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = { addDomain() }, enabled = DomainValidation.normalize(newDomain) != null) { Text("Add") }
+                Spacer(Modifier.width(NowFocusSpace.s2))
+                SecondaryButton("Add", onClick = ::addDomain)
             }
-            Spacer(Modifier.padding(8.dp))
-            Text("Blocked Applications", style = MaterialTheme.typography.titleMedium)
+            Text("BLOCKED APPLICATIONS", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+            SectionRule(thick = true)
         }
         items(policy.apps, key = { "a:${it.packageName}" }) { app ->
             RuleRow(app.label, app.packageName) { onSave(policy.copy(apps = policy.apps - app)) }
         }
         item {
-            TextButton(onClick = { pickingApp = true }) { Text("Add Application…") }
+            Spacer(Modifier.height(NowFocusSpace.s2))
+            GhostButton("+ Add application…") { pickingApp = true }
+            Spacer(Modifier.height(NowFocusSpace.s4))
         }
     }
 
@@ -127,13 +133,14 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Unit, onBac
 
 @Composable
 private fun RuleRow(title: String, subtitle: String, onRemove: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(title)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall)
+            Text(title, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
+            Text(subtitle, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
         }
-        TextButton(onClick = onRemove) { Text("Remove", color = Color.Red) }
+        GhostButton("Remove", onClick = onRemove)
     }
+    SectionRule()
 }
 
 @Composable
@@ -158,6 +165,6 @@ private fun AppPickerDialog(exclude: Set<String>, onPick: (AppRule) -> Unit, onD
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
     )
 }
