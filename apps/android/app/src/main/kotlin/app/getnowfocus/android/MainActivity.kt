@@ -53,7 +53,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
@@ -83,6 +85,7 @@ private sealed interface Screen {
     data object Unlock : Screen
     data object Policies : Screen
     data class EditPolicy(val id: String) : Screen
+    data object Stats : Screen
 }
 
 // Same presets as the macOS menu bar picker.
@@ -131,7 +134,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
         if (!running && (screen == Screen.Active || screen == Screen.Unlock)) screen = Screen.Home
     }
 
-    val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy
+    val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy || screen is Screen.Stats
 
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
@@ -189,25 +192,30 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                         PolicyEditorScreen(policy, onSave = viewModel::savePolicy, onBack = { screen = Screen.Policies })
                     }
                 }
+                Screen.Stats -> StatsScreen()
             }
         }
         if (tabsVisible) {
             BottomTabBar(
                 onFocus = { screen = Screen.Home },
                 onRules = { screen = Screen.Policies },
-                rulesSelected = screen is Screen.Policies || screen is Screen.EditPolicy,
+                onStats = { screen = Screen.Stats },
+                selected = screen,
             )
         }
     }
 }
 
-/** M1 ships Focus + Rules; Devices and Stats join in later milestones. */
+/** Devices joins once M6 gives it something real to show. */
 @Composable
-private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, rulesSelected: Boolean) {
+private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onStats: () -> Unit, selected: Screen) {
+    val rulesSelected = selected is Screen.Policies || selected is Screen.EditPolicy
+    val statsSelected = selected is Screen.Stats
     SectionRule(thick = true)
     Row(Modifier.fillMaxWidth().background(NowFocusColors.bg)) {
-        TabItem("Focus", selected = !rulesSelected, modifier = Modifier.weight(1f), onClick = onFocus)
+        TabItem("Focus", selected = !rulesSelected && !statsSelected, modifier = Modifier.weight(1f), onClick = onFocus)
         TabItem("Rules", selected = rulesSelected, modifier = Modifier.weight(1f), onClick = onRules)
+        TabItem("Stats", selected = statsSelected, modifier = Modifier.weight(1f), onClick = onStats)
     }
 }
 
@@ -469,6 +477,114 @@ private fun UnlockScreen(session: FocusSession, now: Long, onCancel: (Boolean) -
             }
         }
     }
+}
+
+@Composable
+private fun StatsScreen() {
+    val context = LocalContext.current
+    val zone = remember { ZoneId.systemDefault() }
+    val today = remember { LocalDate.now(zone) }
+    val monday = remember { today.with(DayOfWeek.MONDAY) }
+    val weekFrom = remember { monday.atStartOfDay(zone).toInstant().toEpochMilli() }
+    val weekTo = remember { monday.plusDays(7).atStartOfDay(zone).toInstant().toEpochMilli() }
+
+    var allSessions by remember { mutableStateOf<List<SessionHistoryRow>>(emptyList()) }
+    var weekEvents by remember { mutableStateOf<List<BlockEventRow>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        val dao = HistoryDatabase.get(context).dao()
+        allSessions = dao.sessionsBetween(0L, Long.MAX_VALUE)
+        weekEvents = dao.blockEventsBetween(weekFrom, weekTo)
+    }
+
+    val weekMinutes = HistoryStats.weekBucketsMinutes(allSessions, today, zone)
+    val totalMinutes = weekMinutes.sum()
+    val sessionsThisWeek = HistoryStats.sessionsCount(allSessions, weekFrom, weekTo)
+    val completion = HistoryStats.completionRate(allSessions, weekFrom, weekTo)
+    val streak = HistoryStats.currentStreakDays(allSessions, today, zone)
+    val topBlocked = HistoryStats.topBlockedPackages(weekEvents, weekFrom, weekTo)
+    val maxMinutes = (weekMinutes.maxOrNull() ?: 0L).coerceAtLeast(1L)
+    val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
+
+    Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
+            Text("This week", style = headingStyle(28.sp), modifier = Modifier.weight(1f))
+            Text(
+                "${monday.format(DateTimeFormatter.ofPattern("MMM d"))} – ${monday.plusDays(6).format(DateTimeFormatter.ofPattern("d"))}",
+                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+            )
+        }
+        SectionRule(thick = true)
+        Spacer(Modifier.height(NowFocusSpace.s4))
+
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("${totalMinutes / 60}h ${totalMinutes % 60}m", style = headingStyle(56.sp))
+            Spacer(Modifier.width(NowFocusSpace.s2))
+            Text("focused", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral700), modifier = Modifier.padding(bottom = 8.dp))
+        }
+        Spacer(Modifier.height(NowFocusSpace.s4))
+
+        Row(Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            weekMinutes.forEach { minutes ->
+                Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(0.5f)
+                            .height((120 * (minutes.toFloat() / maxMinutes)).dp.coerceAtLeast(2.dp))
+                            .background(NowFocusColors.text),
+                    )
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            dayLabels.forEach { d -> Text(d, modifier = Modifier.weight(1f), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+        }
+        Spacer(Modifier.height(NowFocusSpace.s4))
+        SectionRule()
+
+        Row(Modifier.fillMaxWidth()) {
+            StatCell("Sessions", "$sessionsThisWeek", Modifier.weight(1f))
+            StatCell("Completed", "${(completion * 100).toInt()}%", Modifier.weight(1f))
+            StatCell("Streak", "$streak days", Modifier.weight(1f))
+        }
+        SectionRule()
+        Spacer(Modifier.height(NowFocusSpace.s4))
+
+        Text("MOST TURNED AWAY", style = kickerStyle(NowFocusColors.neutral700))
+        Spacer(Modifier.height(NowFocusSpace.s1))
+        if (topBlocked.isEmpty()) {
+            Text("Nothing yet this week.", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral700))
+        } else {
+            topBlocked.forEach { (pkg, count) ->
+                Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
+                    Text(appLabelFor(context, pkg), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
+                    Text("$count", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral700))
+                }
+                SectionRule()
+            }
+        }
+        Spacer(Modifier.height(NowFocusSpace.s3))
+        Text(
+            "Counted on your phone. We never see what you browse.",
+            style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
+        )
+        Spacer(Modifier.height(NowFocusSpace.s4))
+    }
+}
+
+@Composable
+private fun StatCell(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier.padding(vertical = NowFocusSpace.s3)) {
+        Text(label, style = kickerStyle(NowFocusColors.neutral700))
+        Text(value, style = headingStyle(24.sp))
+    }
+}
+
+private fun appLabelFor(context: android.content.Context, packageName: String): String = try {
+    val pm = context.packageManager
+    pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+} catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+    packageName
 }
 
 /** Android counterpart of the macOS health dot + "needs approval" hint. */

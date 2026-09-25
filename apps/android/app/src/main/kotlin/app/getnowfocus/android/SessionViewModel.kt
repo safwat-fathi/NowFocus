@@ -15,6 +15,7 @@ import java.util.UUID
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = SessionRepository(application)
+    private val historyDao by lazy { HistoryDatabase.get(application).dao() }
 
     private val _session = MutableStateFlow<FocusSession?>(null)
     val session: StateFlow<FocusSession?> = _session.asStateFlow()
@@ -67,9 +68,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     fun cancelSession(unlockCompleted: Boolean = false): Boolean {
         val current = _session.value ?: return false
         if (!SessionEngine.canCancel(current.enforcementMode, unlockCompleted)) return false
+        val cancelled = current.copy(status = FocusSessionStatus.CANCELLED, cancelledAt = System.currentTimeMillis())
         viewModelScope.launch {
-            repository.save(current.copy(status = FocusSessionStatus.CANCELLED, cancelledAt = System.currentTimeMillis()))
+            repository.save(cancelled)
             Enforcement.stop(getApplication())
+            historyDao.insertSession(cancelled.toHistoryRow())
         }
         return true
     }
@@ -79,7 +82,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val current = _session.value ?: return
         val evaluated = SessionEngine.evaluateState(current)
         if (evaluated.status != current.status) {
-            viewModelScope.launch { repository.save(evaluated) }
+            viewModelScope.launch {
+                repository.save(evaluated)
+                // A session that expired from SCHEDULED (never actually ran) has
+                // nothing to log - only completion of a session that ran counts.
+                if (evaluated.status == FocusSessionStatus.COMPLETED) historyDao.insertSession(evaluated.toHistoryRow())
+            }
         }
     }
 
