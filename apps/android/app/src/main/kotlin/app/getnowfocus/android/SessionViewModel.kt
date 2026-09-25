@@ -20,6 +20,15 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     private val _session = MutableStateFlow<FocusSession?>(null)
     val session: StateFlow<FocusSession?> = _session.asStateFlow()
 
+    // False until the first real read of sessionFlow completes. A screen
+    // that gates navigation on "is a session running" must wait for this -
+    // otherwise a freshly created ViewModel (e.g. MainActivity recreated via
+    // CLEAR_TOP when the Shield's "I really need it" launches it at the
+    // Unlock route) briefly reports no session running at all and gets
+    // redirected to Home before the real, active session ever loads.
+    private val _sessionLoaded = MutableStateFlow(false)
+    val sessionLoaded: StateFlow<Boolean> = _sessionLoaded.asStateFlow()
+
     val policies: StateFlow<List<BlockPolicy>> =
         repository.policiesFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
@@ -38,19 +47,31 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { repository.seedDefaultPolicyIfNeeded() }
         viewModelScope.launch {
             repository.sessionFlow.collect { stored ->
-                _session.value = stored?.let { SessionEngine.evaluateState(it) }
+                // Captured before overwriting: a session that completed while
+                // this ViewModel didn't exist (app closed, process killed, or
+                // this is simply the first collection after a fresh launch)
+                // arrives here already evaluated as COMPLETED with no prior
+                // in-memory state to compare against - that transition must
+                // still be logged, or Stats silently undercounts every
+                // completion the app wasn't open to see finish live.
+                val previousStatus = _session.value?.status
+                val evaluated = stored?.let { SessionEngine.evaluateState(it) }
+                _session.value = evaluated
+                _sessionLoaded.value = true
+                if (evaluated != null && evaluated.status == FocusSessionStatus.COMPLETED && previousStatus != FocusSessionStatus.COMPLETED) {
+                    historyDao.insertSession(evaluated.toHistoryRow())
+                }
             }
         }
-        // Recovery, like macOS recoverSession(): a force-stop kills the VPN, so
-        // re-arm it if a session OR the Commitment Shield is still supposed to
-        // be enforcing. Enforcement.start() only needs to know whether to run
-        // at all - once started, the service derives full up-to-date rules
-        // (both windows) from activeRulesFlow itself.
+        // Recovery, like macOS recoverSession(): a force-stop kills the VPN
+        // and cancels Bedtime's alarms, so re-arm both.
         viewModelScope.launch {
-            val now = System.currentTimeMillis()
-            val sessionActive = repository.sessionFlow.first()?.let { SessionEngine.isActive(SessionEngine.evaluateState(it, now), now) } ?: false
-            val shieldActive = repository.commitmentShieldFlow.first()?.let { it.endAt > now } ?: false
-            if (sessionActive || shieldActive) Enforcement.start(getApplication())
+            if (Enforcement.shouldRun(repository)) Enforcement.start(getApplication())
+        }
+        viewModelScope.launch {
+            val settings = repository.bedtimeSettingsFlow.first()
+            BedtimeScheduler.scheduleAll(getApplication(), settings)
+            reconcileQuietNotifications(getApplication(), settings)
         }
     }
 
@@ -125,12 +146,25 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { repository.updatePolicies { list -> list.filterNot { it.id == id } } }
     }
 
-    /** Starts the 14-day lock immediately - the only exit is [cancelCommitmentShield] within its grace period. */
+    /**
+     * Starts the 14-day lock immediately - the only exit is
+     * [cancelCommitmentShield] within its grace period. Refuses to replace a
+     * shield that isn't [CommitmentShield.isOver] yet: without this guard,
+     * winding the wall clock forward to make a live shield merely *look*
+     * expired would let a throwaway shield be created over it and then
+     * cancelled (or the clock wound back), permanently defeating the real
+     * one - see CommitmentShieldTest for the boot-relative reasoning.
+     */
     fun createCommitmentShield(domains: Set<String>, packages: Set<String>) {
+        val current = commitmentShield.value
         val now = System.currentTimeMillis()
+        val elapsedNow = android.os.SystemClock.elapsedRealtime()
+        val bootNow = currentBootCount(getApplication())
+        if (current != null && !current.isOver(now, elapsedNow, bootNow)) return
         val shield = CommitmentShield(
             startAt = now, endAt = now + CommitmentShield.DURATION_MS,
             domains = domains, packages = packages, createdAt = now,
+            createdElapsedRealtime = elapsedNow, createdBootCount = bootNow,
         )
         viewModelScope.launch {
             repository.saveCommitmentShield(shield)
@@ -141,7 +175,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     /** Returns whether the cancel actually happened - false once the grace period has elapsed. */
     fun cancelCommitmentShield(): Boolean {
         val current = commitmentShield.value ?: return false
-        if (!current.canCancel(System.currentTimeMillis())) return false
+        if (!current.canCancel(android.os.SystemClock.elapsedRealtime(), currentBootCount(getApplication()))) return false
         viewModelScope.launch { repository.clearCommitmentShield() }
         return true
     }
@@ -150,6 +184,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.saveBedtimeSettings(settings)
             BedtimeScheduler.scheduleAll(getApplication(), settings)
+            // Immediately, not just at the next scheduled alarm: turning
+            // Bedtime or its quiet-notifications toggle off mid-window must
+            // restore the filter right away, not leave it stuck quiet.
+            reconcileQuietNotifications(getApplication(), settings)
         }
     }
 
@@ -157,3 +195,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch { repository.setOnboardingDone() }
     }
 }
+
+/** 0 as a fallback is safe: it only ever collides with a real device's boot count if that device has never rebooted since this field started being recorded, in which case there's nothing to distinguish anyway. */
+private fun currentBootCount(context: android.content.Context): Int =
+    android.provider.Settings.Global.getInt(context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, 0)

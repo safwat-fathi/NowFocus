@@ -2,7 +2,7 @@ package app.getnowfocus.android
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.format.DateFormat
+import android.text.format.DateUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -27,8 +27,25 @@ class BlockedActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        renderContent()
+    }
+
+    // singleTask means a block screen left open (Home button, not Back) is
+    // REUSED for the next block rather than recreated - without this, its
+    // extras (and so its "until" time and whether it's shield- or
+    // session-sourced) would go stale, up to showing "I really need it" for
+    // an actually shield-sourced block.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        renderContent()
+    }
+
+    private fun renderContent() {
         val endAt = intent.getLongExtra(EXTRA_END_AT, 0L)
-        val until = DateFormat.getTimeFormat(this).format(endAt)
+        // Date, not just time: a Commitment Shield block can be many days out,
+        // and a bare time ("3:45 PM") would read as today.
+        val until = DateUtils.formatDateTime(this, endAt, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH)
         // Defaults to SESSION: absent only if this Activity is ever launched some other way.
         val fromShield = intent.getStringExtra(EXTRA_SOURCE) == BlockSource.COMMITMENT_SHIELD.name
         setContent {

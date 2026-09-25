@@ -62,4 +62,103 @@ class BedtimeScheduleTest {
         val day = LocalDate.of(2026, 9, 21)
         assertEquals(at(day.plusDays(1), 23), BedtimeSchedule.nextSleepTrigger(settings, now = at(day, 23, 30), zone))
     }
+
+    // Regression coverage for the exact bug a fresh code review caught: the
+    // original nextBoundary only considered today's and tomorrow's windows,
+    // so after midnight it missed today's wake time entirely (that boundary
+    // belongs to LAST NIGHT's window) and jumped straight to tonight's
+    // wind-down - leaving quiet-notifications stuck on all day.
+
+    @Test
+    fun `nextBoundary just after midnight is this morning's wake, not tonight's wind-down`() {
+        val day = LocalDate.of(2026, 9, 21)
+        assertEquals(at(day, 7), BedtimeSchedule.nextBoundary(settings, now = at(day, 0, 30), zone))
+    }
+
+    @Test
+    fun `nextBoundary in the early morning is still this morning's wake`() {
+        val day = LocalDate.of(2026, 9, 21)
+        assertEquals(at(day, 7), BedtimeSchedule.nextBoundary(settings, now = at(day, 2), zone))
+    }
+
+    @Test
+    fun `nextBoundary late at night, inside tonight's window, is tomorrow's wake`() {
+        val day = LocalDate.of(2026, 9, 21)
+        assertEquals(at(day.plusDays(1), 7), BedtimeSchedule.nextBoundary(settings, now = at(day, 23, 5), zone))
+    }
+
+    @Test
+    fun `nextBoundary at midday is tonight's wind-down`() {
+        val day = LocalDate.of(2026, 9, 21)
+        assertEquals(at(day, 22), BedtimeSchedule.nextBoundary(settings, now = at(day, 12), zone))
+    }
+
+    @Test
+    fun `nextBoundary handles a sleep time that has itself rolled past midnight`() {
+        // windDown 22:00 unchanged, sleep bumped to 00:00, wake 07:00: the sleep
+        // alarm firing at 00:00 must still find today's 07:00 wake as next.
+        val lateSleep = settings.copy(sleepMinute = 0)
+        val day = LocalDate.of(2026, 9, 21)
+        assertEquals(at(day, 7), BedtimeSchedule.nextBoundary(lateSleep, now = at(day, 0, 0), zone))
+    }
+
+    // decideQuietFilter: the pure decision behind reconciling the interruption
+    // filter, callable from the alarm, boot, settings-save, and app-init - so
+    // disabling Bedtime or turning off the toggle mid-window doesn't leave
+    // notifications stuck quiet until the next scheduled alarm happens to fire.
+
+    private val enabledSettings = settings.copy(enabled = true, quietNotifications = true)
+    private val insideWindow = at(LocalDate.of(2026, 9, 21), 23)
+    private val outsideWindow = at(LocalDate.of(2026, 9, 21), 12)
+
+    @Test
+    fun `decideQuietFilter sets priority when quiet time starts and filter isn't already priority`() {
+        assertEquals(
+            QuietDecision.SET_PRIORITY,
+            BedtimeSchedule.decideQuietFilter(enabledSettings, insideWindow, zone, currentFilterIsPriority = false),
+        )
+    }
+
+    @Test
+    fun `decideQuietFilter is a no-op once priority is already set`() {
+        assertEquals(
+            QuietDecision.NONE,
+            BedtimeSchedule.decideQuietFilter(enabledSettings, insideWindow, zone, currentFilterIsPriority = true),
+        )
+    }
+
+    @Test
+    fun `decideQuietFilter restores once outside the window`() {
+        assertEquals(
+            QuietDecision.RESTORE_ALL,
+            BedtimeSchedule.decideQuietFilter(enabledSettings, outsideWindow, zone, currentFilterIsPriority = true),
+        )
+    }
+
+    @Test
+    fun `decideQuietFilter restores immediately when Bedtime is disabled mid-window`() {
+        val disabled = enabledSettings.copy(enabled = false)
+        assertEquals(
+            QuietDecision.RESTORE_ALL,
+            BedtimeSchedule.decideQuietFilter(disabled, insideWindow, zone, currentFilterIsPriority = true),
+        )
+    }
+
+    @Test
+    fun `decideQuietFilter restores immediately when the quiet-notifications toggle is turned off mid-window`() {
+        val toggleOff = enabledSettings.copy(quietNotifications = false)
+        assertEquals(
+            QuietDecision.RESTORE_ALL,
+            BedtimeSchedule.decideQuietFilter(toggleOff, insideWindow, zone, currentFilterIsPriority = true),
+        )
+    }
+
+    @Test
+    fun `decideQuietFilter never touches a filter it didn't set`() {
+        // Outside the window, filter not priority - nothing to restore, nothing to set.
+        assertEquals(
+            QuietDecision.NONE,
+            BedtimeSchedule.decideQuietFilter(enabledSettings, outsideWindow, zone, currentFilterIsPriority = false),
+        )
+    }
 }

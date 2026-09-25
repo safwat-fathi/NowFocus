@@ -39,6 +39,8 @@ class SessionRepository(context: Context) {
         val SHIELD_DOMAINS = stringSetPreferencesKey("shieldDomains")
         val SHIELD_PACKAGES = stringSetPreferencesKey("shieldPackages")
         val SHIELD_CREATED_AT = longPreferencesKey("shieldCreatedAt")
+        val SHIELD_CREATED_ELAPSED = longPreferencesKey("shieldCreatedElapsed")
+        val SHIELD_CREATED_BOOT_COUNT = intPreferencesKey("shieldCreatedBootCount")
         val BEDTIME_WINDDOWN_MIN = intPreferencesKey("bedtimeWindDownMin")
         val BEDTIME_SLEEP_MIN = intPreferencesKey("bedtimeSleepMin")
         val BEDTIME_WAKE_MIN = intPreferencesKey("bedtimeWakeMin")
@@ -77,6 +79,8 @@ class SessionRepository(context: Context) {
             domains = p[Keys.SHIELD_DOMAINS] ?: emptySet(),
             packages = p[Keys.SHIELD_PACKAGES] ?: emptySet(),
             createdAt = p[Keys.SHIELD_CREATED_AT] ?: return@map null,
+            createdElapsedRealtime = p[Keys.SHIELD_CREATED_ELAPSED] ?: return@map null,
+            createdBootCount = p[Keys.SHIELD_CREATED_BOOT_COUNT] ?: return@map null,
         )
     }
 
@@ -146,6 +150,8 @@ class SessionRepository(context: Context) {
             p[Keys.SHIELD_DOMAINS] = shield.domains
             p[Keys.SHIELD_PACKAGES] = shield.packages
             p[Keys.SHIELD_CREATED_AT] = shield.createdAt
+            p[Keys.SHIELD_CREATED_ELAPSED] = shield.createdElapsedRealtime
+            p[Keys.SHIELD_CREATED_BOOT_COUNT] = shield.createdBootCount
         }
     }
 

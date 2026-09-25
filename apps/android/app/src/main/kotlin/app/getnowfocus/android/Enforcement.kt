@@ -7,6 +7,7 @@ import android.net.VpnService
 import android.provider.Settings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 
 enum class BlockSource { SESSION, COMMITMENT_SHIELD }
 
@@ -57,6 +58,19 @@ object Enforcement {
             }
             ActiveRules(windows)
         }
+
+    /**
+     * Whether enforcement should be running right now: a live session OR a
+     * live Commitment Shield. Shared by SessionViewModel.init (recovery from
+     * ordinary process death) and BootReceiver (recovery from a reboot) -
+     * they drifted apart once before (BootReceiver checked only the shield),
+     * so this is the one place that decision lives now.
+     */
+    suspend fun shouldRun(repo: SessionRepository, now: Long = System.currentTimeMillis()): Boolean {
+        val sessionActive = repo.sessionFlow.first()?.let { SessionEngine.isActive(SessionEngine.evaluateState(it, now), now) } ?: false
+        val shieldActive = repo.commitmentShieldFlow.first()?.let { it.endAt > now } ?: false
+        return sessionActive || shieldActive
+    }
 
     fun start(context: Context) {
         // Without VPN consent only app blocking runs; the health row says so.

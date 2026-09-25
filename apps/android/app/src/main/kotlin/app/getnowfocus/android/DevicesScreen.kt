@@ -15,11 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -35,10 +31,11 @@ import androidx.compose.ui.unit.sp
  * native_tech_stack_spec.md, not built yet.
  */
 @Composable
-fun DevicesScreen() {
+fun DevicesScreen(resumeKey: Int) {
     val context = LocalContext.current
-    // Bumped on resume so this re-reads permission state changed in Settings.
-    var resumeKey by remember { mutableIntStateOf(0) }
+    // resumeKey comes from App() (bumped on ON_RESUME) - a local one here
+    // would never change, since permissions are granted in Settings, away
+    // from this screen entirely.
     key(resumeKey) {
         val appBlockingOk = Enforcement.isAccessibilityEnabled(context)
         val websiteFilterOk = Enforcement.isVpnPermitted(context)

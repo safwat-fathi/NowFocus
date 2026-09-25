@@ -10,10 +10,12 @@ import kotlinx.coroutines.launch
 
 /**
  * AlarmManager and the VPN service don't survive a reboot. This re-arms
- * Bedtime's alarms and restarts enforcement if the Commitment Shield is
- * still supposed to be running - the same recovery SessionViewModel.init
- * does on ordinary process death, just reachable without the app being
- * opened first.
+ * Bedtime's alarms and restarts enforcement if a session OR the Commitment
+ * Shield is still supposed to be running - the same recovery
+ * SessionViewModel.init does on ordinary process death (via the shared
+ * [Enforcement.shouldRun], after the two checks were once found to have
+ * drifted apart - this one checked only the shield), just reachable without
+ * the app being opened first.
  */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -22,10 +24,10 @@ class BootReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.Default).launch {
             try {
                 val repo = SessionRepository(context)
-                BedtimeScheduler.scheduleAll(context, repo.bedtimeSettingsFlow.first())
-                val now = System.currentTimeMillis()
-                val shieldActive = repo.commitmentShieldFlow.first()?.let { it.endAt > now } ?: false
-                if (shieldActive) Enforcement.start(context)
+                val settings = repo.bedtimeSettingsFlow.first()
+                BedtimeScheduler.scheduleAll(context, settings)
+                reconcileQuietNotifications(context, settings)
+                if (Enforcement.shouldRun(repo)) Enforcement.start(context)
             } finally {
                 pending.finish()
             }

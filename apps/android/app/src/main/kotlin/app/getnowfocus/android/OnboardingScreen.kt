@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
  * sync is Phase 6 in native_tech_stack_spec.md, not built yet.
  */
 @Composable
-fun OnboardingScreen(onDone: () -> Unit) {
+fun OnboardingScreen(resumeKey: Int, onDone: () -> Unit) {
     var step by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize().padding(NowFocusSpace.s6)) {
         Row(Modifier.fillMaxWidth()) {
@@ -51,7 +51,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
         Column(Modifier.weight(1f)) {
             when (step) {
                 0 -> OnboardingWelcome()
-                else -> OnboardingPermissions()
+                else -> OnboardingPermissions(resumeKey)
             }
         }
         PrimaryButton(if (step == 0) "Let's set it up" else "Get started") {
@@ -67,14 +67,14 @@ private fun OnboardingWelcome() {
     Text("You decide what deserves your attention.", style = headingStyle(38.sp))
     Spacer(Modifier.height(NowFocusSpace.s4))
     Text(
-        "Start a focus session and the sites and apps you pick stop reaching you - no quick toggle to undo it.",
+        "Start a focus session and the sites and apps you pick stop reaching you.",
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 16.sp, color = NowFocusColors.neutral800),
     )
     Spacer(Modifier.height(NowFocusSpace.s6))
     SectionRule(thick = true)
     listOf(
         "One tap starts a focus session",
-        "Feeds blocked, work tools untouched",
+        "Blocks the sites and apps you pick",
         "No 5-second off switch, if you choose Strict or Locked",
     ).forEachIndexed { i, text ->
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3)) {
@@ -90,10 +90,14 @@ private fun OnboardingWelcome() {
 }
 
 @Composable
-private fun OnboardingPermissions() {
+private fun OnboardingPermissions(resumeKey: Int) {
     val context = LocalContext.current
-    var resumeKey by remember { mutableIntStateOf(0) }
-    val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { resumeKey++ }
+    // Combined with the passed-in resumeKey (bumped on ON_RESUME by the
+    // caller): granting Accessibility or Notification access happens in
+    // Settings, away from this screen entirely, so only a resume signal -
+    // not the VPN result alone - catches those.
+    var vpnResumeKey by remember { mutableIntStateOf(0) }
+    val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { vpnResumeKey++ }
 
     Text("STEP 2 OF 2 · PERMISSIONS", style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s2))
@@ -106,7 +110,7 @@ private fun OnboardingPermissions() {
     Spacer(Modifier.height(NowFocusSpace.s4))
     SectionRule(thick = true)
 
-    key(resumeKey) {
+    key(resumeKey, vpnResumeKey) {
         val accessibilityOk = Enforcement.isAccessibilityEnabled(context)
         val vpnOk = Enforcement.isVpnPermitted(context)
         val notifOk = context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted ?: false
@@ -114,9 +118,15 @@ private fun OnboardingPermissions() {
         PermissionRow("App blocking", "Spots when a blocked app opens", accessibilityOk) {
             context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
+        if (!accessibilityOk) {
+            Text(
+                "Toggle greyed out? Open App info → ⋮ → Allow restricted settings first.",
+                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
+            )
+        }
         PermissionRow("Website filter", "Blocks sites on-device, no traffic routed anywhere", vpnOk) {
             val consentIntent = VpnService.prepare(context)
-            if (consentIntent != null) vpnConsent.launch(consentIntent) else resumeKey++
+            if (consentIntent != null) vpnConsent.launch(consentIntent) else vpnResumeKey++
         }
         PermissionRow("Notification access", "Lets Bedtime Wind-Down quiet things down", notifOk) {
             context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))

@@ -107,13 +107,20 @@ private fun minutesToClock(minutesSinceMidnight: Int): String =
 
 @Composable
 private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
+    val context = LocalContext.current
     var screen by remember { mutableStateOf<Screen>(if (startOnUnlock) Screen.Unlock else Screen.Home) }
     val policies by viewModel.policies.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
+    val sessionLoaded by viewModel.sessionLoaded.collectAsStateWithLifecycle()
     val shield by viewModel.commitmentShield.collectAsStateWithLifecycle()
     val bedtime by viewModel.bedtimeSettings.collectAsStateWithLifecycle()
     val onboardingDone by viewModel.onboardingDone.collectAsStateWithLifecycle()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var elapsedNow by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
+    // Boot count doesn't change during a session, so it's read once, not ticked.
+    val bootCount = remember {
+        android.provider.Settings.Global.getInt(context.contentResolver, android.provider.Settings.Global.BOOT_COUNT, 0)
+    }
     // Bumped on resume so the health row re-reads permissions granted in Settings.
     var resumeCount by remember { mutableIntStateOf(0) }
 
@@ -121,6 +128,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     LaunchedEffect(Unit) {
         while (true) {
             now = System.currentTimeMillis()
+            elapsedNow = android.os.SystemClock.elapsedRealtime()
             viewModel.refreshNow()
             delay(1000)
         }
@@ -140,7 +148,13 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val running = session?.let { SessionEngine.isActive(it, now) } ?: false
     // Auto-follow the underlying state: a session ending while Active/Unlock is
     // open returns to Home; a session starting elsewhere (recovery) skips Setup.
-    LaunchedEffect(running, screen) {
+    // Gated on sessionLoaded: a just-recreated ViewModel (e.g. the Shield's "I
+    // really need it" launches MainActivity fresh at the Unlock route) briefly
+    // reports running=false before its first real read of sessionFlow - acting
+    // on that stale value would bounce straight back to Home before the
+    // actually-active session ever gets a chance to load.
+    LaunchedEffect(running, screen, sessionLoaded) {
+        if (!sessionLoaded) return@LaunchedEffect
         if (running && screen == Screen.Home) screen = Screen.Active
         if (!running && (screen == Screen.Active || screen == Screen.Unlock)) screen = Screen.Home
     }
@@ -224,13 +238,15 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                 Screen.Commitment -> CommitmentScreen(
                     shield = shield,
                     now = now,
+                    elapsedNow = elapsedNow,
+                    bootCount = bootCount,
                     onCreate = { domains, packages -> viewModel.createCommitmentShield(domains, packages) },
                     onCancel = { viewModel.cancelCommitmentShield() },
                     onBack = { screen = Screen.Home },
                 )
                 Screen.Bedtime -> BedtimeScreen(settings = bedtime, onSave = viewModel::saveBedtimeSettings, onBack = { screen = Screen.Home })
-                Screen.Devices -> DevicesScreen()
-                Screen.Onboarding -> OnboardingScreen(onDone = { viewModel.completeOnboarding(); screen = Screen.Home })
+                Screen.Devices -> DevicesScreen(resumeKey = resumeCount)
+                Screen.Onboarding -> OnboardingScreen(resumeKey = resumeCount, onDone = { viewModel.completeOnboarding(); screen = Screen.Home })
             }
         }
         if (tabsVisible) {
@@ -303,7 +319,9 @@ private fun HomeScreen(
         SectionRule(thick = true)
         Spacer(Modifier.height(NowFocusSpace.s6))
 
-        Text(if (running) "Focusing now" else "Cross-device sync", style = kickerStyle())
+        // "Cross-device sync" was M1 leftover mockup copy for a feature this
+        // build doesn't have (that's Phase 6, not built) - left in by mistake.
+        Text(if (running) "Focusing now" else "Ready when you are", style = kickerStyle())
         Spacer(Modifier.height(NowFocusSpace.s2))
         val heroTitle = if (running) "You're in a focus session." else "Your phone is ready."
         Text(heroTitle, style = headingStyle(38.sp))
@@ -674,6 +692,8 @@ private fun appLabelFor(context: android.content.Context, packageName: String): 
 private fun CommitmentScreen(
     shield: CommitmentShield?,
     now: Long,
+    elapsedNow: Long,
+    bootCount: Int,
     onCreate: (Set<String>, Set<String>) -> Unit,
     onCancel: () -> Boolean,
     onBack: () -> Unit,
@@ -683,9 +703,11 @@ private fun CommitmentScreen(
         Spacer(Modifier.height(NowFocusSpace.s2))
         GhostButton("‹ Back", onClick = onBack)
 
+        // isOver/canCancel are boot-relative (elapsedRealtime + boot count),
+        // not wall-clock - see CommitmentShield's kdoc for why that matters.
         when {
-            shield == null -> CommitmentSetup(onCreate = onCreate)
-            shield.canCancel(now) -> CommitmentGrace(shield = shield, now = now, onCancel = { if (onCancel()) onBack() })
+            shield == null || shield.isOver(now, elapsedNow, bootCount) -> CommitmentSetup(onCreate = onCreate)
+            shield.canCancel(elapsedNow, bootCount) -> CommitmentGrace(shield = shield, elapsedNow = elapsedNow, onCancel = { if (onCancel()) onBack() })
             else -> CommitmentDetail(shield = shield, now = now)
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
@@ -694,10 +716,16 @@ private fun CommitmentScreen(
 
 @Composable
 private fun CommitmentSetup(onCreate: (Set<String>, Set<String>) -> Unit) {
+    val context = LocalContext.current
     var newDomain by remember { mutableStateOf("") }
     var domains by remember { mutableStateOf(setOf<String>()) }
     var apps by remember { mutableStateOf(listOf<AppRule>()) }
     var pickingApp by remember { mutableStateOf(false) }
+    // Without this, a shield with sites but no VPN consent would silently
+    // enforce nothing for 14 days - the same consent flow SetupScreen uses.
+    val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        onCreate(domains, apps.map { it.packageName }.toSet())
+    }
 
     fun addDomain() {
         val d = DomainValidation.normalize(newDomain) ?: return
@@ -737,7 +765,8 @@ private fun CommitmentSetup(onCreate: (Set<String>, Set<String>) -> Unit) {
 
     Spacer(Modifier.height(NowFocusSpace.s6))
     PrimaryButton("Lock for 14 days", enabled = domains.isNotEmpty() || apps.isNotEmpty()) {
-        onCreate(domains, apps.map { it.packageName }.toSet())
+        val consentIntent = if (domains.isNotEmpty()) VpnService.prepare(context) else null
+        if (consentIntent != null) vpnConsent.launch(consentIntent) else onCreate(domains, apps.map { it.packageName }.toSet())
     }
 
     if (pickingApp) {
@@ -750,8 +779,8 @@ private fun CommitmentSetup(onCreate: (Set<String>, Set<String>) -> Unit) {
 }
 
 @Composable
-private fun CommitmentGrace(shield: CommitmentShield, now: Long, onCancel: () -> Unit) {
-    val secondsLeft = ((shield.createdAt + CommitmentShield.GRACE_MS - now) / 1000 + 1).coerceAtLeast(0)
+private fun CommitmentGrace(shield: CommitmentShield, elapsedNow: Long, onCancel: () -> Unit) {
+    val secondsLeft = ((shield.createdElapsedRealtime + CommitmentShield.GRACE_MS - elapsedNow) / 1000 + 1).coerceAtLeast(0)
     Text("Locking it in…", style = headingStyle(28.sp))
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
@@ -766,11 +795,20 @@ private fun CommitmentGrace(shield: CommitmentShield, now: Long, onCancel: () ->
 
 @Composable
 private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
+    val context = LocalContext.current
     val daysLeft = ((shield.endAt - now) / 86_400_000L + 1).coerceAtLeast(0)
     Text("Always blocked · this device", style = kickerStyle())
     Row(verticalAlignment = Alignment.Bottom) {
         Text("$daysLeft", style = headingStyle(72.sp, color = NowFocusColors.accent))
         Text(" days to go", style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp), modifier = Modifier.padding(bottom = 12.dp))
+    }
+    if (shield.domains.isNotEmpty() && !Enforcement.isVpnPermitted(context)) {
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        TagPill("Sites degraded — VPN permission not granted")
+    }
+    if (shield.packages.isNotEmpty() && !Enforcement.isAccessibilityEnabled(context)) {
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        TagPill("Apps degraded — Accessibility not enabled")
     }
     Spacer(Modifier.height(NowFocusSpace.s4))
     Text("LOCKED SITES", style = kickerStyle(NowFocusColors.neutral700))
@@ -783,7 +821,6 @@ private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
         Spacer(Modifier.height(NowFocusSpace.s4))
         Text("LOCKED APPS", style = kickerStyle(NowFocusColors.neutral700))
         SectionRule()
-        val context = LocalContext.current
         shield.packages.forEach { pkg ->
             Text(appLabelFor(context, pkg), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
             SectionRule()

@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
@@ -61,10 +62,14 @@ class HistoryConverters {
 
 @Dao
 interface SessionHistoryDao {
-    @Insert
+    // IGNORE, not the default ABORT: the same session id can genuinely be
+    // offered twice (the ViewModel's flow collector and its own tick-driven
+    // refreshNow can both notice the same completion), and a second attempt
+    // for a row already logged should be a no-op, not a crash.
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSession(row: SessionHistoryRow)
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertBlockEvent(row: BlockEventRow)
 
     @Query("SELECT * FROM session_history WHERE startAt >= :from AND startAt < :to ORDER BY startAt")

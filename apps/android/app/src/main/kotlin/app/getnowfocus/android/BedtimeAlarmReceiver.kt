@@ -14,11 +14,17 @@ import kotlinx.coroutines.launch
 import java.time.ZoneId
 
 /**
- * Fires at each bedtime boundary (wind-down, wake) to apply or clear Do Not
+ * Fires at each bedtime boundary (wind-down, wake) to reconcile Do Not
  * Disturb, and at sleep time to lock the screen once. Every firing
  * reschedules from scratch for tomorrow via [BedtimeScheduler.scheduleAll] -
  * simpler and more self-correcting than tracking which specific alarm this
  * was, and matches the DataStore-backed settings being the source of truth.
+ *
+ * [reconcileQuietNotifications] is also called from BootReceiver, from
+ * SessionViewModel on save and on app init - not just from here - so
+ * disabling Bedtime, turning its toggle off, a force-stop, or a reboot all
+ * restore the filter immediately rather than leaving it stuck quiet until
+ * the next scheduled alarm happens to fire.
  */
 class BedtimeAlarmReceiver : BroadcastReceiver() {
 
@@ -33,17 +39,13 @@ class BedtimeAlarmReceiver : BroadcastReceiver() {
             try {
                 val repo = SessionRepository(context)
                 val settings = repo.bedtimeSettingsFlow.first()
-                if (settings.enabled) {
-                    when (intent.action) {
-                        ACTION_BOUNDARY -> applyQuietState(context, settings)
-                        ACTION_SLEEP_LOCK -> if (settings.lockAtSleep && Build.VERSION.SDK_INT >= 28) {
-                            FocusAccessibilityService.instance?.performGlobalAction(
-                                android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
-                            )
-                        }
-                    }
-                    BedtimeScheduler.scheduleAll(context, settings)
+                reconcileQuietNotifications(context, settings)
+                if (settings.enabled && intent.action == ACTION_SLEEP_LOCK && settings.lockAtSleep && Build.VERSION.SDK_INT >= 28) {
+                    FocusAccessibilityService.instance?.performGlobalAction(
+                        android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
+                    )
                 }
+                BedtimeScheduler.scheduleAll(context, settings)
             } finally {
                 pending.finish()
             }
@@ -51,19 +53,22 @@ class BedtimeAlarmReceiver : BroadcastReceiver() {
     }
 }
 
-private fun applyQuietState(context: Context, settings: BedtimeSettings) {
-    if (!settings.quietNotifications) return
+/**
+ * Reconciles the interruption filter to what it should be right now. Safe to
+ * call unconditionally and often: [BedtimeSchedule.decideQuietFilter] only
+ * ever moves the filter between ALL and PRIORITY, and only away from
+ * PRIORITY when it's the current value - so it never touches a filter this
+ * function didn't itself have a hand in.
+ */
+fun reconcileQuietNotifications(context: Context, settings: BedtimeSettings) {
     val nm = context.getSystemService(NotificationManager::class.java) ?: return
     if (!nm.isNotificationPolicyAccessGranted) return
-    val quiet = BedtimeSchedule.isQuietTimeNow(settings, System.currentTimeMillis(), ZoneId.systemDefault())
-    // Never call setNotificationPolicy - that would overwrite the user's own DND exceptions.
-    // Only touch the filter itself, and only flip it if it's still the state we'd have set,
-    // so a manual change the user made mid-window isn't clobbered at the next boundary.
-    val current = nm.currentInterruptionFilter
-    if (quiet && current == NotificationManager.INTERRUPTION_FILTER_ALL) {
-        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
-    } else if (!quiet && current == NotificationManager.INTERRUPTION_FILTER_PRIORITY) {
-        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+    val now = System.currentTimeMillis()
+    val currentIsPriority = nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_PRIORITY
+    when (BedtimeSchedule.decideQuietFilter(settings, now, ZoneId.systemDefault(), currentIsPriority)) {
+        QuietDecision.SET_PRIORITY -> nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
+        QuietDecision.RESTORE_ALL -> nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
+        QuietDecision.NONE -> {}
     }
 }
 
@@ -71,18 +76,13 @@ object BedtimeScheduler {
 
     fun scheduleAll(context: Context, settings: BedtimeSettings) {
         val am = context.getSystemService(AlarmManager::class.java) ?: return
-        val zone = ZoneId.systemDefault()
-        val now = System.currentTimeMillis()
         if (!settings.enabled) {
             cancelAll(context)
             return
         }
-        val today = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
-        val windowToday = BedtimeSchedule.windowFor(settings, today, zone)
-        // Next boundary is whichever of "starts" or "ends" hasn't happened yet.
-        val nextBoundary = listOf(windowToday.first, windowToday.last + 1, BedtimeSchedule.windowFor(settings, today.plusDays(1), zone).first)
-            .first { it > now }
-        schedule(am, context, nextBoundary, BedtimeAlarmReceiver.ACTION_BOUNDARY, requestCode = 1)
+        val zone = ZoneId.systemDefault()
+        val now = System.currentTimeMillis()
+        schedule(am, context, BedtimeSchedule.nextBoundary(settings, now, zone), BedtimeAlarmReceiver.ACTION_BOUNDARY, requestCode = 1)
         schedule(am, context, BedtimeSchedule.nextSleepTrigger(settings, now, zone), BedtimeAlarmReceiver.ACTION_SLEEP_LOCK, requestCode = 2)
     }
 
@@ -95,7 +95,10 @@ object BedtimeScheduler {
     private fun schedule(am: AlarmManager, context: Context, triggerAtMillis: Long, action: String, requestCode: Int) {
         // Inexact: exact alarms need a permission that's off by default on recent
         // Android, and being off by a few minutes doesn't matter for this.
-        am.setAndAllowWhileIdle(AlarmManager.RTC, triggerAtMillis, pendingIntentFor(context, action, requestCode))
+        // RTC_WAKEUP (not RTC): a non-wakeup alarm only delivers once the
+        // device next wakes for some other reason, which could be hours late
+        // and is exactly the kind of delay that leaves the filter stuck.
+        am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntentFor(context, action, requestCode))
     }
 
     private fun pendingIntentFor(context: Context, action: String, requestCode: Int): PendingIntent =
