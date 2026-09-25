@@ -86,6 +86,7 @@ private sealed interface Screen {
     data object Policies : Screen
     data class EditPolicy(val id: String) : Screen
     data object Stats : Screen
+    data object Commitment : Screen
 }
 
 // Same presets as the macOS menu bar picker.
@@ -102,6 +103,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     var screen by remember { mutableStateOf<Screen>(if (startOnUnlock) Screen.Unlock else Screen.Home) }
     val policies by viewModel.policies.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
+    val shield by viewModel.commitmentShield.collectAsStateWithLifecycle()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     // Bumped on resume so the health row re-reads permissions granted in Settings.
     var resumeCount by remember { mutableIntStateOf(0) }
@@ -142,9 +144,11 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                 Screen.Home -> HomeScreen(
                     running = running,
                     session = session,
+                    shield = shield,
                     now = now,
                     resumeKey = resumeCount,
                     onPrimaryCta = { screen = if (running) Screen.Active else Screen.Setup },
+                    onOpenCommitment = { screen = Screen.Commitment },
                 )
                 Screen.Setup -> SetupScreen(
                     policies = policies,
@@ -179,10 +183,13 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     BackHandler { screen = Screen.Home }
                     PolicyListScreen(
                         policies = policies,
+                        shield = shield,
+                        now = now,
                         onOpen = { screen = Screen.EditPolicy(it) },
                         onAdd = { screen = Screen.EditPolicy(viewModel.addPolicy()) },
                         onDelete = viewModel::deletePolicy,
                         onBack = { screen = Screen.Home },
+                        onOpenCommitment = { screen = Screen.Commitment },
                     )
                 }
                 is Screen.EditPolicy -> {
@@ -193,6 +200,13 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     }
                 }
                 Screen.Stats -> StatsScreen()
+                Screen.Commitment -> CommitmentScreen(
+                    shield = shield,
+                    now = now,
+                    onCreate = { domains, packages -> viewModel.createCommitmentShield(domains, packages) },
+                    onCancel = { viewModel.cancelCommitmentShield() },
+                    onBack = { screen = Screen.Home },
+                )
             }
         }
         if (tabsVisible) {
@@ -242,7 +256,15 @@ private fun TabItem(label: String, selected: Boolean, modifier: Modifier = Modif
 }
 
 @Composable
-private fun HomeScreen(running: Boolean, session: FocusSession?, now: Long, resumeKey: Int, onPrimaryCta: () -> Unit) {
+private fun HomeScreen(
+    running: Boolean,
+    session: FocusSession?,
+    shield: CommitmentShield?,
+    now: Long,
+    resumeKey: Int,
+    onPrimaryCta: () -> Unit,
+    onOpenCommitment: () -> Unit,
+) {
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d")) }
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
@@ -268,6 +290,20 @@ private fun HomeScreen(running: Boolean, session: FocusSession?, now: Long, resu
             text = if (running) "Return to session" else "Start focus session",
             onClick = onPrimaryCta,
         )
+
+        if (shield != null && shield.endAt > now) {
+            Spacer(Modifier.height(NowFocusSpace.s6))
+            Text("ALWAYS ON", style = kickerStyle(NowFocusColors.neutral700))
+            val daysLeft = ((shield.endAt - now) / 86_400_000L + 1).coerceAtLeast(1)
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onOpenCommitment).padding(vertical = NowFocusSpace.s3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Commitment Shield", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
+                TagPill("$daysLeft days left")
+            }
+            SectionRule()
+        }
         Spacer(Modifier.height(NowFocusSpace.s4))
     }
 }
@@ -585,6 +621,140 @@ private fun appLabelFor(context: android.content.Context, packageName: String): 
     pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
 } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
     packageName
+}
+
+/**
+ * The mockup this was built from only shows the shield already running - it
+ * has no creation flow at all. This one exists in three states depending on
+ * [shield]: no shield (setup form), within the grace period (cancel-or-wait),
+ * or locked (detail view, no cancel action anywhere).
+ */
+@Composable
+private fun CommitmentScreen(
+    shield: CommitmentShield?,
+    now: Long,
+    onCreate: (Set<String>, Set<String>) -> Unit,
+    onCancel: () -> Boolean,
+    onBack: () -> Unit,
+) {
+    BackHandler(onBack = onBack)
+    Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        GhostButton("‹ Back", onClick = onBack)
+
+        when {
+            shield == null -> CommitmentSetup(onCreate = onCreate)
+            shield.canCancel(now) -> CommitmentGrace(shield = shield, now = now, onCancel = { if (onCancel()) onBack() })
+            else -> CommitmentDetail(shield = shield, now = now)
+        }
+        Spacer(Modifier.height(NowFocusSpace.s4))
+    }
+}
+
+@Composable
+private fun CommitmentSetup(onCreate: (Set<String>, Set<String>) -> Unit) {
+    var newDomain by remember { mutableStateOf("") }
+    var domains by remember { mutableStateOf(setOf<String>()) }
+    var apps by remember { mutableStateOf(listOf<AppRule>()) }
+    var pickingApp by remember { mutableStateOf(false) }
+
+    fun addDomain() {
+        val d = DomainValidation.normalize(newDomain) ?: return
+        domains = domains + d
+        newDomain = ""
+    }
+
+    Text("Commitment Shield", style = headingStyle(22.sp))
+    Spacer(Modifier.height(NowFocusSpace.s2))
+    Text(
+        "Lock sites and apps for 14 days, no early exit once it starts. You'll get 60 seconds to change your mind first.",
+        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
+    )
+    Spacer(Modifier.height(NowFocusSpace.s4))
+
+    Text("SITES", style = kickerStyle(NowFocusColors.neutral700))
+    SectionRule()
+    domains.forEach { d ->
+        RuleRow(d, "+ subdomains") { domains = domains - d }
+    }
+    Row(Modifier.padding(top = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = newDomain, onValueChange = { newDomain = it },
+            label = { Text("e.g. reddit.com") }, singleLine = true, modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(NowFocusSpace.s2))
+        SecondaryButton("Add", onClick = ::addDomain)
+    }
+
+    Spacer(Modifier.height(NowFocusSpace.s4))
+    Text("APPS", style = kickerStyle(NowFocusColors.neutral700))
+    SectionRule()
+    apps.forEach { a ->
+        RuleRow(a.label, a.packageName) { apps = apps.filterNot { it.packageName == a.packageName } }
+    }
+    GhostButton("+ Add application…") { pickingApp = true }
+
+    Spacer(Modifier.height(NowFocusSpace.s6))
+    PrimaryButton("Lock for 14 days", enabled = domains.isNotEmpty() || apps.isNotEmpty()) {
+        onCreate(domains, apps.map { it.packageName }.toSet())
+    }
+
+    if (pickingApp) {
+        AppPickerDialog(
+            exclude = apps.map { it.packageName }.toSet(),
+            onPick = { apps = apps + it; pickingApp = false },
+            onDismiss = { pickingApp = false },
+        )
+    }
+}
+
+@Composable
+private fun CommitmentGrace(shield: CommitmentShield, now: Long, onCancel: () -> Unit) {
+    val secondsLeft = ((shield.createdAt + CommitmentShield.GRACE_MS - now) / 1000 + 1).coerceAtLeast(0)
+    Text("Locking it in…", style = headingStyle(28.sp))
+    Spacer(Modifier.height(NowFocusSpace.s2))
+    Text(
+        "This is the only chance to undo it. After this, it runs the full 14 days.",
+        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
+    )
+    Spacer(Modifier.height(NowFocusSpace.s4))
+    Text("$secondsLeft", style = headingStyle(96.sp, color = NowFocusColors.accent))
+    Spacer(Modifier.height(NowFocusSpace.s4))
+    SecondaryButton("Cancel", onClick = onCancel)
+}
+
+@Composable
+private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
+    val daysLeft = ((shield.endAt - now) / 86_400_000L + 1).coerceAtLeast(0)
+    Text("Always blocked · this device", style = kickerStyle())
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text("$daysLeft", style = headingStyle(72.sp, color = NowFocusColors.accent))
+        Text(" days to go", style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp), modifier = Modifier.padding(bottom = 12.dp))
+    }
+    Spacer(Modifier.height(NowFocusSpace.s4))
+    Text("LOCKED SITES", style = kickerStyle(NowFocusColors.neutral700))
+    SectionRule()
+    shield.domains.forEach { d ->
+        Text(d, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
+        SectionRule()
+    }
+    if (shield.packages.isNotEmpty()) {
+        Spacer(Modifier.height(NowFocusSpace.s4))
+        Text("LOCKED APPS", style = kickerStyle(NowFocusColors.neutral700))
+        SectionRule()
+        val context = LocalContext.current
+        shield.packages.forEach { pkg ->
+            Text(appLabelFor(context, pkg), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
+            SectionRule()
+        }
+    }
+    Spacer(Modifier.height(NowFocusSpace.s4))
+    Text(
+        "Turning off Accessibility, revoking the VPN permission, or uninstalling the app still stops this - " +
+            "there's no way around that on a normal app. And while this is running, no other VPN app can be active " +
+            "at the same time (Android only allows one).",
+        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
+    )
 }
 
 /** Android counterpart of the macOS health dot + "needs approval" hint. */

@@ -35,10 +35,13 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun PolicyListScreen(
     policies: List<BlockPolicy>,
+    shield: CommitmentShield?,
+    now: Long,
     onOpen: (String) -> Unit,
     onAdd: () -> Unit,
     onDelete: (String) -> Unit,
     onBack: () -> Unit,
+    onOpenCommitment: () -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
@@ -60,6 +63,25 @@ fun PolicyListScreen(
                     Text("${policy.domains.size} sites · ${policy.apps.size} apps", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
                 }
                 GhostButton("Remove") { onDelete(policy.id) }
+            }
+            SectionRule()
+        }
+        item {
+            Text("PROTECTIONS", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+            SectionRule()
+            val active = shield != null && shield.endAt > now
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onOpenCommitment).padding(vertical = NowFocusSpace.s3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Commitment Shield", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(
+                        if (active) "${shield!!.domains.size} sites · ${shield.packages.size} apps · locked 14 days" else "Not set up",
+                        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                    )
+                }
+                if (active) TagPill("Active")
             }
             SectionRule()
         }
@@ -132,7 +154,7 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Unit, onBac
 }
 
 @Composable
-private fun RuleRow(title: String, subtitle: String, onRemove: () -> Unit) {
+fun RuleRow(title: String, subtitle: String, onRemove: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(title, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
@@ -144,7 +166,7 @@ private fun RuleRow(title: String, subtitle: String, onRemove: () -> Unit) {
 }
 
 @Composable
-private fun AppPickerDialog(exclude: Set<String>, onPick: (AppRule) -> Unit, onDismiss: () -> Unit) {
+fun AppPickerDialog(exclude: Set<String>, onPick: (AppRule) -> Unit, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val apps = remember {
         val pm = context.packageManager

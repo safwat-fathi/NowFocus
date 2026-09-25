@@ -23,6 +23,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val policies: StateFlow<List<BlockPolicy>> =
         repository.policiesFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val commitmentShield: StateFlow<CommitmentShield?> =
+        repository.commitmentShieldFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     init {
         viewModelScope.launch { repository.seedDefaultPolicyIfNeeded() }
         viewModelScope.launch {
@@ -31,10 +34,15 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         // Recovery, like macOS recoverSession(): a force-stop kills the VPN, so
-        // re-arm it if a session is still running.
+        // re-arm it if a session OR the Commitment Shield is still supposed to
+        // be enforcing. Enforcement.start() only needs to know whether to run
+        // at all - once started, the service derives full up-to-date rules
+        // (both windows) from activeRulesFlow itself.
         viewModelScope.launch {
-            val stored = repository.sessionFlow.first() ?: return@launch
-            if (SessionEngine.isActive(SessionEngine.evaluateState(stored))) Enforcement.start(getApplication())
+            val now = System.currentTimeMillis()
+            val sessionActive = repository.sessionFlow.first()?.let { SessionEngine.isActive(SessionEngine.evaluateState(it, now), now) } ?: false
+            val shieldActive = repository.commitmentShieldFlow.first()?.let { it.endAt > now } ?: false
+            if (sessionActive || shieldActive) Enforcement.start(getApplication())
         }
     }
 
@@ -70,8 +78,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         if (!SessionEngine.canCancel(current.enforcementMode, unlockCompleted)) return false
         val cancelled = current.copy(status = FocusSessionStatus.CANCELLED, cancelledAt = System.currentTimeMillis())
         viewModelScope.launch {
+            // No direct Enforcement.stop() here: saving CANCELLED makes
+            // activeRulesFlow re-derive and drop just this window - both
+            // enforcement services are reactive to it. Calling stop()
+            // directly would tear down the VPN even if a Commitment Shield
+            // is still live, since it doesn't know about other windows.
             repository.save(cancelled)
-            Enforcement.stop(getApplication())
             historyDao.insertSession(cancelled.toHistoryRow())
         }
         return true
@@ -103,5 +115,26 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     fun deletePolicy(id: String) {
         viewModelScope.launch { repository.updatePolicies { list -> list.filterNot { it.id == id } } }
+    }
+
+    /** Starts the 14-day lock immediately - the only exit is [cancelCommitmentShield] within its grace period. */
+    fun createCommitmentShield(domains: Set<String>, packages: Set<String>) {
+        val now = System.currentTimeMillis()
+        val shield = CommitmentShield(
+            startAt = now, endAt = now + CommitmentShield.DURATION_MS,
+            domains = domains, packages = packages, createdAt = now,
+        )
+        viewModelScope.launch {
+            repository.saveCommitmentShield(shield)
+            Enforcement.start(getApplication())
+        }
+    }
+
+    /** Returns whether the cancel actually happened - false once the grace period has elapsed. */
+    fun cancelCommitmentShield(): Boolean {
+        val current = commitmentShield.value ?: return false
+        if (!current.canCancel(System.currentTimeMillis())) return false
+        viewModelScope.launch { repository.clearCommitmentShield() }
+        return true
     }
 }

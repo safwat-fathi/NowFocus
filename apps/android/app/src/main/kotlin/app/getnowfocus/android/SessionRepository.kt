@@ -32,6 +32,11 @@ class SessionRepository(context: Context) {
         val POLICIES = stringPreferencesKey("policies")
         val ENFORCEMENT_MODE = stringPreferencesKey("enforcementMode")
         val CANCELLED_AT = longPreferencesKey("cancelledAt")
+        val SHIELD_START_AT = longPreferencesKey("shieldStartAt")
+        val SHIELD_END_AT = longPreferencesKey("shieldEndAt")
+        val SHIELD_DOMAINS = stringSetPreferencesKey("shieldDomains")
+        val SHIELD_PACKAGES = stringSetPreferencesKey("shieldPackages")
+        val SHIELD_CREATED_AT = longPreferencesKey("shieldCreatedAt")
     }
 
     val sessionFlow: Flow<FocusSession?> = store.data.map { p ->
@@ -53,6 +58,17 @@ class SessionRepository(context: Context) {
 
     val policiesFlow: Flow<List<BlockPolicy>> = store.data.map { p ->
         p[Keys.POLICIES]?.let { BlockPolicy.listFromJson(it) } ?: emptyList()
+    }
+
+    /** Null once there's never been a shield, or its row was cleared by cancelling within the grace period. */
+    val commitmentShieldFlow: Flow<CommitmentShield?> = store.data.map { p ->
+        CommitmentShield(
+            startAt = p[Keys.SHIELD_START_AT] ?: return@map null,
+            endAt = p[Keys.SHIELD_END_AT] ?: return@map null,
+            domains = p[Keys.SHIELD_DOMAINS] ?: emptySet(),
+            packages = p[Keys.SHIELD_PACKAGES] ?: emptySet(),
+            createdAt = p[Keys.SHIELD_CREATED_AT] ?: return@map null,
+        )
     }
 
     suspend fun save(session: FocusSession) {
@@ -81,6 +97,27 @@ class SessionRepository(context: Context) {
     suspend fun seedDefaultPolicyIfNeeded() {
         store.edit { p ->
             if (p[Keys.POLICIES] == null) p[Keys.POLICIES] = BlockPolicy.listToJson(listOf(BlockPolicy.DEFAULT))
+        }
+    }
+
+    suspend fun saveCommitmentShield(shield: CommitmentShield) {
+        store.edit { p ->
+            p[Keys.SHIELD_START_AT] = shield.startAt
+            p[Keys.SHIELD_END_AT] = shield.endAt
+            p[Keys.SHIELD_DOMAINS] = shield.domains
+            p[Keys.SHIELD_PACKAGES] = shield.packages
+            p[Keys.SHIELD_CREATED_AT] = shield.createdAt
+        }
+    }
+
+    /** Only reachable during the grace period - see [CommitmentShield.canCancel]. */
+    suspend fun clearCommitmentShield() {
+        store.edit { p ->
+            p.remove(Keys.SHIELD_START_AT)
+            p.remove(Keys.SHIELD_END_AT)
+            p.remove(Keys.SHIELD_DOMAINS)
+            p.remove(Keys.SHIELD_PACKAGES)
+            p.remove(Keys.SHIELD_CREATED_AT)
         }
     }
 }

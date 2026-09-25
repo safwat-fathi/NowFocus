@@ -6,24 +6,56 @@ import android.content.Intent
 import android.net.VpnService
 import android.provider.Settings
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 
-/** What's blocked right now. Null whenever no session is active. */
-data class ActiveRules(val endAt: Long, val domains: Set<String>, val packages: Set<String>)
+enum class BlockSource { SESSION, COMMITMENT_SHIELD }
+
+/** One source's contribution: a manual session, or the Commitment Shield. Each expires on its own. */
+data class RuleWindow(val endAt: Long, val domains: Set<String>, val packages: Set<String>, val source: BlockSource = BlockSource.SESSION)
+
+/**
+ * What's blocked right now, as however many windows are currently active. A
+ * manual session and the Commitment Shield can both be live at once, each
+ * with its own endAt - so nothing here trusts a single scalar deadline;
+ * every query re-filters by [now], the same live-recheck pattern the two
+ * enforcement services already used for the single-window case.
+ */
+data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
+    private fun liveWindows(now: Long) = windows.filter { it.endAt > now }
+    fun liveDomains(now: Long): Set<String> = liveWindows(now).flatMap { it.domains }.toSet()
+    fun livePackages(now: Long): Set<String> = liveWindows(now).flatMap { it.packages }.toSet()
+    fun nextExpiryAfter(now: Long): Long? = liveWindows(now).minOfOrNull { it.endAt }
+    fun hasLiveWindow(now: Long): Boolean = liveWindows(now).isNotEmpty()
+
+    /**
+     * The live windows blocking [pkg] right now. The Commitment Shield takes
+     * priority when both match: it is the more restrictive source (no exit
+     * exists for it), so that's what the block screen must communicate, and
+     * its endAt (not the session's, if any) is what "blocked until" means.
+     */
+    fun windowsBlocking(pkg: String, now: Long): List<RuleWindow> = liveWindows(now).filter { pkg in it.packages }
+}
 
 /**
  * Android counterpart of the macOS SessionController: the one place that
  * starts/stops enforcement. Both services derive their rules from
- * [activeRulesFlow] and re-check endAt themselves, so enforcement stops at
- * endAt even if nothing calls [stop]. Rules come from the session's own
- * snapshot, never the live policy list.
+ * [activeRulesFlow] and re-check liveness themselves against the current
+ * time, so enforcement stops exactly at each window's endAt even if nothing
+ * calls [stop]. Rules come from the session's own snapshot, never the live
+ * policy list.
  */
 object Enforcement {
 
-    fun activeRulesFlow(repo: SessionRepository): Flow<ActiveRules?> =
-        repo.sessionFlow.map { session ->
-            session?.takeIf { SessionEngine.isActive(SessionEngine.evaluateState(it)) }
-                ?.let { ActiveRules(it.endAt, it.domains, it.packages) }
+    fun activeRulesFlow(repo: SessionRepository): Flow<ActiveRules> =
+        combine(repo.sessionFlow, repo.commitmentShieldFlow) { session, shield ->
+            val now = System.currentTimeMillis()
+            val windows = buildList {
+                session?.takeIf { SessionEngine.isActive(SessionEngine.evaluateState(it, now), now) }
+                    ?.let { add(RuleWindow(it.endAt, it.domains, it.packages, BlockSource.SESSION)) }
+                shield?.takeIf { it.endAt > now }
+                    ?.let { add(RuleWindow(it.endAt, it.domains, it.packages, BlockSource.COMMITMENT_SHIELD)) }
+            }
+            ActiveRules(windows)
         }
 
     fun start(context: Context) {

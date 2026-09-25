@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 class FocusAccessibilityService : AccessibilityService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    @Volatile private var rules: ActiveRules? = null
+    @Volatile private var rules: ActiveRules = ActiveRules()
     // Per-package last-logged time, so one open-attempt's several foreground
     // events don't multi-count in Stats. Not persisted: fine to reset with the service.
     private val lastBlockLogged = mutableMapOf<String, Long>()
@@ -31,9 +31,13 @@ class FocusAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
-        val active = rules ?: return
+        if (pkg == packageName) return
         val now = System.currentTimeMillis()
-        if (pkg == packageName || now >= active.endAt || pkg !in active.packages) return
+        val matching = rules.windowsBlocking(pkg, now)
+        if (matching.isEmpty()) return
+        // The Commitment Shield is the more restrictive source when both match - see windowsBlocking.
+        val bySource = matching.sortedByDescending { it.source == BlockSource.COMMITMENT_SHIELD }
+        val blocking = bySource.first()
 
         if (HistoryStats.shouldLogBlockEvent(now, lastBlockLogged[pkg])) {
             lastBlockLogged[pkg] = now
@@ -45,7 +49,8 @@ class FocusAccessibilityService : AccessibilityService() {
         startActivity(
             Intent(this, BlockedActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                .putExtra(BlockedActivity.EXTRA_END_AT, active.endAt)
+                .putExtra(BlockedActivity.EXTRA_END_AT, blocking.endAt)
+                .putExtra(BlockedActivity.EXTRA_SOURCE, blocking.source.name)
         )
     }
 

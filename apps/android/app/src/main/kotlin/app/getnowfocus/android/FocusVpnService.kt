@@ -51,9 +51,13 @@ class FocusVpnService : VpnService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val forwarder = Executors.newCachedThreadPool()
     private val handler = Handler(Looper.getMainLooper())
-    private val expire = Runnable { shutdown() }
+    // Re-applies the same (unchanged) rules rather than shutting down directly:
+    // a manual session's window firing this must not kill a still-live
+    // Commitment Shield window. apply() re-filters by "now" itself, so a window
+    // that's actually done simply drops out and only then may shutdown() run.
+    private val expire = Runnable { apply(rules) }
 
-    @Volatile private var rules: ActiveRules? = null
+    @Volatile private var rules: ActiveRules = ActiveRules()
     private var loop: TunLoop? = null
     private var collecting: Job? = null
 
@@ -72,16 +76,18 @@ class FocusVpnService : VpnService() {
         return START_STICKY
     }
 
-    private fun apply(newRules: ActiveRules?) {
+    private fun apply(newRules: ActiveRules) {
         rules = newRules
         handler.removeCallbacks(expire)
-        if (newRules == null) {
+        val now = System.currentTimeMillis()
+        val nextExpiry = newRules.nextExpiryAfter(now)
+        if (nextExpiry == null) {
             shutdown()
             return
         }
         // Handler time pauses in deep sleep, so this can fire late; that's fine
-        // because every query re-checks endAt before blocking.
-        handler.postDelayed(expire, newRules.endAt - System.currentTimeMillis())
+        // because every query re-checks liveness before blocking.
+        handler.postDelayed(expire, nextExpiry - now)
         if (loop == null) establish()
     }
 
@@ -104,7 +110,7 @@ class FocusVpnService : VpnService() {
         handler.removeCallbacks(expire)
         loop?.running = false
         loop = null
-        rules = null
+        rules = ActiveRules()
         stopSelf()
     }
 
@@ -157,11 +163,7 @@ class FocusVpnService : VpnService() {
         private fun handle(packet: ByteArray, length: Int) {
             val query = DnsPacket.parse(packet, length) ?: return // not DNS (e.g. DoT on 853): drop
             val name = DnsPacket.qname(query.dns)
-            val active = rules
-            if (name != null && active != null &&
-                System.currentTimeMillis() < active.endAt &&
-                DomainValidation.matches(name, active.domains)
-            ) {
+            if (name != null && DomainValidation.matches(name, rules.liveDomains(System.currentTimeMillis()))) {
                 write(DnsPacket.wrapReply(query, DnsPacket.nxdomain(query.dns)))
                 return
             }

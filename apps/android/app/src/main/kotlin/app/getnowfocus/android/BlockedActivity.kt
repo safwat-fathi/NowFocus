@@ -22,16 +22,19 @@ class BlockedActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_END_AT = "endAt"
+        const val EXTRA_SOURCE = "source"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val endAt = intent.getLongExtra(EXTRA_END_AT, 0L)
         val until = DateFormat.getTimeFormat(this).format(endAt)
+        // Defaults to SESSION: absent only if this Activity is ever launched some other way.
+        val fromShield = intent.getStringExtra(EXTRA_SOURCE) == BlockSource.COMMITMENT_SHIELD.name
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
-                    ShieldScreen(until = until, onReturn = { goHome() }, onNeedIt = { goUnlock() })
+                    ShieldScreen(until = until, fromShield = fromShield, onReturn = { goHome() }, onNeedIt = { goUnlock() })
                 }
             }
         }
@@ -55,9 +58,9 @@ class BlockedActivity : ComponentActivity() {
 }
 
 @Composable
-private fun ShieldScreen(until: String, onReturn: () -> Unit, onNeedIt: () -> Unit) {
+private fun ShieldScreen(until: String, fromShield: Boolean, onReturn: () -> Unit, onNeedIt: () -> Unit) {
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
-        Text("Shielded by NowFocus", style = kickerStyle(NowFocusColors.neutral400))
+        Text(if (fromShield) "Always blocked by NowFocus" else "Shielded by NowFocus", style = kickerStyle(NowFocusColors.neutral400))
         Spacer(Modifier.height(NowFocusSpace.s8))
         Text(
             "This can wait.",
@@ -65,13 +68,16 @@ private fun ShieldScreen(until: String, onReturn: () -> Unit, onNeedIt: () -> Un
         )
         Spacer(Modifier.height(NowFocusSpace.s3))
         Text(
-            "You're in a focus session until $until.",
+            if (fromShield) "Locked by your Commitment Shield until $until." else "You're in a focus session until $until.",
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 17.sp, color = NowFocusColors.neutral300),
         )
         Spacer(Modifier.weight(1f))
         PrimaryButton("Back to focus", onClick = onReturn)
-        Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("I really need it", onClick = onNeedIt)
+        // The Commitment Shield has no exit at all - not even the friction of Unlock.
+        if (!fromShield) {
+            Spacer(Modifier.height(NowFocusSpace.s2))
+            GhostButton("I really need it", onClick = onNeedIt)
+        }
         Spacer(Modifier.height(NowFocusSpace.s4))
     }
 }
