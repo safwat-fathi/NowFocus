@@ -36,12 +36,14 @@ import androidx.compose.ui.unit.sp
 fun PolicyListScreen(
     policies: List<BlockPolicy>,
     shield: CommitmentShield?,
+    bedtime: BedtimeSettings,
     now: Long,
     onOpen: (String) -> Unit,
     onAdd: () -> Unit,
     onDelete: (String) -> Unit,
     onBack: () -> Unit,
     onOpenCommitment: () -> Unit,
+    onOpenBedtime: () -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
@@ -82,6 +84,18 @@ fun PolicyListScreen(
                     )
                 }
                 if (active) TagPill("Active")
+            }
+            SectionRule()
+
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onOpenBedtime).padding(vertical = NowFocusSpace.s3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Bedtime Wind-Down", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text("Every night", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
+                }
+                TagPill(if (bedtime.enabled) "On" else "Off", accent = false)
             }
             SectionRule()
         }

@@ -26,6 +26,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val commitmentShield: StateFlow<CommitmentShield?> =
         repository.commitmentShieldFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    val bedtimeSettings: StateFlow<BedtimeSettings> =
+        repository.bedtimeSettingsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, BedtimeSettings())
+
     init {
         viewModelScope.launch { repository.seedDefaultPolicyIfNeeded() }
         viewModelScope.launch {
@@ -136,5 +139,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         if (!current.canCancel(System.currentTimeMillis())) return false
         viewModelScope.launch { repository.clearCommitmentShield() }
         return true
+    }
+
+    fun saveBedtimeSettings(settings: BedtimeSettings) {
+        viewModelScope.launch {
+            repository.saveBedtimeSettings(settings)
+            BedtimeScheduler.scheduleAll(getApplication(), settings)
+        }
     }
 }

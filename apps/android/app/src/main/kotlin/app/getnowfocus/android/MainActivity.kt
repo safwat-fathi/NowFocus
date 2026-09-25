@@ -2,6 +2,7 @@ package app.getnowfocus.android
 
 import android.content.Intent
 import android.net.VpnService
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -87,6 +88,7 @@ private sealed interface Screen {
     data class EditPolicy(val id: String) : Screen
     data object Stats : Screen
     data object Commitment : Screen
+    data object Bedtime : Screen
 }
 
 // Same presets as the macOS menu bar picker.
@@ -98,12 +100,16 @@ private val DURATIONS = listOf(
 private const val UNLOCK_SENTENCE = "I am choosing to end this focus session early."
 private const val UNLOCK_WAIT_MS = 30_000L
 
+private fun minutesToClock(minutesSinceMidnight: Int): String =
+    String.format("%02d:%02d", minutesSinceMidnight / 60, minutesSinceMidnight % 60)
+
 @Composable
 private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     var screen by remember { mutableStateOf<Screen>(if (startOnUnlock) Screen.Unlock else Screen.Home) }
     val policies by viewModel.policies.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
     val shield by viewModel.commitmentShield.collectAsStateWithLifecycle()
+    val bedtime by viewModel.bedtimeSettings.collectAsStateWithLifecycle()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     // Bumped on resume so the health row re-reads permissions granted in Settings.
     var resumeCount by remember { mutableIntStateOf(0) }
@@ -145,10 +151,12 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     running = running,
                     session = session,
                     shield = shield,
+                    bedtime = bedtime,
                     now = now,
                     resumeKey = resumeCount,
                     onPrimaryCta = { screen = if (running) Screen.Active else Screen.Setup },
                     onOpenCommitment = { screen = Screen.Commitment },
+                    onOpenBedtime = { screen = Screen.Bedtime },
                 )
                 Screen.Setup -> SetupScreen(
                     policies = policies,
@@ -184,12 +192,14 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     PolicyListScreen(
                         policies = policies,
                         shield = shield,
+                        bedtime = bedtime,
                         now = now,
                         onOpen = { screen = Screen.EditPolicy(it) },
                         onAdd = { screen = Screen.EditPolicy(viewModel.addPolicy()) },
                         onDelete = viewModel::deletePolicy,
                         onBack = { screen = Screen.Home },
                         onOpenCommitment = { screen = Screen.Commitment },
+                        onOpenBedtime = { screen = Screen.Bedtime },
                     )
                 }
                 is Screen.EditPolicy -> {
@@ -207,6 +217,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     onCancel = { viewModel.cancelCommitmentShield() },
                     onBack = { screen = Screen.Home },
                 )
+                Screen.Bedtime -> BedtimeScreen(settings = bedtime, onSave = viewModel::saveBedtimeSettings, onBack = { screen = Screen.Home })
             }
         }
         if (tabsVisible) {
@@ -260,10 +271,12 @@ private fun HomeScreen(
     running: Boolean,
     session: FocusSession?,
     shield: CommitmentShield?,
+    bedtime: BedtimeSettings,
     now: Long,
     resumeKey: Int,
     onPrimaryCta: () -> Unit,
     onOpenCommitment: () -> Unit,
+    onOpenBedtime: () -> Unit,
 ) {
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d")) }
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
@@ -291,18 +304,31 @@ private fun HomeScreen(
             onClick = onPrimaryCta,
         )
 
-        if (shield != null && shield.endAt > now) {
+        val showShieldRow = shield != null && shield.endAt > now
+        if (showShieldRow || bedtime.enabled) {
             Spacer(Modifier.height(NowFocusSpace.s6))
             Text("ALWAYS ON", style = kickerStyle(NowFocusColors.neutral700))
-            val daysLeft = ((shield.endAt - now) / 86_400_000L + 1).coerceAtLeast(1)
-            Row(
-                Modifier.fillMaxWidth().clickable(onClick = onOpenCommitment).padding(vertical = NowFocusSpace.s3),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Commitment Shield", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
-                TagPill("$daysLeft days left")
+            if (showShieldRow) {
+                val daysLeft = ((shield!!.endAt - now) / 86_400_000L + 1).coerceAtLeast(1)
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onOpenCommitment).padding(vertical = NowFocusSpace.s3),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Commitment Shield", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
+                    TagPill("$daysLeft days left")
+                }
+                SectionRule()
             }
-            SectionRule()
+            if (bedtime.enabled) {
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onOpenBedtime).padding(vertical = NowFocusSpace.s3),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Bedtime Wind-Down", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
+                    TagPill("Tonight ${minutesToClock(bedtime.windDownMinute)}", accent = false)
+                }
+                SectionRule()
+            }
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
     }
@@ -755,6 +781,67 @@ private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
             "at the same time (Android only allows one).",
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
     )
+}
+
+@Composable
+private fun BedtimeScreen(settings: BedtimeSettings, onSave: (BedtimeSettings) -> Unit, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    val context = LocalContext.current
+    val notificationPolicyOk = remember(settings) {
+        context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted ?: false
+    }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        GhostButton("‹ Back", onClick = onBack)
+        Text("Bedtime Wind-Down", style = headingStyle(22.sp))
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        Text(
+            "An hour before bed, notifications quiet down. Tap a time to shift it by 30 minutes.",
+            style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
+        )
+        Spacer(Modifier.height(NowFocusSpace.s4))
+
+        ToggleRow("On every night", "Applies automatically, no need to start it", settings.enabled, { onSave(settings.copy(enabled = !settings.enabled)) })
+        SectionRule()
+        Spacer(Modifier.height(NowFocusSpace.s3))
+
+        Row(Modifier.fillMaxWidth()) {
+            TimeBump("Wind-down", settings.windDownMinute, Modifier.weight(1f)) { onSave(settings.copy(windDownMinute = it)) }
+            TimeBump("Sleep", settings.sleepMinute, Modifier.weight(1f)) { onSave(settings.copy(sleepMinute = it)) }
+            TimeBump("Wake", settings.wakeMinute, Modifier.weight(1f)) { onSave(settings.copy(wakeMinute = it)) }
+        }
+        Spacer(Modifier.height(NowFocusSpace.s6))
+
+        Text("DURING WIND-DOWN", style = kickerStyle(NowFocusColors.neutral700))
+        SectionRule()
+        ToggleRow(
+            "Quiet notifications", "Only priority notifications come through",
+            settings.quietNotifications, { onSave(settings.copy(quietNotifications = !settings.quietNotifications)) },
+        )
+        if (!notificationPolicyOk) {
+            GhostButton("Allow in Notification Access settings") {
+                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 28) {
+            ToggleRow(
+                "Lock phone at sleep time", "Locks once, at your sleep time",
+                settings.lockAtSleep, { onSave(settings.copy(lockAtSleep = !settings.lockAtSleep)) },
+            )
+        }
+        Spacer(Modifier.height(NowFocusSpace.s4))
+    }
+}
+
+@Composable
+private fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier, onChange: (Int) -> Unit) {
+    Column(
+        modifier.clickable { onChange((minutes + 30) % (24 * 60)) }.padding(vertical = NowFocusSpace.s2),
+    ) {
+        Text(label, style = kickerStyle(NowFocusColors.neutral700))
+        Text(minutesToClock(minutes), style = headingStyle(24.sp))
+    }
 }
 
 /** Android counterpart of the macOS health dot + "needs approval" hint. */

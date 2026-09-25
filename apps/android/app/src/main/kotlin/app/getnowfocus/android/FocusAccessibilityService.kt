@@ -15,6 +15,14 @@ import kotlinx.coroutines.launch
  */
 class FocusAccessibilityService : AccessibilityService() {
 
+    companion object {
+        // Bedtime's sleep-time lock needs a live AccessibilityService instance to
+        // call performGlobalAction on (it's not a static API) - null whenever
+        // Accessibility isn't enabled, in which case the lock silently doesn't fire.
+        @Volatile var instance: FocusAccessibilityService? = null
+            private set
+    }
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     @Volatile private var rules: ActiveRules = ActiveRules()
     // Per-package last-logged time, so one open-attempt's several foreground
@@ -23,6 +31,7 @@ class FocusAccessibilityService : AccessibilityService() {
     private val historyDao by lazy { HistoryDatabase.get(this).dao() }
 
     override fun onServiceConnected() {
+        instance = this
         scope.launch {
             Enforcement.activeRulesFlow(SessionRepository(this@FocusAccessibilityService)).collect { rules = it }
         }
@@ -57,6 +66,7 @@ class FocusAccessibilityService : AccessibilityService() {
     override fun onInterrupt() {}
 
     override fun onDestroy() {
+        if (instance === this) instance = null
         scope.cancel()
         super.onDestroy()
     }

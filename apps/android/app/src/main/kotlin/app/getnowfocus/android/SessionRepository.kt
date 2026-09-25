@@ -1,7 +1,9 @@
 package app.getnowfocus.android
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -37,6 +39,12 @@ class SessionRepository(context: Context) {
         val SHIELD_DOMAINS = stringSetPreferencesKey("shieldDomains")
         val SHIELD_PACKAGES = stringSetPreferencesKey("shieldPackages")
         val SHIELD_CREATED_AT = longPreferencesKey("shieldCreatedAt")
+        val BEDTIME_WINDDOWN_MIN = intPreferencesKey("bedtimeWindDownMin")
+        val BEDTIME_SLEEP_MIN = intPreferencesKey("bedtimeSleepMin")
+        val BEDTIME_WAKE_MIN = intPreferencesKey("bedtimeWakeMin")
+        val BEDTIME_ENABLED = booleanPreferencesKey("bedtimeEnabled")
+        val BEDTIME_QUIET = booleanPreferencesKey("bedtimeQuietNotifications")
+        val BEDTIME_LOCK = booleanPreferencesKey("bedtimeLockAtSleep")
     }
 
     val sessionFlow: Flow<FocusSession?> = store.data.map { p ->
@@ -69,6 +77,30 @@ class SessionRepository(context: Context) {
             packages = p[Keys.SHIELD_PACKAGES] ?: emptySet(),
             createdAt = p[Keys.SHIELD_CREATED_AT] ?: return@map null,
         )
+    }
+
+    /** Defaults (see BedtimeSettings) until the user has ever saved their own. */
+    val bedtimeSettingsFlow: Flow<BedtimeSettings> = store.data.map { p ->
+        val defaults = BedtimeSettings()
+        BedtimeSettings(
+            windDownMinute = p[Keys.BEDTIME_WINDDOWN_MIN] ?: defaults.windDownMinute,
+            sleepMinute = p[Keys.BEDTIME_SLEEP_MIN] ?: defaults.sleepMinute,
+            wakeMinute = p[Keys.BEDTIME_WAKE_MIN] ?: defaults.wakeMinute,
+            enabled = p[Keys.BEDTIME_ENABLED] ?: defaults.enabled,
+            quietNotifications = p[Keys.BEDTIME_QUIET] ?: defaults.quietNotifications,
+            lockAtSleep = p[Keys.BEDTIME_LOCK] ?: defaults.lockAtSleep,
+        )
+    }
+
+    suspend fun saveBedtimeSettings(settings: BedtimeSettings) {
+        store.edit { p ->
+            p[Keys.BEDTIME_WINDDOWN_MIN] = settings.windDownMinute
+            p[Keys.BEDTIME_SLEEP_MIN] = settings.sleepMinute
+            p[Keys.BEDTIME_WAKE_MIN] = settings.wakeMinute
+            p[Keys.BEDTIME_ENABLED] = settings.enabled
+            p[Keys.BEDTIME_QUIET] = settings.quietNotifications
+            p[Keys.BEDTIME_LOCK] = settings.lockAtSleep
+        }
     }
 
     suspend fun save(session: FocusSession) {
