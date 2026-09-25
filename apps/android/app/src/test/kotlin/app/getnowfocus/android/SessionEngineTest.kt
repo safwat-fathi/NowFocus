@@ -51,4 +51,22 @@ class SessionEngineTest {
         assertTrue(SessionEngine.isActive(s, now = 1500))
         assertFalse(SessionEngine.isActive(s, now = 2000))
     }
+
+    @Test
+    fun `normal mode can always cancel`() {
+        assertTrue(SessionEngine.canCancel(EnforcementMode.NORMAL, unlockCompleted = false))
+        assertTrue(SessionEngine.canCancel(EnforcementMode.NORMAL, unlockCompleted = true))
+    }
+
+    @Test
+    fun `strict mode requires unlock to complete first`() {
+        assertFalse(SessionEngine.canCancel(EnforcementMode.STRICT, unlockCompleted = false))
+        assertTrue(SessionEngine.canCancel(EnforcementMode.STRICT, unlockCompleted = true))
+    }
+
+    @Test
+    fun `locked mode never allows cancelling, even if unlock somehow reports complete`() {
+        assertFalse(SessionEngine.canCancel(EnforcementMode.LOCKED, unlockCompleted = false))
+        assertFalse(SessionEngine.canCancel(EnforcementMode.LOCKED, unlockCompleted = true))
+    }
 }

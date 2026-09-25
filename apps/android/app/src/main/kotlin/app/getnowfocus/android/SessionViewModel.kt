@@ -37,7 +37,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun startSession(policyId: String, durationMinutes: Int) {
+    fun startSession(policyId: String, durationMinutes: Int, mode: EnforcementMode = EnforcementMode.NORMAL) {
         val policy = policies.value.find { it.id == policyId } ?: return
         val now = System.currentTimeMillis()
         val scheduled = FocusSession(
@@ -49,6 +49,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             createdAt = now,
             domains = policy.domains.toSet(),
             packages = policy.apps.map { it.packageName }.toSet(),
+            enforcementMode = mode,
         )
         viewModelScope.launch {
             repository.save(SessionEngine.evaluateState(scheduled, now))
@@ -56,12 +57,21 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun cancelSession() {
-        val current = _session.value ?: return
+    /**
+     * The only path that ends a session early. Strict requires the Unlock
+     * screen's type-sentence-then-wait flow to finish first
+     * ([unlockCompleted]); Locked never allows it at all — see
+     * [SessionEngine.canCancel]. Returns whether the cancel actually happened,
+     * so the caller (e.g. the Unlock screen) knows whether to navigate away.
+     */
+    fun cancelSession(unlockCompleted: Boolean = false): Boolean {
+        val current = _session.value ?: return false
+        if (!SessionEngine.canCancel(current.enforcementMode, unlockCompleted)) return false
         viewModelScope.launch {
-            repository.save(current.copy(status = FocusSessionStatus.CANCELLED))
+            repository.save(current.copy(status = FocusSessionStatus.CANCELLED, cancelledAt = System.currentTimeMillis()))
             Enforcement.stop(getApplication())
         }
+        return true
     }
 
     /** Re-derives state from persisted data + current time, and writes back any change. */

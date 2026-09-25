@@ -21,4 +21,17 @@ object SessionEngine {
 
     fun isActive(session: FocusSession, now: Long = System.currentTimeMillis()): Boolean =
         session.status == FocusSessionStatus.ACTIVE && now >= session.startAt && now < session.endAt
+
+    /**
+     * The one place exit friction is decided. NORMAL always allows it; STRICT
+     * only once the Unlock screen's type-sentence-then-wait flow has completed;
+     * LOCKED never allows it, regardless of [unlockCompleted] — there is no
+     * unlock flow for Locked sessions, so a caller passing true here would be
+     * a bug, not a legitimate unlock.
+     */
+    fun canCancel(mode: EnforcementMode, unlockCompleted: Boolean): Boolean = when (mode) {
+        EnforcementMode.NORMAL -> true
+        EnforcementMode.STRICT -> unlockCompleted
+        EnforcementMode.LOCKED -> false
+    }
 }

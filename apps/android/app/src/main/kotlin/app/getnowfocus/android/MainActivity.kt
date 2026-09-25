@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,12 +57,19 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        const val EXTRA_ROUTE = "route"
+        const val ROUTE_UNLOCK = "unlock"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val startOnUnlock = intent.getStringExtra(EXTRA_ROUTE) == ROUTE_UNLOCK
         setContent {
             NowFocusTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = NowFocusColors.bg) {
-                    App(viewModel())
+                    App(viewModel(), startOnUnlock = startOnUnlock)
                 }
             }
         }
@@ -72,6 +80,7 @@ private sealed interface Screen {
     data object Home : Screen
     data object Setup : Screen
     data object Active : Screen
+    data object Unlock : Screen
     data object Policies : Screen
     data class EditPolicy(val id: String) : Screen
 }
@@ -82,9 +91,12 @@ private val DURATIONS = listOf(
     "2 hrs" to 120, "3 hrs" to 180, "4 hrs" to 240,
 )
 
+private const val UNLOCK_SENTENCE = "I am choosing to end this focus session early."
+private const val UNLOCK_WAIT_MS = 30_000L
+
 @Composable
-private fun App(viewModel: SessionViewModel) {
-    var screen by remember { mutableStateOf<Screen>(Screen.Home) }
+private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
+    var screen by remember { mutableStateOf<Screen>(if (startOnUnlock) Screen.Unlock else Screen.Home) }
     val policies by viewModel.policies.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -112,11 +124,11 @@ private fun App(viewModel: SessionViewModel) {
     }
 
     val running = session?.let { SessionEngine.isActive(it, now) } ?: false
-    // Auto-follow the underlying state: a session ending while Active is open
-    // returns to Home; a session starting elsewhere (recovery) skips Setup.
+    // Auto-follow the underlying state: a session ending while Active/Unlock is
+    // open returns to Home; a session starting elsewhere (recovery) skips Setup.
     LaunchedEffect(running, screen) {
         if (running && screen == Screen.Home) screen = Screen.Active
-        if (!running && screen == Screen.Active) screen = Screen.Home
+        if (!running && (screen == Screen.Active || screen == Screen.Unlock)) screen = Screen.Home
     }
 
     val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy
@@ -135,10 +147,30 @@ private fun App(viewModel: SessionViewModel) {
                     policies = policies,
                     onBack = { screen = Screen.Home },
                     onManagePolicies = { screen = Screen.Policies },
-                    onStart = { policyId, minutes -> viewModel.startSession(policyId, minutes); screen = Screen.Active },
+                    onStart = { policyId, minutes, mode -> viewModel.startSession(policyId, minutes, mode); screen = Screen.Active },
                 )
                 Screen.Active -> session?.let { active ->
-                    ActiveScreen(session = active, now = now, onStop = { viewModel.cancelSession(); screen = Screen.Home })
+                    ActiveScreen(
+                        session = active,
+                        now = now,
+                        onEndEarly = {
+                            if (active.enforcementMode == EnforcementMode.NORMAL) {
+                                viewModel.cancelSession()
+                                screen = Screen.Home
+                            } else {
+                                screen = Screen.Unlock
+                            }
+                        },
+                    )
+                }
+                Screen.Unlock -> session?.let { active ->
+                    UnlockScreen(
+                        session = active,
+                        now = now,
+                        onCancel = { completed -> viewModel.cancelSession(completed) },
+                        onCancelled = { screen = Screen.Home },
+                        onBack = { screen = Screen.Active },
+                    )
                 }
                 Screen.Policies -> {
                     BackHandler { screen = Screen.Home }
@@ -237,15 +269,16 @@ private fun SetupScreen(
     policies: List<BlockPolicy>,
     onBack: () -> Unit,
     onManagePolicies: () -> Unit,
-    onStart: (String, Int) -> Unit,
+    onStart: (String, Int, EnforcementMode) -> Unit,
 ) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
     var policyId by remember { mutableStateOf(policies.firstOrNull()?.id) }
     var minutes by remember { mutableIntStateOf(60) }
-    var pendingStart by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var mode by remember { mutableStateOf(EnforcementMode.NORMAL) }
+    var pendingStart by remember { mutableStateOf<Triple<String, Int, EnforcementMode>?>(null) }
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        pendingStart?.let { (id, mins) -> onStart(id, mins) }
+        pendingStart?.let { (id, mins, m) -> onStart(id, mins, m) }
         pendingStart = null
     }
 
@@ -313,13 +346,31 @@ private fun SetupScreen(
             }
         }
 
+        Spacer(Modifier.height(NowFocusSpace.s4))
+        Text("IF I WANT TO STOP EARLY", style = kickerStyle(NowFocusColors.neutral700))
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        SegmentedControl(
+            options = listOf("Normal" to EnforcementMode.NORMAL, "Strict" to EnforcementMode.STRICT, "Locked" to EnforcementMode.LOCKED),
+            selected = mode,
+            onSelect = { mode = it },
+        )
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        Text(
+            when (mode) {
+                EnforcementMode.NORMAL -> "You can end any time. Good for light days."
+                EnforcementMode.STRICT -> "To leave early you'll type a short sentence, then wait 30 seconds."
+                EnforcementMode.LOCKED -> "No early exit on this device until the timer ends."
+            },
+            style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral800),
+        )
+
         Spacer(Modifier.height(NowFocusSpace.s6))
         PrimaryButton("Start ${DURATIONS.first { it.second == minutes }.first}") {
             val consentIntent = VpnService.prepare(context)
             if (consentIntent == null) {
-                onStart(selected.id, minutes)
+                onStart(selected.id, minutes, mode)
             } else {
-                pendingStart = selected.id to minutes
+                pendingStart = Triple(selected.id, minutes, mode)
                 vpnConsent.launch(consentIntent)
             }
         }
@@ -328,7 +379,7 @@ private fun SetupScreen(
 }
 
 @Composable
-private fun ActiveScreen(session: FocusSession, now: Long, onStop: () -> Unit) {
+private fun ActiveScreen(session: FocusSession, now: Long, onEndEarly: () -> Unit) {
     val remainingSeconds = (session.endAt - now).coerceAtLeast(0) / 1000
     val hours = remainingSeconds / 3600
     val minutes = remainingSeconds % 3600 / 60
@@ -337,7 +388,13 @@ private fun ActiveScreen(session: FocusSession, now: Long, onStop: () -> Unit) {
     val progress = ((now - session.startAt).toFloat() / (session.endAt - session.startAt).toFloat()).coerceIn(0f, 1f)
 
     Column(Modifier.fillMaxSize().background(NowFocusColors.accent).padding(NowFocusSpace.s6)) {
-        Text("Focus session", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.text))
+        Row(Modifier.fillMaxWidth()) {
+            Text("Focus session", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.text), modifier = Modifier.weight(1f))
+            Text(
+                session.enforcementMode.name,
+                style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = NowFocusColors.text, letterSpacing = 1.sp),
+            )
+        }
         Spacer(Modifier.height(NowFocusSpace.s6))
         Text("You're in it. Keep going.", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = NowFocusColors.text))
         Text(remaining, style = headingStyle(72.sp, color = NowFocusColors.bg))
@@ -346,8 +403,71 @@ private fun ActiveScreen(session: FocusSession, now: Long, onStop: () -> Unit) {
             Box(Modifier.fillMaxWidth(progress).height(6.dp).background(NowFocusColors.bg))
         }
         Spacer(Modifier.weight(1f))
-        // Exit friction (Strict/Locked) lands in a later milestone; Normal mode stops immediately.
-        SecondaryButton("End session early", onClick = onStop)
+        SecondaryButton(
+            if (session.enforcementMode == EnforcementMode.LOCKED) "Locked until timer ends" else "End session early",
+            onClick = onEndEarly,
+        )
+    }
+}
+
+@Composable
+private fun UnlockScreen(session: FocusSession, now: Long, onCancel: (Boolean) -> Boolean, onCancelled: () -> Unit, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        GhostButton("‹ Back to focus", onClick = onBack)
+        Text("End early?", style = headingStyle(22.sp))
+        Spacer(Modifier.height(NowFocusSpace.s4))
+
+        when (session.enforcementMode) {
+            EnforcementMode.NORMAL -> {
+                Text("End this session now?", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 16.sp))
+                Spacer(Modifier.height(NowFocusSpace.s4))
+                PrimaryButton("End session now") { if (onCancel(false)) onCancelled() }
+            }
+            EnforcementMode.LOCKED -> {
+                Text("This one's locked, by you.", style = headingStyle(28.sp))
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                Text(
+                    "You chose Locked when you started this session, so there's no early exit. You've got this.",
+                    style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
+                )
+                Spacer(Modifier.height(NowFocusSpace.s4))
+                PrimaryButton("Back to focus", onClick = onBack)
+            }
+            EnforcementMode.STRICT -> {
+                var typed by remember { mutableStateOf("") }
+                var waitEndAt by remember { mutableStateOf<Long?>(null) }
+                val waiting = waitEndAt != null
+                val waitRemainingMs = waitEndAt?.let { (it - now).coerceAtLeast(0) } ?: 0L
+                val waitDone = waiting && waitRemainingMs == 0L
+                val matched = typed.trim() == UNLOCK_SENTENCE
+
+                if (!waiting) {
+                    Text(
+                        "No judgement. Type this out, word for word, so it's a choice and not a reflex.",
+                        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
+                    )
+                    Spacer(Modifier.height(NowFocusSpace.s3))
+                    Text("“$UNLOCK_SENTENCE”", style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp))
+                    Spacer(Modifier.height(NowFocusSpace.s3))
+                    OutlinedTextField(value = typed, onValueChange = { typed = it }, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(NowFocusSpace.s4))
+                    PrimaryButton("Start 30-second pause", enabled = matched) { waitEndAt = System.currentTimeMillis() + UNLOCK_WAIT_MS }
+                } else {
+                    Text(
+                        "Take a breath. If you still want out when this hits zero, it's yours.",
+                        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
+                    )
+                    Spacer(Modifier.height(NowFocusSpace.s3))
+                    Text("${waitRemainingMs / 1000 + if (waitRemainingMs % 1000 > 0) 1 else 0}", style = headingStyle(96.sp, color = NowFocusColors.accent))
+                    Spacer(Modifier.height(NowFocusSpace.s4))
+                    PrimaryButton(if (waitDone) "End session now" else "Waiting…", enabled = waitDone) { if (onCancel(true)) onCancelled() }
+                }
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                SecondaryButton("Stay focused", onClick = onBack)
+            }
+        }
     }
 }
 

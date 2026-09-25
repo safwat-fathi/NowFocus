@@ -30,6 +30,8 @@ class SessionRepository(context: Context) {
         val DOMAINS = stringSetPreferencesKey("domains")
         val PACKAGES = stringSetPreferencesKey("packages")
         val POLICIES = stringPreferencesKey("policies")
+        val ENFORCEMENT_MODE = stringPreferencesKey("enforcementMode")
+        val CANCELLED_AT = longPreferencesKey("cancelledAt")
     }
 
     val sessionFlow: Flow<FocusSession?> = store.data.map { p ->
@@ -42,6 +44,10 @@ class SessionRepository(context: Context) {
             createdAt = p[Keys.CREATED_AT] ?: return@map null,
             domains = p[Keys.DOMAINS] ?: emptySet(),
             packages = p[Keys.PACKAGES] ?: emptySet(),
+            // Default, not return@map null: a session written before this field
+            // existed must keep enforcing as NORMAL, not vanish from the flow.
+            enforcementMode = p[Keys.ENFORCEMENT_MODE]?.let { EnforcementMode.valueOf(it) } ?: EnforcementMode.NORMAL,
+            cancelledAt = p[Keys.CANCELLED_AT],
         )
     }
 
@@ -59,6 +65,8 @@ class SessionRepository(context: Context) {
             p[Keys.CREATED_AT] = session.createdAt
             p[Keys.DOMAINS] = session.domains
             p[Keys.PACKAGES] = session.packages
+            p[Keys.ENFORCEMENT_MODE] = session.enforcementMode.name
+            if (session.cancelledAt != null) p[Keys.CANCELLED_AT] = session.cancelledAt else p.remove(Keys.CANCELLED_AT)
         }
     }
 
