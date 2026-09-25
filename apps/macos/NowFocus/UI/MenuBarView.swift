@@ -32,21 +32,20 @@ struct MenuBarView: View {
             
             if isActive, let session = activeSession {
                 HStack {
-                    Circle()
-                        .fill(.green)
-                        .frame(width: 8, height: 8)
+                    StatusDot(color: .green)
                     Text("Session Active")
                         .foregroundColor(.green)
                 }
-                
+
                 Text(timerInterval: session.startAt...session.endAt, countsDown: true)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .monospacedDigit()
-                
+
                 Button("Stop Session") {
                     stopSession()
                 }
+                .buttonStyle(.borderedProminent)
             } else {
                 if policies.isEmpty {
                     Text("No policies configured")
@@ -75,19 +74,18 @@ struct MenuBarView: View {
                     Button("Start Focus Session") {
                         startSession()
                     }
+                    .buttonStyle(.borderedProminent)
                     .disabled(selectedPolicyId == nil)
                 }
             }
-            
+
             Divider()
-            
+
             HStack {
-                Circle()
-                    .fill(healthColor)
-                    .frame(width: 6, height: 6)
+                StatusDot(color: healthColor)
                 Text("Health: \(healthStatus.rawValue.capitalized)")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(healthColor)
             }
 
             registrationWarning
@@ -95,6 +93,7 @@ struct MenuBarView: View {
             Divider()
             
             Button("Preferences...") {
+                NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
                 openSettings()
             }
@@ -102,6 +101,7 @@ struct MenuBarView: View {
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
+            .disabled(isActive)
         }
         .padding()
         .frame(width: 260)
@@ -124,10 +124,11 @@ struct MenuBarView: View {
                 }
                 .font(.caption)
             }
-        case .failed:
-            Text("Website blocking unavailable — daemon failed to register")
+        case .failed(let message):
+            Text("Website blocking unavailable: \(message)")
                 .font(.caption)
                 .foregroundColor(.red)
+                .fixedSize(horizontal: false, vertical: true)
         case .unknown, .registered:
             EmptyView()
         }
@@ -135,9 +136,10 @@ struct MenuBarView: View {
 
     private var healthColor: Color {
         switch healthStatus {
+        case .unknown: return .secondary
         case .active: return .green
         case .degraded: return .yellow
-        case .unavailable, .unknown: return .red
+        case .unavailable: return .red
         }
     }
     
@@ -211,5 +213,15 @@ struct MenuBarView: View {
         guard let session = activeSession else { return }
         SessionController.endSession(session)
         refreshState()
+    }
+}
+
+private struct StatusDot: View {
+    let color: Color
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 8, height: 8)
     }
 }

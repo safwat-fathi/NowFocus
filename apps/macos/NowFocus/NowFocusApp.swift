@@ -38,6 +38,35 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         sessionMonitor = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.checkSessionExpiry()
         }
+
+        // Preferences temporarily promotes us to a regular app (Dock/Cmd+Tab)
+        // so its window is reachable; drop back to accessory once it closes.
+        // willClose fires while the closing window is still visible, so skip it;
+        // only titled windows count (overlay panels and the menu bar popover aren't).
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main) { note in
+            let closing = note.object as? NSWindow
+            let otherTitled = NSApp.windows.contains {
+                $0 !== closing && $0.isVisible && $0.styleMask.contains(.titled)
+            }
+            if !otherTitled {
+                NSApp.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
+    // Refuse user-initiated quits (menu Quit, Cmd+Q, Dock) while a session is
+    // active — quitting would kill AppBlocker. Force Quit can't be stopped;
+    // recoverSession() re-applies enforcement on next launch.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Logout/restart/shutdown carry a quit reason; never block those.
+        if NSAppleEventManager.shared().currentAppleEvent?
+            .attributeDescriptor(forKeyword: kAEQuitReason) != nil {
+            return .terminateNow
+        }
+        guard var session = try? DatabaseManager.shared.fetchActiveSession() else { return .terminateNow }
+        let engine = SessionEngine()
+        engine.evaluateState(for: &session)
+        return engine.isActive(session) ? .terminateCancel : .terminateNow
     }
 
     private func recoverSession() {

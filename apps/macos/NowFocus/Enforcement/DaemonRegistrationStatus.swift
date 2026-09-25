@@ -31,6 +31,8 @@ final class DaemonRegistrationStatus {
                 try service.register()
                 state = service.status == .requiresApproval ? .requiresApproval : .registered
             } catch {
+                let nsError = error as NSError
+                print("Daemon registration failed: \(error.localizedDescription) (domain: \(nsError.domain), code: \(nsError.code))")
                 state = .failed(error.localizedDescription)
             }
         @unknown default:

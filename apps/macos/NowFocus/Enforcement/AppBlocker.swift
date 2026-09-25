@@ -10,6 +10,7 @@ public class AppBlocker {
     
     private var activeBlockedApps: Set<String> = []
     private var isSessionActive: Bool = false
+    private var blockedApp: NSRunningApplication?
     
     private init() {
         setupObservers()
@@ -56,6 +57,7 @@ public class AppBlocker {
         }
 
         if activeBlockedApps.contains(bundleID) {
+            blockedApp = app
             showOverlay()
         } else {
             hideOverlay()
@@ -69,7 +71,11 @@ public class AppBlocker {
     private func showOverlay() {
         if overlayPanels.count != NSScreen.screens.count {
             overlayPanels.forEach { $0.hide() }
-            overlayPanels = NSScreen.screens.map { _ in BlockOverlayPanel() }
+            overlayPanels = NSScreen.screens.map { _ in
+                let panel = BlockOverlayPanel()
+                panel.onClose = { self.closeBlockedApp() }
+                return panel
+            }
         }
         for (panel, screen) in zip(overlayPanels, NSScreen.screens) {
             // visibleFrame excludes the menu bar and Dock, so the user is never
@@ -80,5 +86,14 @@ public class AppBlocker {
 
     private func hideOverlay() {
         overlayPanels.forEach { $0.hide() }
+        blockedApp = nil
+    }
+
+    // Graceful quit, not forceTerminate — respects the app's own quit sequence
+    // (e.g. save-changes prompts). If the app declines to quit, frontmost app
+    // doesn't change, no didActivateApplicationNotification fires, and the
+    // overlay correctly stays up — no separate hide path needed here.
+    private func closeBlockedApp() {
+        blockedApp?.terminate()
     }
 }
