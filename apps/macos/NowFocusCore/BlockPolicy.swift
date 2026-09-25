@@ -46,6 +46,13 @@ public struct BlockPolicy: Codable, Identifiable {
     public let id: String
     public var name: String
     public let mode: PolicyMode
+
+    /// Where this policy originated — user action, extension API, or schedule.
+    public let source: SessionSource
+    /// The extension that created this policy, if `source == .extensionAPI`.
+    public let createdByExtensionId: String?
+    /// Display metadata for the creating extension (name, icon) for UI attribution.
+    public let extensionMetadata: ExtensionMeta?
     
     public var domains: [DomainRule]
     public var applications: [ApplicationRule]
@@ -60,6 +67,9 @@ public struct BlockPolicy: Codable, Identifiable {
     public init(id: String = UUID().uuidString,
                 name: String,
                 mode: PolicyMode = .blocklist,
+                source: SessionSource = .user,
+                createdByExtensionId: String? = nil,
+                extensionMetadata: ExtensionMeta? = nil,
                 domains: [DomainRule] = [],
                 applications: [ApplicationRule] = [],
                 categories: [String] = [],
@@ -70,6 +80,9 @@ public struct BlockPolicy: Codable, Identifiable {
         self.id = id
         self.name = name
         self.mode = mode
+        self.source = source
+        self.createdByExtensionId = createdByExtensionId
+        self.extensionMetadata = extensionMetadata
         self.domains = domains
         self.applications = applications
         self.categories = categories
