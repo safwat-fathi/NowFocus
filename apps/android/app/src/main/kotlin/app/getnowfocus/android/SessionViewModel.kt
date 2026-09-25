@@ -29,6 +29,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val bedtimeSettings: StateFlow<BedtimeSettings> =
         repository.bedtimeSettingsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, BedtimeSettings())
 
+    // Defaults true (skip onboarding) until the real, persisted value loads, so
+    // an existing user is never bounced back into onboarding for one frame.
+    val onboardingDone: StateFlow<Boolean> =
+        repository.onboardingDoneFlow.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     init {
         viewModelScope.launch { repository.seedDefaultPolicyIfNeeded() }
         viewModelScope.launch {
@@ -146,5 +151,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             repository.saveBedtimeSettings(settings)
             BedtimeScheduler.scheduleAll(getApplication(), settings)
         }
+    }
+
+    fun completeOnboarding() {
+        viewModelScope.launch { repository.setOnboardingDone() }
     }
 }

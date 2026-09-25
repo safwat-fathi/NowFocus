@@ -45,6 +45,7 @@ class SessionRepository(context: Context) {
         val BEDTIME_ENABLED = booleanPreferencesKey("bedtimeEnabled")
         val BEDTIME_QUIET = booleanPreferencesKey("bedtimeQuietNotifications")
         val BEDTIME_LOCK = booleanPreferencesKey("bedtimeLockAtSleep")
+        val ONBOARDING_DONE = booleanPreferencesKey("onboardingDone")
     }
 
     val sessionFlow: Flow<FocusSession?> = store.data.map { p ->
@@ -101,6 +102,12 @@ class SessionRepository(context: Context) {
             p[Keys.BEDTIME_QUIET] = settings.quietNotifications
             p[Keys.BEDTIME_LOCK] = settings.lockAtSleep
         }
+    }
+
+    val onboardingDoneFlow: Flow<Boolean> = store.data.map { p -> p[Keys.ONBOARDING_DONE] ?: false }
+
+    suspend fun setOnboardingDone() {
+        store.edit { p -> p[Keys.ONBOARDING_DONE] = true }
     }
 
     suspend fun save(session: FocusSession) {

@@ -89,6 +89,8 @@ private sealed interface Screen {
     data object Stats : Screen
     data object Commitment : Screen
     data object Bedtime : Screen
+    data object Devices : Screen
+    data object Onboarding : Screen
 }
 
 // Same presets as the macOS menu bar picker.
@@ -110,6 +112,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val session by viewModel.session.collectAsStateWithLifecycle()
     val shield by viewModel.commitmentShield.collectAsStateWithLifecycle()
     val bedtime by viewModel.bedtimeSettings.collectAsStateWithLifecycle()
+    val onboardingDone by viewModel.onboardingDone.collectAsStateWithLifecycle()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     // Bumped on resume so the health row re-reads permissions granted in Settings.
     var resumeCount by remember { mutableIntStateOf(0) }
@@ -141,8 +144,16 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
         if (running && screen == Screen.Home) screen = Screen.Active
         if (!running && (screen == Screen.Active || screen == Screen.Unlock)) screen = Screen.Home
     }
+    // onboardingDone starts eagerly true (see SessionViewModel) until the real,
+    // persisted value loads - this redirects the moment a first-run app learns
+    // it hasn't onboarded yet, rather than gating the initial screen on a value
+    // that isn't available synchronously at composition time.
+    LaunchedEffect(onboardingDone) {
+        if (!onboardingDone && screen == Screen.Home) screen = Screen.Onboarding
+    }
 
-    val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy || screen is Screen.Stats
+    val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy ||
+        screen is Screen.Stats || screen is Screen.Devices
 
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
@@ -218,12 +229,15 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     onBack = { screen = Screen.Home },
                 )
                 Screen.Bedtime -> BedtimeScreen(settings = bedtime, onSave = viewModel::saveBedtimeSettings, onBack = { screen = Screen.Home })
+                Screen.Devices -> DevicesScreen()
+                Screen.Onboarding -> OnboardingScreen(onDone = { viewModel.completeOnboarding(); screen = Screen.Home })
             }
         }
         if (tabsVisible) {
             BottomTabBar(
                 onFocus = { screen = Screen.Home },
                 onRules = { screen = Screen.Policies },
+                onDevices = { screen = Screen.Devices },
                 onStats = { screen = Screen.Stats },
                 selected = screen,
             )
@@ -231,15 +245,16 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     }
 }
 
-/** Devices joins once M6 gives it something real to show. */
 @Composable
-private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onStats: () -> Unit, selected: Screen) {
+private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onDevices: () -> Unit, onStats: () -> Unit, selected: Screen) {
     val rulesSelected = selected is Screen.Policies || selected is Screen.EditPolicy
+    val devicesSelected = selected is Screen.Devices
     val statsSelected = selected is Screen.Stats
     SectionRule(thick = true)
     Row(Modifier.fillMaxWidth().background(NowFocusColors.bg)) {
-        TabItem("Focus", selected = !rulesSelected && !statsSelected, modifier = Modifier.weight(1f), onClick = onFocus)
+        TabItem("Focus", selected = !rulesSelected && !devicesSelected && !statsSelected, modifier = Modifier.weight(1f), onClick = onFocus)
         TabItem("Rules", selected = rulesSelected, modifier = Modifier.weight(1f), onClick = onRules)
+        TabItem("Devices", selected = devicesSelected, modifier = Modifier.weight(1f), onClick = onDevices)
         TabItem("Stats", selected = statsSelected, modifier = Modifier.weight(1f), onClick = onStats)
     }
 }
