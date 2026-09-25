@@ -41,17 +41,12 @@ targets:
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       INFOPLIST_KEY_LSUIElement: YES
       GENERATE_INFOPLIST_FILE: YES
+      MARKETING_VERSION: "1.0"
+      CURRENT_PROJECT_VERSION: "1"
     postBuildScripts:
       - name: "Embed Daemon"
         script: |
-          # Determine the correct output app bundle path
-          if [ -n "$INSTALL_DIR" ]; then
-            APP_DIR="$INSTALL_DIR/$FULL_PRODUCT_NAME"
-          else
-            APP_DIR="$BUILT_PRODUCTS_DIR/$FULL_PRODUCT_NAME"
-          fi
-          
-          DAEMON_DIR="$APP_DIR/Contents/Library/LaunchDaemons"
+          DAEMON_DIR="$CODESIGNING_FOLDER_PATH/Contents/Library/LaunchDaemons"
           mkdir -p "$DAEMON_DIR"
           
           # Copy the Daemon executable
