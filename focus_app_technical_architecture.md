@@ -1672,6 +1672,8 @@ CREATE TABLE block_policies (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   mode TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'user',
+  created_by_extension_id TEXT,
   revision INTEGER NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -1680,8 +1682,12 @@ CREATE TABLE block_policies (
 CREATE TABLE focus_sessions (
   id TEXT PRIMARY KEY,
   policy_id TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'user',
+  created_by_extension_id TEXT,
+  extension_metadata_json TEXT,
   start_at TEXT NOT NULL,
   end_at TEXT NOT NULL,
+  paused_at TEXT,
   status TEXT NOT NULL,
   enforcement_mode TEXT NOT NULL,
   notification_mode TEXT NOT NULL,
@@ -2013,6 +2019,68 @@ ALWAYS_BLOCK_UNLOCKED
 The websocket is an optimization.
 
 A reconnecting client must always be able to recover from REST state.
+
+## 25.1 Developer Extension API & Webhooks Specification
+
+NowFocus exposes a public REST API and Webhook event delivery system designed for third-party developer integrations (e.g., Slack status sync, Salah/prayer time focus automation, smart home bedtime integrations).
+
+For complete design rationale and data structures, see [extension_system_architecture.md](file:///Users/safwat/Coding/Projects/side-projects/now-focus/extension_system_architecture.md).
+
+### Architecture & Protocol
+- **Specification:** OpenAPI 3.1 single source of truth.
+- **Protocol:** REST over HTTPS with JSON payloads.
+- **Authentication:** OAuth 2.0 Authorization Code flow with granular resource scopes (`sessions:read`, `sessions:write`, `policies:read`, `policies:write`, `schedules:read`, `schedules:write`, `devices:read`, `webhooks:subscribe`, `commitment-shield:read`).
+- **Rate Limiting:** Tiered per-user token buckets (Pro: 60 req/min, 120 burst; Business: 300 req/min, 600 burst).
+
+### Endpoints
+```text
+# Focus Sessions
+GET    /v1/sessions                    # List extension's sessions
+POST   /v1/sessions                    # Start/schedule a session
+GET    /v1/sessions/:id                # Get session state
+DELETE /v1/sessions/:id                # Cancel a session
+PATCH  /v1/sessions/:id/extend         # Extend active session duration
+
+# Block Policies
+GET    /v1/policies                    # List extension's policies
+POST   /v1/policies                    # Create a block policy
+GET    /v1/policies/:id                # Read policy details
+PATCH  /v1/policies/:id                # Update rules
+DELETE /v1/policies/:id                # Remove policy
+
+# Schedules
+GET    /v1/schedules                   # List recurring schedules
+POST   /v1/schedules                   # Create a schedule
+GET    /v1/schedules/:id               # Get schedule details
+PATCH  /v1/schedules/:id               # Update schedule
+DELETE /v1/schedules/:id               # Delete schedule
+
+# Devices & State
+GET    /v1/devices                     # List linked devices
+GET    /v1/devices/:id/status          # Get enforcement health
+
+# Webhook Subscriptions
+GET    /v1/webhooks                    # List webhooks
+POST   /v1/webhooks                    # Register webhook callback URL
+DELETE /v1/webhooks/:id                # Unsubscribe webhook
+
+# Commitment Shield (Read-Only)
+GET    /v1/commitment-shield/status    # Inspect shield active status & locked categories
+```
+
+### Webhook Event Catalog
+Outbound HTTP POST payloads signed with HMAC-SHA256 (`X-NowFocus-Signature`):
+- `session.started`, `session.completed`, `session.cancelled`, `session.extended`, `session.paused`, `session.resumed`
+- `schedule.triggered`
+- `device.connected`, `device.disconnected`
+- `bedtime.started`, `bedtime.ended`
+
+### Security & Isolation Invariants
+1. **Zero Client Code Execution:** Extensions run exclusively on external developer infrastructure.
+2. **Strict Resource Ownership:** Extensions can only modify or cancel sessions/policies tagged with their own `created_by_extension_id`.
+3. **No Lock Mode for Extensions:** Extensions cannot invoke `enforcement_mode: locked`. Attempts return HTTP 403 Forbidden.
+4. **Unilateral User Cancellation:** The user can cancel any extension-created session at any time from the app UI.
+5. **Commitment Shield Protection:** The Always-Blocked Commitment Shield is strictly read-only for extensions; no write endpoints exist.
 
 ---
 

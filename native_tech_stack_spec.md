@@ -363,9 +363,13 @@ Minimum persisted session fields:
 {
   "id": "uuid",
   "policyId": "uuid",
+  "source": "user",
+  "createdByExtensionId": null,
+  "extensionMetadata": null,
   "sessionType": "bedtime_winddown",
   "startAt": "2026-09-19T22:30:00Z",
   "endAt": "2026-09-20T07:00:00Z",
+  "pausedAt": null,
   "status": "active",
   "enforcementMode": "locked",
   "notificationMode": "normal",
@@ -378,6 +382,8 @@ Minimum persisted session fields:
 ```
 
 *Note on overnight sessions:* Bedtime Wind-Down sessions frequently cross midnight (e.g., `startAt` 22:30 on Day N, `endAt` 07:00 on Day N+1). The domain model uses absolute ISO 8601 UTC timestamps, ensuring local comparison (`now >= startAt && now < endAt`) works without date ambiguity across midnight.
+
+*Note on Extension Compatibility:* As defined in [extension_system_architecture.md](file:///Users/safwat/Coding/Projects/side-projects/now-focus/extension_system_architecture.md), domain models include `source` (`user`, `extension`, `schedule`), `createdByExtensionId`, and `extensionMetadata` (attribution details) from day one. Active sessions coexist through policy union merge, and extension-created sessions are strictly cancellable by the user at all times.
 
 ## MVP Build Sequence
 

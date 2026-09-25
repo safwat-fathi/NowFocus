@@ -36,6 +36,14 @@ The product is designed around:
 - Focus statistics
 - Cross-device synchronization
 
+## Extensibility & Integrations
+
+- Public REST API with OpenAPI 3.1 specifications
+- OAuth 2.0 authorization with granular resource scopes
+- Realtime HMAC-SHA256 signed Webhooks (`session.started`, `session.completed`, `bedtime.started`, etc.)
+- Third-party developer extensions (e.g., Slack focus sync, Salah/prayer time focus automation, smart home bedtime integrations)
+- Strict resource isolation & safety invariants (extensions cannot trigger lock mode, alter Always-Blocked shields, or prevent user cancellation)
+
 ## Platforms
 
 The planned ecosystem includes:
@@ -66,6 +74,7 @@ Includes:
 - Basic schedules
 - Basic statistics
 - Single-device usage
+- No third-party extension authorization
 
 The purpose of the Free plan is to let users experience the core product without requiring payment.
 
@@ -85,6 +94,7 @@ Includes:
 - Custom rules
 - Lock mode
 - Advanced automation
+- Developer Extensions & Public API (OAuth 2.0, REST endpoints, webhooks, 60 req/min rate limit)
 
 ## Family
 
@@ -98,6 +108,7 @@ Includes:
 - Study schedules
 - Bedtime schedules (parental sleep guard & wind-down controls)
 - Always-Blocked parental shield for child devices (locking out adult content and harmful apps)
+- Family extension controls (parental approval & monitoring for child profiles)
 - Family dashboard
 
 ## Business
@@ -112,14 +123,16 @@ Includes:
 - Organization policies
 - Team focus sessions
 - Aggregated analytics
+- Organization-level extension governance (admin allowlist/blocklist, team pre-installation, 300 req/min rate limit)
 - Admin dashboard
 - Organization billing
+
 
 ---
 
 # Architecture
 
-The application consists of several components:
+The application consists of several core components, client platforms, and an external developer integration layer:
 
 ```text
                        ┌─────────────────────┐
@@ -127,14 +140,14 @@ The application consists of several components:
                        │   User Dashboard    │
                        └──────────┬──────────┘
                                   │
-                       ┌──────────▼──────────┐
-                       │      API Layer      │
-                       │ Authentication      │
-                       │ Users               │
-                       │ Billing             │
-                       │ Focus Sessions      │
-                       │ Sync                │
-                       └──────────┬──────────┘
+┌──────────────────────┐ ┌────────▼──────────┐
+│ Third-Party Services │ │      API Layer    │
+│  & Developer Exts    │ │ Authentication    │
+│ (Salah, Slack, etc.) │─┼─▶ REST API /v1    │
+│  OAuth 2.0 / Webhook │◀┼─  Webhooks        │
+└──────────────────────┘ │ Focus Sessions    │
+                         │ Sync & Devices    │
+                         └────────┬──────────┘
                                   │
              ┌────────────────────┼────────────────────┐
              │                    │                    │
@@ -143,8 +156,9 @@ The application consists of several components:
       │             │      │             │      │            │
       │ Users       │      │ Sessions    │      │ Jobs       │
       │ Devices     │      │ Presence    │      │ Analytics  │
-      │ Rules       │      │ Sync        │      │ Notifications│
-      │ Billing     │      │ Events      │      │            │
+      │ Rules       │      │ Sync        │      │ Webhooks   │
+      │ Extensions  │      │ Events      │      │ Notifications│
+      │ Billing     │      │ Rate Limits │      │            │
       └─────────────┘      └─────────────┘      └────────────┘
 
              │
@@ -159,6 +173,25 @@ The application consists of several components:
 │ Android   │                         │ macOS       │
 └───────────┘                         └─────────────┘
 ```
+
+## Developer Extension System
+
+NowFocus provides an external integration architecture allowing third-party developers to connect external services without executing untrusted code inside the client applications.
+
+For comprehensive technical specifications, see [extension_system_architecture.md](file:///Users/safwat/Coding/Projects/side-projects/now-focus/extension_system_architecture.md).
+
+### Key Architectural Pillars
+
+1. **External API Model:** Extensions run on developer infrastructure and communicate via standard HTTPS REST endpoints (`/v1/`) and HMAC-SHA256 signed webhooks. No arbitrary third-party code executes in the client apps.
+2. **OAuth 2.0 & Scoped Permissions:** Users authorize extensions via standard OAuth 2.0 authorization code flow with granular, resource-based scopes (`sessions:read`, `sessions:write`, `policies:read`, `policies:write`, `schedules:read`, `schedules:write`, `devices:read`, `webhooks:subscribe`, `commitment-shield:read`).
+3. **Strict Resource Isolation:** Extensions can only manipulate resources they created (`created_by_extension_id`). An extension cannot cancel user-created sessions or alter policies created by other extensions.
+4. **Session Coexistence & Policy Union:** User sessions and extension sessions run simultaneously. Active domain and app blocking rules are merged via union. If conflicting notification modes are requested, the most restrictive mode takes precedence.
+5. **Non-Negotiable Safety Invariants:**
+   - **No Lock Mode:** Extensions cannot start locked sessions (`enforcement_mode: locked` is rejected with `403 Forbidden`).
+   - **Always Cancellable:** Users retain the unilateral power to cancel any extension-created session at any time.
+   - **Commitment Shield Safety:** Extensions only have read-only visibility (`commitment-shield:read`); no write endpoints exist.
+   - **Bedtime Safety:** Extensions cannot initiate Bedtime Wind-Down sessions; they can only listen to `bedtime.started` / `bedtime.ended` webhooks.
+6. **Transparent UI Attribution & Revocation:** All extension-created sessions display clear attribution badges in the client UI. Users can review activity metrics and revoke extension access at any time from Settings > Extensions.
 
 ---
 
@@ -261,6 +294,10 @@ Each device receives the user's applicable focus state.
 ## Bedtime Wind-Down (Sleep Guard)
 
 A specialized scheduled focus mode engineered for evening and night hours. It automatically restricts phone usage, shields stimulating digital feeds, and minimizes blue light exposure prior to sleep to promote restorative sleep hygiene.
+
+## Developer Extension
+
+An external application or service authorized by a user via OAuth 2.0 that integrates with NowFocus through public REST endpoints and signed webhooks. Extensions enable automated session triggers (e.g. Salah prayer times), external presence sync (e.g. Slack DND), or smart-home automations, operating under strict resource isolation where the user always maintains full control and cancellation rights.
 
 ---
 
@@ -465,12 +502,15 @@ User
  ├── FocusProfiles
  ├── FocusSessions
  ├── BlockRules
+ ├── ExtensionAuthorizations
+ ├── WebhookSubscriptions
  └── Subscription
 
 Organization
  ├── Members
  ├── Devices
  ├── Policies
+ ├── ApprovedExtensions
  └── Subscription
 ```
 
@@ -487,8 +527,18 @@ subscriptions
 organizations
 organization_members
 organization_policies
+extensions
+extension_authorizations
+webhook_subscriptions
 billing_events
 ```
+
+### Extension-Ready Foundations
+
+To prevent costly database migrations, core session and policy models incorporate extension attribution from day one:
+- `source`: `"user"` | `"extension"` | `"schedule"`
+- `created_by_extension_id`: ID of the creating extension (or `null` for user-initiated)
+- `extension_metadata`: Display name and icon URL for UI attribution
 
 ---
 
@@ -499,7 +549,7 @@ billing_events
 - Repository setup
 - Authentication
 - User accounts
-- Database
+- Database & extension-ready core schemas (`source`, `createdByExtensionId`, `extensionMetadata`)
 - API
 - Basic web application
 - CI/CD
@@ -555,6 +605,7 @@ billing_events
 - Family dashboard
 - Study schedules
 - Bedtime schedules
+- Family extension controls & child profile approvals
 
 ## Phase 8 — Business
 
@@ -564,13 +615,18 @@ billing_events
 - Policies
 - Aggregated analytics
 - Organization billing
+- Organization-level extension governance (allowlist / pre-installation)
 
-## Phase 9 — Ecosystem
+## Phase 9 — Ecosystem & Extensions
 
+- Public REST API `/v1/` and OpenAPI 3.1 specification
+- HMAC-signed Webhook subscriptions & delivery
+- Developer Portal & self-service registration
+- Extension directory / marketplace
+- Auto-generated client SDKs (TypeScript, Python, Swift, Kotlin)
 - Focus programs
-- Marketplace
-- Third-party integrations
 - Hardware integrations
+
 
 ---
 

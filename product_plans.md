@@ -354,6 +354,19 @@ A permanent, 24/7 protection mode specifically designed for adult content blocki
    - In Family plans, parents can apply the 14-day Always-Blocked Commitment Shield to child devices to guarantee safe browsing.
    - Seamless cross-device synchronization ensures that adding a blocked item on one device immediately commits it across all linked devices with the identical authoritative server lock expiration timestamp.
 
+### Developer Extensions & Public API
+
+The Pro plan unlocks programmatic access to NowFocus via a public developer API, enabling external integrations and personal workflow automation without executing untrusted third-party code in-app:
+
+- **OAuth 2.0 Authorization:** Securely connect external tools (e.g., Slack, Muslim prayer times/Salah apps, smart home lighting) using standard OAuth 2.0 with granular resource scopes.
+- **REST Endpoints (`/v1/`):** Full control over focus sessions (`/v1/sessions`), block policies (`/v1/policies`), schedules (`/v1/schedules`), and device status (`/v1/devices`).
+- **Realtime Signed Webhooks:** HMAC-SHA256 signed event delivery for session lifecycles (`session.started`, `session.completed`, `session.cancelled`) and bedtime notifications (`bedtime.started`, `bedtime.ended`).
+- **Fair-Use Rate Limiting:** 60 requests/minute (120 req/min burst for 10s) per user.
+- **User Safety Guarantees:** Extensions operate under strict isolation (can only edit their own resources), cannot initiate un-cancellable lock mode sessions, and cannot modify the Always-Blocked Commitment Shield.
+- **In-App Management:** Attribution badges for extension sessions, plus self-service authorization revocation in Settings > Extensions.
+
+For architectural details, see [extension_system_architecture.md](file:///Users/safwat/Coding/Projects/side-projects/now-focus/extension_system_architecture.md).
+
 ---
 
 # 6. Family Plan
@@ -384,6 +397,7 @@ or an equivalent annual price.
 - Website restrictions
 - Application restrictions
 - Family dashboard
+- Family extension controls (parents approve and oversee third-party extensions on child profiles)
 - Device management
 
 Example:
@@ -492,6 +506,15 @@ Avoid exposing:
 - Detailed surveillance data
 
 unless explicitly designed and consented to for a legitimate organizational requirement.
+
+### Organization-Level Extension Governance
+
+IT and team administrators maintain centralized governance over third-party integrations:
+
+- **Admin Approval Workflows:** Configure allowlists or blocklists of approved external extensions before members can authorize them.
+- **Team-Wide Pre-Installation:** Automatically connect essential enterprise extensions (e.g., Slack status sync or team calendar focus triggers) across all team member accounts.
+- **Aggregated Integration Audits:** View organization-wide extension activity summaries (sessions generated, event rates, error counts) while preserving employee privacy.
+- **Enterprise Rate Limits:** 300 requests/minute (600 req/min burst for 10s) across the organization's API quota.
 
 ---
 
@@ -859,19 +882,21 @@ Primary goal:
 
 ---
 
-# Phase 6 — Marketplace
+# Phase 6 — Marketplace & Developer Ecosystem
 
 Add:
 
 - Focus programs
 - Creator accounts
 - Program publishing
-- Purchases
-- Revenue sharing
+- Purchases & revenue sharing
+- Developer Portal & third-party extension directory
+- Verified extensions catalog
+- Auto-generated client SDKs (TypeScript, Python, Swift, Kotlin)
 
 Primary goal:
 
-> Create a second ecosystem around the focus platform.
+> Create an active ecosystem of creators, developers, and integrations around the focus platform (see `extension_system_architecture.md`).
 
 ---
 
