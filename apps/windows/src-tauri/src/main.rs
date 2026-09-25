@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    now_focus_app_lib::run();
+    now_focus_lib::run();
 }

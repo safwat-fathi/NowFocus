@@ -1,5 +1,5 @@
 [package]
-name = "now-focus-app"
+name = "NowFocus"
 version = "0.1.0"
 description = "NowFocus for Windows"
 authors = ["NowFocus"]
@@ -9,7 +9,7 @@ publish.workspace = true
 [lib]
 # The `_lib` suffix is required so the lib target doesn't collide with the
 # bin target's name on Windows: https://github.com/rust-lang/cargo/issues/8519
-name = "now_focus_app_lib"
+name = "now_focus_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
