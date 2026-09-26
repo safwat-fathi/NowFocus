@@ -29,8 +29,16 @@ const UNLOCK_SENTENCE: &str = "I am choosing to end this focus session early.";
 const FEED_DEFS: &[(&str, &str, &str)] = &[
     ("shorts", "YouTube Shorts", "Videos and search still work"),
     ("reels", "Instagram Reels & Explore", "DMs stay open"),
-    ("xfy", "X \u{201c}For You\u{201d} feed", "Following tab only"),
-    ("ythome", "YouTube home recommendations", "Opens straight to search"),
+    (
+        "xfy",
+        "X \u{201c}For You\u{201d} feed",
+        "Following tab only",
+    ),
+    (
+        "ythome",
+        "YouTube home recommendations",
+        "Opens straight to search",
+    ),
 ];
 
 struct UnlockFlow {
@@ -58,7 +66,13 @@ impl AppState {
             db.save_profile(&starter).map_err(|e| e.to_string())?;
         }
 
-        Ok(Self { db, enforcer, device_id, unlock: None, shield: None })
+        Ok(Self {
+            db,
+            enforcer,
+            device_id,
+            unlock: None,
+            shield: None,
+        })
     }
 
     // ---- Recovery --------------------------------------------------
@@ -81,7 +95,9 @@ impl AppState {
                 _ => None,
             };
             if let Some(event) = event {
-                self.db.record_event(&session.id, event, None).map_err(|e| e.to_string())?;
+                self.db
+                    .record_event(&session.id, event, None)
+                    .map_err(|e| e.to_string())?;
             }
             if !session_engine::is_active(&session, Utc::now()) {
                 self.enforcer.clear()?;
@@ -101,8 +117,11 @@ impl AppState {
 
         let session_dto = match &session {
             Some(s) if session_engine::is_active(s, Utc::now()) => {
-                let profile_name =
-                    profiles.iter().find(|p| p.policy.id == s.policy_id).map(|p| p.policy.name.clone()).unwrap_or_default();
+                let profile_name = profiles
+                    .iter()
+                    .find(|p| p.policy.id == s.policy_id)
+                    .map(|p| p.policy.name.clone())
+                    .unwrap_or_default();
                 Some(session_to_dto(s, &profile_name))
             }
             _ => None,
@@ -113,26 +132,59 @@ impl AppState {
             _ => None,
         };
 
-        let today_start = Utc::now().date_naive().and_hms_opt(0, 0, 0).unwrap().and_utc();
-        let recent_sessions = self.db.sessions_since(today_start).map_err(|e| e.to_string())?;
+        let today_start = Utc::now()
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_utc();
+        let recent_sessions = self
+            .db
+            .sessions_since(today_start)
+            .map_err(|e| e.to_string())?;
         let today_minutes: i64 = recent_sessions
             .iter()
             .map(|s| {
-                let end = if session_engine::is_active(s, Utc::now()) { Utc::now() } else { s.end_at.min(Utc::now()) };
+                let end = if session_engine::is_active(s, Utc::now()) {
+                    Utc::now()
+                } else {
+                    s.end_at.min(Utc::now())
+                };
                 (end - s.start_at).num_minutes().max(0)
             })
             .sum();
-        let sessions_completed =
-            self.db.count_events_since("SESSION_COMPLETED", today_start).map_err(|e| e.to_string())?;
-        let block_attempts =
-            self.db.count_events_since("BLOCK_ATTEMPT", today_start).map_err(|e| e.to_string())?;
+        let sessions_completed = self
+            .db
+            .count_events_since("SESSION_COMPLETED", today_start)
+            .map_err(|e| e.to_string())?;
+        let block_attempts = self
+            .db
+            .count_events_since("BLOCK_ATTEMPT", today_start)
+            .map_err(|e| e.to_string())?;
+
+        // Only mutated on Windows (below) — the cfg_attr avoids an
+        // unused-mut warning when compiling this file's non-Windows path.
+        #[cfg_attr(not(windows), allow(unused_mut))]
+        let mut health = self.enforcer.health();
+        // app_blocker is a separate Windows-only module (a Win32 foreground
+        // hook in the Tauri process), not part of the pipe-connected
+        // service `self.enforcer` talks to, so its health is layered in
+        // here rather than guessed at inside any `Enforcer` impl.
+        #[cfg(windows)]
+        {
+            health.app_blocking = if crate::app_blocker::is_active() {
+                "active"
+            } else {
+                "unavailable"
+            }
+            .to_string();
+        }
 
         Ok(AppStateDto {
             profiles: profile_dtos,
             session: session_dto,
             unlock: unlock_dto,
             shield: self.shield.clone(),
-            health: self.enforcer.health(),
+            health,
             stats: StatsDto {
                 today_minutes,
                 sessions_completed,
@@ -163,7 +215,9 @@ impl AppState {
     pub fn add_domain(&mut self, profile_id: &str, raw: &str) -> Result<(), String> {
         let mut profile = self.require_profile(profile_id)?;
         let Some(domain) = domain_validation::normalize(raw) else {
-            return Err("That doesn't look like a website. Try something like example.com".to_string());
+            return Err(
+                "That doesn't look like a website. Try something like example.com".to_string(),
+            );
         };
         if profile.policy.domains.iter().any(|d| d.domain == domain) {
             return Err(format!("{domain} is already on the list"));
@@ -181,12 +235,25 @@ impl AppState {
     /// `native_identifier`/`display_name` come from a real OS file picker on
     /// the frontend (Tauri's dialog plugin), not a hardcoded pool like the
     /// mockup's `APPS` table.
-    pub fn add_application(&mut self, profile_id: &str, native_identifier: String, display_name: String) -> Result<(), String> {
+    pub fn add_application(
+        &mut self,
+        profile_id: &str,
+        native_identifier: String,
+        display_name: String,
+    ) -> Result<(), String> {
         let mut profile = self.require_profile(profile_id)?;
-        if profile.policy.applications.iter().any(|a| a.native_identifier == native_identifier) {
+        if profile
+            .policy
+            .applications
+            .iter()
+            .any(|a| a.native_identifier == native_identifier)
+        {
             return Err(format!("{display_name} is already on the list"));
         }
-        profile.policy.applications.push(ApplicationRule::new(native_identifier, display_name));
+        profile
+            .policy
+            .applications
+            .push(ApplicationRule::new(native_identifier, display_name));
         self.db.save_profile(&profile).map_err(|e| e.to_string())
     }
 
@@ -198,7 +265,11 @@ impl AppState {
 
     pub fn toggle_feed(&mut self, profile_id: &str, feed_key: &str) -> Result<(), String> {
         let mut profile = self.require_profile(profile_id)?;
-        if let Some(rule) = profile.feed_rules.iter_mut().find(|f| f.feed_key == feed_key) {
+        if let Some(rule) = profile
+            .feed_rules
+            .iter_mut()
+            .find(|f| f.feed_key == feed_key)
+        {
             rule.enabled = !rule.enabled;
         } else {
             profile.feed_rules.push(FeedRule {
@@ -220,19 +291,34 @@ impl AppState {
 
     // ---- Sessions ------------------------------------------------------
 
-    pub fn start_session(&mut self, profile_id: &str, duration_minutes: i64, mode: &str) -> Result<(), String> {
-        if self.recover()?.is_some_and(|s| session_engine::is_active(&s, Utc::now())) {
+    pub fn start_session(
+        &mut self,
+        profile_id: &str,
+        duration_minutes: i64,
+        mode: &str,
+    ) -> Result<(), String> {
+        if self
+            .recover()?
+            .is_some_and(|s| session_engine::is_active(&s, Utc::now()))
+        {
             return Err("A session is already running".to_string());
         }
         let profile = self.require_profile(profile_id)?;
         let mode = parse_mode(mode)?;
         let now = Utc::now();
-        let mut session = FocusSession::new(profile_id, now, now + ChronoDuration::minutes(duration_minutes), &self.device_id);
+        let mut session = FocusSession::new(
+            profile_id,
+            now,
+            now + ChronoDuration::minutes(duration_minutes),
+            &self.device_id,
+        );
         session.enforcement_mode = mode;
 
         self.enforcer.apply(&profile.policy)?;
         self.db.save_session(&session).map_err(|e| e.to_string())?;
-        self.db.record_event(&session.id, "SESSION_STARTED", None).map_err(|e| e.to_string())?;
+        self.db
+            .record_event(&session.id, "SESSION_STARTED", None)
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -253,7 +339,9 @@ impl AppState {
         session.cancelled_at = Some(Utc::now());
         self.enforcer.clear()?;
         self.db.save_session(&session).map_err(|e| e.to_string())?;
-        self.db.record_event(&session.id, event, None).map_err(|e| e.to_string())?;
+        self.db
+            .record_event(&session.id, event, None)
+            .map_err(|e| e.to_string())?;
         self.unlock = None;
         Ok(())
     }
@@ -265,7 +353,10 @@ impl AppState {
         if session.enforcement_mode == EnforcementMode::Normal {
             return self.end_session_normal();
         }
-        self.unlock = Some(UnlockFlow { typed: String::new(), wait_started_at: None });
+        self.unlock = Some(UnlockFlow {
+            typed: String::new(),
+            wait_started_at: None,
+        });
         Ok(())
     }
 
@@ -308,13 +399,55 @@ impl AppState {
 
     // ---- Shield (blocked-app/site overlay) ------------------------------
 
-    /// Dev-only affordance for exercising the Shield screen without the
-    /// real Win32 foreground hook, which Phase 4 adds. Once that lands, it
-    /// calls this same path instead of the frontend triggering it directly.
-    pub fn simulate_block(&mut self, target_kind: String, target_name: String) -> Result<(), String> {
+    fn record_block_attempt(
+        &mut self,
+        target_kind: String,
+        target_name: String,
+    ) -> Result<(), String> {
         let session = self.recover()?.ok_or("No session is running")?;
-        self.shield = Some(ShieldDto { target_kind, target_name });
-        self.db.record_event(&session.id, "BLOCK_ATTEMPT", None).map_err(|e| e.to_string())
+        self.shield = Some(ShieldDto {
+            target_kind,
+            target_name,
+        });
+        self.db
+            .record_event(&session.id, "BLOCK_ATTEMPT", None)
+            .map_err(|e| e.to_string())
+    }
+
+    /// Dev-only affordance for exercising the Shield screen without the
+    /// real Win32 foreground hook (see `check_foreground_app`, which calls
+    /// the same `record_block_attempt` path for a real detection).
+    pub fn simulate_block(
+        &mut self,
+        target_kind: String,
+        target_name: String,
+    ) -> Result<(), String> {
+        self.record_block_attempt(target_kind, target_name)
+    }
+
+    /// Called by `app_blocker`'s Win32 foreground-window hook on every
+    /// foreground change (Windows-only in practice, but kept
+    /// platform-neutral here since it's pure policy lookup — no Win32
+    /// calls). `exe_path` is the resolved image path of whatever process
+    /// just became the foreground window. Returns the matched app's display
+    /// name if it should be closed, so the caller knows whether to post
+    /// `WM_CLOSE` — this function only records the attempt and arms the
+    /// Shield screen, it never touches a window handle itself.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub fn check_foreground_app(&mut self, exe_path: &str) -> Option<String> {
+        let session = self.recover().ok()??;
+        if !session_engine::is_active(&session, Utc::now()) {
+            return None;
+        }
+        let profile = self.db.get_profile(&session.policy_id).ok()??;
+        let matched = profile
+            .policy
+            .applications
+            .iter()
+            .find(|a| a.enabled && a.native_identifier.eq_ignore_ascii_case(exe_path))?;
+        let display_name = matched.display_name.clone();
+        let _ = self.record_block_attempt("app".to_string(), display_name.clone());
+        Some(display_name)
     }
 
     pub fn dismiss_shield(&mut self) {
@@ -343,12 +476,24 @@ fn profile_to_dto(profile: &Profile) -> ProfileDto {
     ProfileDto {
         id: profile.policy.id.clone(),
         name: profile.policy.name.clone(),
-        domains: profile.policy.domains.iter().map(|d| DomainRuleDto { id: d.id.clone(), domain: d.domain.clone() }).collect(),
+        domains: profile
+            .policy
+            .domains
+            .iter()
+            .map(|d| DomainRuleDto {
+                id: d.id.clone(),
+                domain: d.domain.clone(),
+            })
+            .collect(),
         applications: profile
             .policy
             .applications
             .iter()
-            .map(|a| ApplicationRuleDto { id: a.id.clone(), display_name: a.display_name.clone(), native_identifier: a.native_identifier.clone() })
+            .map(|a| ApplicationRuleDto {
+                id: a.id.clone(),
+                display_name: a.display_name.clone(),
+                native_identifier: a.native_identifier.clone(),
+            })
             .collect(),
         feeds: FEED_DEFS
             .iter()
@@ -356,7 +501,10 @@ fn profile_to_dto(profile: &Profile) -> ProfileDto {
                 feed_key: key.to_string(),
                 label: label.to_string(),
                 sub: sub.to_string(),
-                enabled: profile.feed_rules.iter().any(|f| f.feed_key == *key && f.enabled),
+                enabled: profile
+                    .feed_rules
+                    .iter()
+                    .any(|f| f.feed_key == *key && f.enabled),
             })
             .collect(),
     }
@@ -367,13 +515,19 @@ fn format_remaining(remaining: ChronoDuration) -> String {
     let h = total / 3600;
     let m = (total % 3600) / 60;
     let s = total % 60;
-    if h > 0 { format!("{h}:{m:02}:{s:02}") } else { format!("{m:02}:{s:02}") }
+    if h > 0 {
+        format!("{h}:{m:02}:{s:02}")
+    } else {
+        format!("{m:02}:{s:02}")
+    }
 }
 
 fn session_to_dto(session: &FocusSession, profile_name: &str) -> SessionDto {
     let now = Utc::now();
     let remaining = (session.end_at - now).max(ChronoDuration::zero());
-    let total = (session.end_at - session.start_at).num_milliseconds().max(1);
+    let total = (session.end_at - session.start_at)
+        .num_milliseconds()
+        .max(1);
     let elapsed = (now - session.start_at).num_milliseconds().clamp(0, total);
     SessionDto {
         id: session.id.clone(),

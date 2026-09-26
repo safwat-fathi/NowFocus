@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "shield-overlay",
+  "description": "Capability for the per-monitor Shield overlay windows (src-tauri/src/overlay.rs). Least-privilege on purpose: these windows only ever poll state and close themselves, unlike the main window's chrome/dialog/tray needs.",
+  "windows": ["shield-overlay-*"],
+  "permissions": ["core:default", "core:window:allow-close"]
+}

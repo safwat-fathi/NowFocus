@@ -1,0 +1,13 @@
+[package]
+name = "now-focus-ipc"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+# Message types only — no transport code, no windows-only dependencies, so
+# this builds and tests on any host. The named pipe itself (Windows-only) is
+# in service/src/pipe_server.rs and src-tauri/src/service_client.rs.
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

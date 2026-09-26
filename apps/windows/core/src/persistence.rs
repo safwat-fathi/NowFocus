@@ -120,14 +120,19 @@ impl Database {
     /// stubbed" note), so this only ever identifies the local device — it's
     /// not shared or synced anywhere.
     pub fn device_id(&self) -> Result<String> {
-        let existing = self
-            .conn
-            .query_row("SELECT device_id FROM device_settings WHERE id = 1", [], |r| r.get::<_, String>(0));
+        let existing = self.conn.query_row(
+            "SELECT device_id FROM device_settings WHERE id = 1",
+            [],
+            |r| r.get::<_, String>(0),
+        );
         match existing {
             Ok(id) => Ok(id),
             Err(rusqlite::Error::QueryReturnedNoRows) => {
                 let id = uuid::Uuid::new_v4().to_string();
-                self.conn.execute("INSERT INTO device_settings (id, device_id) VALUES (1, ?1)", params![id])?;
+                self.conn.execute(
+                    "INSERT INTO device_settings (id, device_id) VALUES (1, ?1)",
+                    params![id],
+                )?;
                 Ok(id)
             }
             Err(e) => Err(e.into()),
@@ -294,7 +299,9 @@ impl Database {
     }
 
     pub fn get_profile(&self, id: &str) -> Result<Option<Profile>> {
-        let Some(policy) = self.get_policy(id)? else { return Ok(None) };
+        let Some(policy) = self.get_policy(id)? else {
+            return Ok(None);
+        };
         let feed_rules = self.get_feed_rules(id)?;
         Ok(Some(Profile { policy, feed_rules }))
     }
@@ -571,7 +578,10 @@ mod tests {
         });
 
         db.save_profile(&profile).unwrap();
-        let loaded = db.get_profile(&profile.policy.id).unwrap().expect("profile should exist");
+        let loaded = db
+            .get_profile(&profile.policy.id)
+            .unwrap()
+            .expect("profile should exist");
         assert_eq!(loaded.feed_rules.len(), 1);
         assert_eq!(loaded.feed_rules[0].feed_key, "shorts");
 
@@ -631,7 +641,12 @@ mod tests {
         db.save_policy(&policy).unwrap();
 
         let now = Utc::now();
-        let old = FocusSession::new(&policy.id, now - Duration::days(10), now - Duration::days(10) + Duration::minutes(25), "this-pc");
+        let old = FocusSession::new(
+            &policy.id,
+            now - Duration::days(10),
+            now - Duration::days(10) + Duration::minutes(25),
+            "this-pc",
+        );
         db.save_session(&old).unwrap();
 
         let today = FocusSession::new(&policy.id, now, now + Duration::minutes(25), "this-pc");
@@ -642,7 +657,11 @@ mod tests {
 
         let since = now - Duration::hours(1);
         let recent = db.sessions_since(since).unwrap();
-        assert_eq!(recent.len(), 1, "the 10-day-old session shouldn't count as recent");
+        assert_eq!(
+            recent.len(),
+            1,
+            "the 10-day-old session shouldn't count as recent"
+        );
         assert_eq!(recent[0].id, today.id);
 
         assert_eq!(db.count_events_since("BLOCK_ATTEMPT", since).unwrap(), 2);

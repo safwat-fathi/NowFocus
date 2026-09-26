@@ -52,9 +52,21 @@ impl Enforcer for NoopEnforcer {
             website_blocking: "unknown".to_string(),
             app_blocking: "unknown".to_string(),
             layers: vec![
-                DeviceLayerDto { name: "NowFocus Service".to_string(), state: "dev mode".to_string(), healthy: false },
-                DeviceLayerDto { name: "DNS filter".to_string(), state: state.to_string(), healthy: false },
-                DeviceLayerDto { name: "Browser extensions".to_string(), state: "not built yet".to_string(), healthy: false },
+                DeviceLayerDto {
+                    name: "NowFocus Service".to_string(),
+                    state: "dev mode".to_string(),
+                    healthy: false,
+                },
+                DeviceLayerDto {
+                    name: "DNS filter".to_string(),
+                    state: state.to_string(),
+                    healthy: false,
+                },
+                DeviceLayerDto {
+                    name: "Browser extensions".to_string(),
+                    state: "not built yet".to_string(),
+                    healthy: false,
+                },
             ],
         }
     }
