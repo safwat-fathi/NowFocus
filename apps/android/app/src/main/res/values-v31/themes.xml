@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ SplashScreen API reuses the adaptive launcher icon
+         automatically — only the background color needs setting here. -->
+    <style name="Theme.NowFocus" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#EC3013</item>
+    </style>
+</resources>

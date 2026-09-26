@@ -18,7 +18,9 @@
 
     <application
         android:label="NowFocus"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.NowFocus"
         android:allowBackup="true">
 
         <activity

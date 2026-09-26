@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same effective theme as before at every API level; the v31 variant
+         adds the Android 12+ splash-screen attributes on top. -->
+    <style name="Theme.NowFocus" parent="@android:style/Theme.Material.Light.NoActionBar"/>
+</resources>
