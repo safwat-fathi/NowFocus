@@ -58,15 +58,19 @@ public class DaemonClient {
     }
 
     public func clear() {
+        let semaphore = DispatchSemaphore(value: 0)
         guard let daemon = remoteDaemon(onError: { error in
             print("Daemon XPC error while clearing policy: \(error)")
+            semaphore.signal()
         }) else { return }
 
         daemon.clearPolicy { success, error in
             if !success {
                 print("Failed to clear policy: \(String(describing: error))")
             }
+            semaphore.signal()
         }
+        _ = semaphore.wait(timeout: .now() + 2.0)
     }
 
     public func checkHealth(completion: @escaping (Bool) -> Void) {

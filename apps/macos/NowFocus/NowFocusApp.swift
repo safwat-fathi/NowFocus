@@ -17,6 +17,7 @@ struct NowFocusApp: App {
     }
 }
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var sessionMonitor: Timer?
 
@@ -36,7 +37,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Keep enforcement in sync with session expiry even if the menu is
         // never reopened — see SessionController's doc comment.
         sessionMonitor = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            self?.checkSessionExpiry()
+            Task { @MainActor in self?.checkSessionExpiry() }
         }
 
         // Preferences temporarily promotes us to a regular app (Dock/Cmd+Tab)
@@ -94,7 +95,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func checkSessionExpiry() {
+    func checkSessionExpiry() {
         do {
             guard var session = try DatabaseManager.shared.fetchActiveSession() else { return }
             let engine = SessionEngine()
@@ -104,6 +105,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } catch {
             print("Failed to check session expiry: \(error)")
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        do {
+            guard var session = try DatabaseManager.shared.fetchActiveSession() else {
+                SessionController.stopEnforcement()
+                return
+            }
+            let engine = SessionEngine()
+            engine.evaluateState(for: &session)
+            if !engine.isActive(session) {
+                SessionController.endSession(session)
+            }
+        } catch {
+            print("Failed to clean up session on termination: \(error)")
         }
     }
 }
