@@ -139,3 +139,24 @@ export function GlobeIcon({ size = 15 }: Props) {
     </svg>
   );
 }
+
+// NowFocusMark keeps its own 100-unit viewBox (matching the brand mark's
+// native geometry) rather than the 24-unit convention above — rescaling the
+// path into that grid would distort the brackets. It's rendered small
+// enough here (well under the design's 28-unit breakpoint) that it always
+// uses the thick stroke. The mark has two colors, so `currentColor` alone
+// can't express both: brackets follow the surrounding text color, the
+// center square is always the accent red.
+export function NowFocusMark({ size = 18 }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
+      <path
+        d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64"
+        stroke="currentColor"
+        strokeWidth={13}
+        strokeLinecap="square"
+      />
+      <rect x="37" y="37" width="26" height="26" fill="var(--color-accent)" />
+    </svg>
+  );
+}
