@@ -1,13 +1,16 @@
 import SwiftUI
 import NowFocusCore
+import CoreText
 
 @main
 struct NowFocusApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+
     var body: some Scene {
-        MenuBarExtra("NowFocus", systemImage: "clock") {
+        MenuBarExtra {
             MenuBarView()
+        } label: {
+            MenuBarIcon()
         }
         .menuBarExtraStyle(.window)
 
@@ -17,11 +20,28 @@ struct NowFocusApp: App {
     }
 }
 
+/// Reads `SessionController.status` directly in `body` so SwiftUI's
+/// Observation tracking picks up the swap — a plain closure passed to
+/// `MenuBarExtra`'s label wouldn't re-evaluate on its own.
+private struct MenuBarIcon: View {
+    var body: some View {
+        Image(SessionController.status.isActive ? "MenuBarActiveTemplate" : "MenuBarIdleTemplate")
+    }
+}
+
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var sessionMonitor: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Register the Archivo font (Modernist design-system tokens) — no
+        // static Info.plist to declare it in (GENERATE_INFOPLIST_FILE: YES),
+        // so it's registered programmatically instead.
+        if let fontURL = Bundle.main.url(forResource: "archivo_variable", withExtension: "ttf") {
+            var registerError: Unmanaged<CFError>?
+            CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, &registerError)
+        }
+
         // Initialize DB
         _ = DatabaseManager.shared
 
@@ -95,7 +115,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func checkSessionExpiry() {
+    private func checkSessionExpiry() {
         do {
             guard var session = try DatabaseManager.shared.fetchActiveSession() else { return }
             let engine = SessionEngine()
