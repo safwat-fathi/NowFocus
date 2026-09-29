@@ -203,3 +203,49 @@ pub fn dismiss_shield(state: State<SharedState>) -> Result<AppStateDto, String> 
         .dismiss_shield();
     snapshot(&state)
 }
+
+#[tauri::command]
+pub fn start_commitment(
+    state: State<SharedState>,
+    domains: Vec<String>,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .start_commitment(domains)?;
+    snapshot(&state)
+}
+
+/// May return `Err` with the service's refusal message when past the 60s grace.
+#[tauri::command]
+pub fn clear_commitment(state: State<SharedState>) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .clear_commitment()?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub fn set_bedtime(
+    state: State<SharedState>,
+    enabled: bool,
+    wind_down_minute: i64,
+    sleep_minute: i64,
+    wake_minute: i64,
+    lock_at_sleep: bool,
+    policy_id: Option<String>,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .set_bedtime(
+            enabled,
+            wind_down_minute,
+            sleep_minute,
+            wake_minute,
+            lock_at_sleep,
+            policy_id,
+        )?;
+    snapshot(&state)
+}

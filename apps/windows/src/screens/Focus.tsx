@@ -134,7 +134,6 @@ export function Focus({
             {starting ? "Starting…" : `Start ${DURATIONS.find((d) => d[1] === duration)?.[0]}`}
             <ArrowRightIcon />
           </button>
-          <div style={{ fontSize: 12, color: "var(--color-neutral-700)", marginTop: 8 }}>Shortcut: Win + Shift + F from anywhere</div>
         </div>
       ) : (
         <div className="session-summary" style={{ background: "var(--color-accent)" }}>

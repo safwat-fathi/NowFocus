@@ -1,15 +1,21 @@
+use std::collections::HashMap;
 use std::path::Path;
 
-use chrono::{DateTime, Duration as ChronoDuration, Utc};
-use now_focus_core::block_policy::FeedRule;
-use now_focus_core::{
-    domain_validation, session_engine, ApplicationRule, DomainRule, EnforcementMode, FocusSession,
-    FocusSessionStatus, Profile,
+use chrono::{
+    DateTime, Duration as ChronoDuration, Local, NaiveDate, NaiveDateTime, TimeZone, Utc,
 };
+use now_focus_core::block_policy::FeedRule;
+use now_focus_core::history_stats::BlockEvent;
+use now_focus_core::{
+    bedtime_schedule, domain_validation, history_stats, session_engine, ApplicationRule,
+    BedtimeSettings, DomainRule, EnforcementMode, FocusSession, FocusSessionStatus, Profile,
+    SessionType,
+};
+use now_focus_ipc::CommitmentStatusWire;
 
 use crate::dto::{
-    AppStateDto, ApplicationRuleDto, DomainRuleDto, FeedRuleDto, ProfileDto, SessionDto, ShieldDto,
-    StatsDto, UnlockStateDto,
+    AppStateDto, ApplicationRuleDto, BedtimeDto, CommitmentDto, DomainRuleDto, FeedRuleDto,
+    ProfileDto, SessionDto, ShieldDto, StatsDto, TargetCountDto, UnlockStateDto,
 };
 use crate::enforcer::Enforcer;
 
@@ -52,6 +58,16 @@ pub struct AppState {
     device_id: String,
     unlock: Option<UnlockFlow>,
     shield: Option<ShieldDto>,
+    /// Cached commitment status. Refreshed on apply/clear and the 30s tick, not
+    /// per-snapshot — the UI (main window + each per-monitor overlay) polls
+    /// every 500ms against a one-client pipe, so a per-snapshot round-trip
+    /// would thrash the service.
+    commitment: Option<CommitmentStatusWire>,
+    /// Last logged time per block target, for the 3s dedup (a single "try to
+    /// open it" gesture fires several foreground events).
+    last_block_at: HashMap<String, DateTime<Utc>>,
+    /// Debounce for the bedtime sleep-time screen lock (macOS's lastSleepLockAt).
+    last_sleep_lock_at: Option<DateTime<Utc>>,
 }
 
 impl AppState {
@@ -66,12 +82,17 @@ impl AppState {
             db.save_profile(&starter).map_err(|e| e.to_string())?;
         }
 
+        let commitment = enforcer.commitment_status();
+
         Ok(Self {
             db,
             enforcer,
             device_id,
             unlock: None,
             shield: None,
+            commitment,
+            last_block_at: HashMap::new(),
+            last_sleep_lock_at: None,
         })
     }
 
@@ -112,6 +133,14 @@ impl AppState {
 
     pub fn snapshot(&mut self) -> Result<AppStateDto, String> {
         let session = self.recover()?;
+
+        // While inside the commitment grace window, refresh the cached status
+        // each snapshot so the "Undo (Ns)" countdown ticks and the button
+        // disappears on time. Bounded to the ~60s grace; outside it the 30s
+        // tick refresh is enough (avoids a pipe round-trip on every 500ms poll).
+        if self.commitment.as_ref().is_some_and(|c| c.can_cancel_now) {
+            self.refresh_commitment();
+        }
         let profiles = self.db.list_profiles().map_err(|e| e.to_string())?;
         let profile_dtos = profiles.iter().map(profile_to_dto).collect();
 
@@ -132,34 +161,7 @@ impl AppState {
             _ => None,
         };
 
-        let today_start = Utc::now()
-            .date_naive()
-            .and_hms_opt(0, 0, 0)
-            .unwrap()
-            .and_utc();
-        let recent_sessions = self
-            .db
-            .sessions_since(today_start)
-            .map_err(|e| e.to_string())?;
-        let today_minutes: i64 = recent_sessions
-            .iter()
-            .map(|s| {
-                let end = if session_engine::is_active(s, Utc::now()) {
-                    Utc::now()
-                } else {
-                    s.end_at.min(Utc::now())
-                };
-                (end - s.start_at).num_minutes().max(0)
-            })
-            .sum();
-        let sessions_completed = self
-            .db
-            .count_events_since("SESSION_COMPLETED", today_start)
-            .map_err(|e| e.to_string())?;
-        let block_attempts = self
-            .db
-            .count_events_since("BLOCK_ATTEMPT", today_start)
-            .map_err(|e| e.to_string())?;
+        let stats = self.compute_stats()?;
 
         // Only mutated on Windows (below) — the cfg_attr avoids an
         // unused-mut warning when compiling this file's non-Windows path.
@@ -179,18 +181,80 @@ impl AppState {
             .to_string();
         }
 
+        let bedtime = bedtime_to_dto(&self.db.get_bedtime().map_err(|e| e.to_string())?);
+
         Ok(AppStateDto {
             profiles: profile_dtos,
             session: session_dto,
             unlock: unlock_dto,
             shield: self.shield.clone(),
             health,
-            stats: StatsDto {
-                today_minutes,
-                sessions_completed,
-                sessions_started: recent_sessions.len() as i64,
-                block_attempts_today: block_attempts,
-            },
+            stats,
+            commitment: self.commitment.as_ref().map(commitment_to_dto),
+            bedtime,
+        })
+    }
+
+    /// Real Stats numbers, sourced from focus-only session rows (the DB query
+    /// excludes bedtime) so nightly wind-down sessions never inflate focused
+    /// time, completion, or streak. Today's figures and the weekly view are all
+    /// computed here through `now_focus_core::history_stats`. Local-time day
+    /// boundaries so "today"/"this week" match the user's calendar.
+    fn compute_stats(&self) -> Result<StatsDto, String> {
+        let now = Utc::now();
+        let today = Local::now().date_naive();
+        let monday = history_stats::monday_of(today);
+
+        let today_start = local_midnight_utc(today);
+        let week_start = local_midnight_utc(monday);
+        let week_end = local_midnight_utc(monday + ChronoDuration::days(7));
+        let streak_start = local_midnight_utc(today - ChronoDuration::days(60));
+
+        let week_sessions = self
+            .db
+            .focus_sessions_between(week_start, week_end)
+            .map_err(|e| e.to_string())?;
+        let streak_sessions = self
+            .db
+            .focus_sessions_between(streak_start, now)
+            .map_err(|e| e.to_string())?;
+        let week_events: Vec<BlockEvent> = self
+            .db
+            .block_events_between(week_start, now)
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .map(|(occurred_at, meta)| BlockEvent {
+                occurred_at,
+                target: parse_block_target(meta.as_deref()),
+            })
+            .collect();
+
+        let today_sessions: Vec<FocusSession> = week_sessions
+            .iter()
+            .filter(|s| s.start_at >= today_start)
+            .cloned()
+            .collect();
+        let today_block_attempts = week_events
+            .iter()
+            .filter(|e| e.occurred_at >= today_start)
+            .count() as i64;
+
+        Ok(StatsDto {
+            today_minutes: history_stats::total_focused_minutes(&today_sessions),
+            sessions_completed: history_stats::completed_count(&today_sessions) as i64,
+            sessions_started: today_sessions.len() as i64,
+            block_attempts_today: today_block_attempts,
+            week_minutes: history_stats::week_buckets_minutes(&week_sessions, monday, &Local)
+                .to_vec(),
+            streak_days: history_stats::current_streak_days(&streak_sessions, today, &Local),
+            completion_rate: history_stats::completion_rate(&week_sessions),
+            top_targets: history_stats::top_targets(&week_events, 3)
+                .into_iter()
+                .map(|(name, count)| TargetCountDto {
+                    name,
+                    count: count as i64,
+                })
+                .collect(),
         })
     }
 
@@ -223,10 +287,12 @@ impl AppState {
             return Err(format!("{domain} is already on the list"));
         }
         profile.policy.domains.push(DomainRule::new(domain));
-        self.db.save_profile(&profile).map_err(|e| e.to_string())
+        self.db.save_profile(&profile).map_err(|e| e.to_string())?;
+        self.reapply_if_active(profile_id, &profile)
     }
 
     pub fn remove_domain(&mut self, profile_id: &str, rule_id: &str) -> Result<(), String> {
+        self.reject_if_active(profile_id)?;
         let mut profile = self.require_profile(profile_id)?;
         profile.policy.domains.retain(|d| d.id != rule_id);
         self.db.save_profile(&profile).map_err(|e| e.to_string())
@@ -258,6 +324,7 @@ impl AppState {
     }
 
     pub fn remove_application(&mut self, profile_id: &str, rule_id: &str) -> Result<(), String> {
+        self.reject_if_active(profile_id)?;
         let mut profile = self.require_profile(profile_id)?;
         profile.policy.applications.retain(|a| a.id != rule_id);
         self.db.save_profile(&profile).map_err(|e| e.to_string())
@@ -287,6 +354,32 @@ impl AppState {
             .get_profile(profile_id)
             .map_err(|e| e.to_string())?
             .ok_or_else(|| "That profile no longer exists".to_string())
+    }
+
+    /// If a session is currently active on `profile_id`, return `Err` —
+    /// removals/disabling of blocks are refused while the session is running.
+    fn reject_if_active(&mut self, profile_id: &str) -> Result<(), String> {
+        if let Some(session) = self.recover()? {
+            if session.policy_id == profile_id && session_engine::is_active(&session, Utc::now()) {
+                return Err(
+                    "You can\u{2019}t remove blocks while a focus session is running on this profile."
+                        .to_string(),
+                );
+            }
+        }
+        Ok(())
+    }
+
+    /// If a session is currently active on `profile_id`, re-push the given
+    /// profile's policy to the enforcer so the addition takes effect
+    /// immediately (idempotent — the policy only grew).
+    fn reapply_if_active(&mut self, profile_id: &str, profile: &Profile) -> Result<(), String> {
+        if let Some(session) = self.recover()? {
+            if session.policy_id == profile_id && session_engine::is_active(&session, Utc::now()) {
+                self.enforcer.apply(&profile.policy)?;
+            }
+        }
+        Ok(())
     }
 
     // ---- Sessions ------------------------------------------------------
@@ -406,11 +499,28 @@ impl AppState {
     ) -> Result<(), String> {
         let session = self.recover()?.ok_or("No session is running")?;
         self.shield = Some(ShieldDto {
-            target_kind,
-            target_name,
+            target_kind: target_kind.clone(),
+            target_name: target_name.clone(),
         });
+
+        // 3s dedup per target — a single "try to open it" gesture can fire
+        // several foreground-change events (mirrors macOS/Android
+        // shouldLogBlockEvent). The shield still shows above; we just don't
+        // log a second event. The target name goes into metadata so Stats can
+        // rank "most turned away".
+        let now = Utc::now();
+        let recent = self
+            .last_block_at
+            .get(&target_name)
+            .is_some_and(|t| (now - *t).num_seconds() < 3);
+        if recent {
+            return Ok(());
+        }
+        self.last_block_at.insert(target_name.clone(), now);
+
+        let metadata = serde_json::json!({ "kind": target_kind, "name": target_name }).to_string();
         self.db
-            .record_event(&session.id, "BLOCK_ATTEMPT", None)
+            .record_event(&session.id, "BLOCK_ATTEMPT", Some(&metadata))
             .map_err(|e| e.to_string())
     }
 
@@ -452,6 +562,115 @@ impl AppState {
 
     pub fn dismiss_shield(&mut self) {
         self.shield = None;
+    }
+
+    // ---- Commitment (14-day shield, service-owned) ----------------------
+
+    /// Start (or replace) the commitment. Domains are normalized here and
+    /// re-validated again at the service's write boundary. The 60s grace and
+    /// all time-anchoring live in the service; this only relays.
+    pub fn start_commitment(&mut self, domains: Vec<String>) -> Result<(), String> {
+        let clean: Vec<String> = domains
+            .iter()
+            .filter_map(|d| domain_validation::normalize(d))
+            .collect();
+        if clean.is_empty() {
+            return Err("Add at least one valid website first.".to_string());
+        }
+        self.enforcer.apply_commitment(&clean)?;
+        self.commitment = self.enforcer.commitment_status();
+        Ok(())
+    }
+
+    /// Ask the service to clear the commitment. Succeeds only inside the grace
+    /// window; otherwise the service's refusal message comes back as `Err`.
+    pub fn clear_commitment(&mut self) -> Result<(), String> {
+        self.enforcer.clear_commitment()?;
+        self.commitment = self.enforcer.commitment_status();
+        Ok(())
+    }
+
+    /// Refresh the cached commitment status (called from the 30s tick).
+    pub fn refresh_commitment(&mut self) {
+        self.commitment = self.enforcer.commitment_status();
+    }
+
+    // ---- Bedtime --------------------------------------------------------
+
+    pub fn set_bedtime(
+        &mut self,
+        enabled: bool,
+        wind_down_minute: i64,
+        sleep_minute: i64,
+        wake_minute: i64,
+        lock_at_sleep: bool,
+        policy_id: Option<String>,
+    ) -> Result<(), String> {
+        let settings = BedtimeSettings {
+            enabled,
+            wind_down_minute,
+            sleep_minute,
+            wake_minute,
+            lock_at_sleep,
+            policy_id,
+        };
+        self.db.set_bedtime(&settings).map_err(|e| e.to_string())
+    }
+
+    /// Runs on the 30s tick. Starts a `LOCKED` bedtime session for the chosen
+    /// profile when inside the window and nothing else is active (reusing the
+    /// normal session machinery, like macOS's BedtimeScheduler), and returns
+    /// whether the caller should lock the screen now (the caller does the
+    /// Win32 `LockWorkStation` — this stays platform-neutral). The
+    /// in-window/sleep-moment/debounce decision is the unit-tested
+    /// `bedtime_schedule::tick_decision`.
+    pub fn bedtime_tick(&mut self) -> bool {
+        let settings = match self.db.get_bedtime() {
+            Ok(s) => s,
+            Err(_) => return false,
+        };
+        if !settings.enabled {
+            return false;
+        }
+
+        let now = Utc::now();
+        let session = self.recover().ok().flatten();
+        let active = session
+            .as_ref()
+            .is_some_and(|s| session_engine::is_active(s, now));
+        let secs_since_lock = self.last_sleep_lock_at.map(|t| (now - t).num_seconds());
+
+        let decision = bedtime_schedule::tick_decision(
+            &settings,
+            Local::now().naive_local(),
+            active,
+            secs_since_lock,
+        );
+
+        if let Some((start, end)) = decision.start_window {
+            if let Some(policy_id) = &settings.policy_id {
+                if let Ok(Some(profile)) = self.db.get_profile(policy_id) {
+                    let mut bedtime = FocusSession::new(
+                        &profile.policy.id,
+                        local_naive_to_utc(start),
+                        local_naive_to_utc(end),
+                        &self.device_id,
+                    );
+                    bedtime.session_type = SessionType::BedtimeWinddown;
+                    bedtime.enforcement_mode = EnforcementMode::Locked;
+                    // Enforce first; only persist the session if enforcement took.
+                    if self.enforcer.apply(&profile.policy).is_ok() {
+                        let _ = self.db.save_session(&bedtime);
+                        let _ = self.db.record_event(&bedtime.id, "SESSION_STARTED", None);
+                    }
+                }
+            }
+        }
+
+        if decision.lock_now {
+            self.last_sleep_lock_at = Some(now);
+        }
+        decision.lock_now
     }
 }
 
@@ -560,5 +779,230 @@ fn unlock_to_dto(flow: &UnlockFlow, session: &FocusSession) -> UnlockStateDto {
         wait_remaining_ms,
         wait_total_ms: UNLOCK_WAIT.num_milliseconds(),
         locked_mode: session.enforcement_mode == EnforcementMode::Locked,
+    }
+}
+
+// ---- Local-time helpers & DTO converters --------------------------------
+
+/// A local wall-clock instant mapped to UTC. On a DST spring-forward gap the
+/// naive time doesn't exist; `earliest()` picks the sensible boundary, and the
+/// fallback keeps this total (never panics).
+fn local_naive_to_utc(naive: NaiveDateTime) -> DateTime<Utc> {
+    Local
+        .from_local_datetime(&naive)
+        .earliest()
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(Utc::now)
+}
+
+/// UTC instant of local midnight starting `date`.
+fn local_midnight_utc(date: NaiveDate) -> DateTime<Utc> {
+    local_naive_to_utc(date.and_hms_opt(0, 0, 0).unwrap())
+}
+
+/// Pull the target display name out of a BLOCK_ATTEMPT event's metadata JSON
+/// (`{"kind","name"}`). Empty for legacy rows that stored no metadata.
+fn parse_block_target(metadata_json: Option<&str>) -> String {
+    metadata_json
+        .and_then(|m| serde_json::from_str::<serde_json::Value>(m).ok())
+        .and_then(|v| v.get("name").and_then(|n| n.as_str()).map(String::from))
+        .unwrap_or_default()
+}
+
+fn commitment_to_dto(w: &CommitmentStatusWire) -> CommitmentDto {
+    CommitmentDto {
+        domains: w.domains.clone(),
+        end_at: w.end_at.clone(),
+        can_cancel_now: w.can_cancel_now,
+        remaining_secs: w.remaining_secs,
+    }
+}
+
+fn bedtime_to_dto(s: &BedtimeSettings) -> BedtimeDto {
+    BedtimeDto {
+        enabled: s.enabled,
+        wind_down_minute: s.wind_down_minute,
+        sleep_minute: s.sleep_minute,
+        wake_minute: s.wake_minute,
+        lock_at_sleep: s.lock_at_sleep,
+        policy_id: s.policy_id.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use now_focus_core::{BlockPolicy, Database, Profile};
+    use now_focus_ipc::CommitmentStatusWire;
+    use std::sync::{Arc, Mutex};
+
+    /// Records every policy passed to `apply` so tests can assert what was
+    /// pushed to the enforcer.
+    struct FakeEnforcer {
+        applied: Arc<Mutex<Vec<BlockPolicy>>>,
+    }
+
+    impl FakeEnforcer {
+        fn new() -> (Self, Arc<Mutex<Vec<BlockPolicy>>>) {
+            let log = Arc::new(Mutex::new(Vec::new()));
+            (
+                Self {
+                    applied: log.clone(),
+                },
+                log,
+            )
+        }
+    }
+
+    impl Enforcer for FakeEnforcer {
+        fn apply(&mut self, policy: &BlockPolicy) -> Result<(), String> {
+            self.applied.lock().unwrap().push(policy.clone());
+            Ok(())
+        }
+        fn clear(&mut self) -> Result<(), String> {
+            Ok(())
+        }
+        fn health(&self) -> crate::dto::HealthDto {
+            crate::dto::HealthDto {
+                website_blocking: "test".into(),
+                app_blocking: "test".into(),
+                layers: vec![],
+            }
+        }
+        fn apply_commitment(&mut self, _: &[String]) -> Result<(), String> {
+            Ok(())
+        }
+        fn clear_commitment(&mut self) -> Result<(), String> {
+            Ok(())
+        }
+        fn commitment_status(&self) -> Option<CommitmentStatusWire> {
+            None
+        }
+    }
+
+    impl AppState {
+        /// Test-only constructor: accepts a pre-opened in-memory `Database`
+        /// so tests never touch the filesystem.
+        fn open_with_db(db: Database, enforcer: Box<dyn Enforcer>) -> Result<Self, String> {
+            let device_id = db.device_id().map_err(|e| e.to_string())?;
+            if db.list_policy_ids().map_err(|e| e.to_string())?.is_empty() {
+                let starter = Profile::new("Deep Work");
+                db.save_profile(&starter).map_err(|e| e.to_string())?;
+            }
+            let commitment = enforcer.commitment_status();
+            Ok(Self {
+                db,
+                enforcer,
+                device_id,
+                unlock: None,
+                shield: None,
+                commitment,
+                last_block_at: HashMap::new(),
+                last_sleep_lock_at: None,
+            })
+        }
+    }
+
+    /// Helper: create an AppState with a profile and an active session on it.
+    /// Returns (state, profile_id, enforcer_log).
+    fn setup() -> (AppState, String, Arc<Mutex<Vec<BlockPolicy>>>) {
+        let db = Database::open_in_memory().expect("in-memory DB");
+        let (fake, log) = FakeEnforcer::new();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+
+        // Create a profile and start a session on it.
+        state.create_profile("Test Profile".into()).unwrap();
+
+        // The seeded "Deep Work" profile may exist too; find "Test Profile".
+        let snap = state.snapshot().unwrap();
+        let profile_id = snap
+            .profiles
+            .iter()
+            .find(|p| p.name == "Test Profile")
+            .expect("profile should exist")
+            .id
+            .clone();
+
+        state.start_session(&profile_id, 60, "normal").unwrap();
+
+        // start_session calls enforcer.apply — clear that from the log so
+        // assertions below only see re-applies triggered by add_domain.
+        log.lock().unwrap().clear();
+
+        (state, profile_id, log)
+    }
+
+    #[test]
+    fn add_domain_reapplies_during_active_session() {
+        let (mut state, profile_id, log) = setup();
+
+        state
+            .add_domain(&profile_id, "example.com")
+            .expect("add_domain should succeed");
+
+        let applies = log.lock().unwrap();
+        assert_eq!(
+            applies.len(),
+            1,
+            "enforcer.apply should have been called exactly once after add_domain"
+        );
+        assert!(
+            applies[0].domains.iter().any(|d| d.domain == "example.com"),
+            "the re-applied policy must contain the newly added domain"
+        );
+    }
+
+    #[test]
+    fn remove_domain_rejected_during_active_session() {
+        let (mut state, profile_id, _log) = setup();
+
+        // Add a domain first so there's something to remove.
+        state.add_domain(&profile_id, "example.com").unwrap();
+
+        // Find its rule ID.
+        let snap = state.snapshot().unwrap();
+        let profile = snap.profiles.iter().find(|p| p.id == profile_id).unwrap();
+        let rule_id = profile
+            .domains
+            .iter()
+            .find(|d| d.domain == "example.com")
+            .expect("domain should exist")
+            .id
+            .clone();
+
+        let result = state.remove_domain(&profile_id, &rule_id);
+        assert!(
+            result.is_err(),
+            "remove_domain should be rejected during an active session"
+        );
+        assert!(
+            result.unwrap_err().contains("remove blocks"),
+            "error message should mention removing blocks"
+        );
+    }
+
+    #[test]
+    fn remove_application_rejected_during_active_session() {
+        let (mut state, profile_id, _log) = setup();
+
+        state
+            .add_application(&profile_id, "notepad.exe".into(), "Notepad".into())
+            .unwrap();
+
+        let snap = state.snapshot().unwrap();
+        let profile = snap.profiles.iter().find(|p| p.id == profile_id).unwrap();
+        let rule_id = profile
+            .applications
+            .iter()
+            .find(|a| a.native_identifier == "notepad.exe")
+            .expect("app should exist")
+            .id
+            .clone();
+
+        let result = state.remove_application(&profile_id, &rule_id);
+        assert!(
+            result.is_err(),
+            "remove_application should be rejected during an active session"
+        );
     }
 }

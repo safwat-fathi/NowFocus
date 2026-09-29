@@ -31,6 +31,18 @@ pub fn is_active(session: &FocusSession, current_time: DateTime<Utc>) -> bool {
         && current_time < session.end_at
 }
 
+/// The tray "Quit" gate. Mirrors macOS `applicationShouldTerminate`, which
+/// refuses a user quit while any session is active (regardless of enforcement
+/// mode) — the user must end it in-app first, subject to that session's mode.
+/// No session, or an inactive one, may quit. OS shutdown/logoff is not routed
+/// through here, so it is never blocked.
+pub fn can_quit(session: Option<&FocusSession>, current_time: DateTime<Utc>) -> bool {
+    match session {
+        Some(s) => !is_active(s, current_time),
+        None => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,5 +128,32 @@ mod tests {
         evaluate_state(&mut scheduled, now);
 
         assert_eq!(scheduled.status, FocusSessionStatus::Expired);
+    }
+
+    #[test]
+    fn quit_is_refused_only_while_a_session_is_active() {
+        let now = Utc::now();
+        assert!(can_quit(None, now), "no session → may quit");
+
+        let mut active = FocusSession::new(
+            "p1",
+            now - Duration::seconds(60),
+            now + Duration::seconds(60),
+            "test",
+        );
+        active.status = FocusSessionStatus::Active;
+        assert!(
+            !can_quit(Some(&active), now),
+            "active session → refuse quit"
+        );
+
+        let mut done = FocusSession::new(
+            "p1",
+            now - Duration::seconds(120),
+            now - Duration::seconds(1),
+            "test",
+        );
+        done.status = FocusSessionStatus::Completed;
+        assert!(can_quit(Some(&done), now), "ended session → may quit");
     }
 }

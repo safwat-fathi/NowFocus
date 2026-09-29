@@ -4,14 +4,20 @@
 //! each module's doc comment for the macOS/Android source it ports from.
 //! `cargo test` here is expected to pass on any host OS.
 
+pub mod bedtime_schedule;
 pub mod block_policy;
+pub mod commitment;
 pub mod domain_validation;
 pub mod enforcement_health;
 pub mod focus_session;
+pub mod history_stats;
+pub mod hosts_block;
 pub mod persistence;
 pub mod session_engine;
 
+pub use bedtime_schedule::BedtimeSettings;
 pub use block_policy::{ApplicationRule, BlockPolicy, DomainRule, FeedRule, PolicyMode, Profile};
+pub use commitment::CommitmentState;
 pub use enforcement_health::{EnforcementStatus, PlatformCapabilities};
 pub use focus_session::{
     EnforcementMode, FocusSession, FocusSessionStatus, NotificationMode, SessionType,

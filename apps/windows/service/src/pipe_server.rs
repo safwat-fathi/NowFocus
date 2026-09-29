@@ -162,6 +162,19 @@ fn dispatch(request: Request) -> Response {
                 }
             }
         }
+        Request::ApplyCommitment { domains } => match crate::commitment_store::apply(domains) {
+            Ok(()) => Response::Ack,
+            Err(message) => Response::Error { message },
+        },
+        // The refusal-after-grace decision is made inside the service here, not
+        // trusted to the caller (the pipe ACL admits any interactive user).
+        Request::ClearCommitment => match crate::commitment_store::clear_if_in_grace() {
+            Ok(()) => Response::Ack,
+            Err(message) => Response::Error { message },
+        },
+        Request::CommitmentStatus => Response::Commitment {
+            status: crate::commitment_store::status(),
+        },
     }
 }
 

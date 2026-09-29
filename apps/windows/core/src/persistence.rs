@@ -3,6 +3,7 @@ use std::path::Path;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
 
+use crate::bedtime_schedule::BedtimeSettings;
 use crate::block_policy::{
     ApplicationRule, BlockPolicy, DomainRule, FeedRule, NotificationMode, PolicyMode, Profile,
 };
@@ -108,6 +109,15 @@ impl Database {
             CREATE TABLE IF NOT EXISTS device_settings (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 device_id TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS bedtime_settings (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                enabled INTEGER NOT NULL,
+                wind_down_minute INTEGER NOT NULL,
+                sleep_minute INTEGER NOT NULL,
+                wake_minute INTEGER NOT NULL,
+                lock_at_sleep INTEGER NOT NULL,
+                policy_id TEXT
             );
             ",
         )?;
@@ -432,6 +442,104 @@ impl Database {
             )
             .map_err(Into::into)
     }
+
+    /// Focus sessions started in `[from, to)`, oldest first. **Excludes
+    /// bedtime** (`session_type = 'focus'`) so the Stats screen's focused
+    /// time, completion, and streak aren't inflated by nightly wind-down
+    /// sessions — the single place that filter is applied (matches macOS's
+    /// `sessionType == .focus` read filter and Android's DAO `WHERE`).
+    pub fn focus_sessions_between(
+        &self,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<FocusSession>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, policy_id, session_type, start_at, end_at, status, enforcement_mode, notification_mode,
+                    created_at, completed_at, cancelled_at, device_id, revision
+             FROM focus_sessions
+             WHERE session_type = 'focus' AND start_at >= ?1 AND start_at < ?2
+             ORDER BY start_at ASC",
+        )?;
+        let mut sessions = Vec::new();
+        for row in stmt.query_map(
+            params![from.to_rfc3339(), to.to_rfc3339()],
+            Self::row_to_session,
+        )? {
+            sessions.push(row??);
+        }
+        Ok(sessions)
+    }
+
+    /// `BLOCK_ATTEMPT` events in `[from, to)` as `(occurred_at, metadata_json)`.
+    /// The caller parses the target name out of the metadata (Stats' "most
+    /// turned away"). Legacy rows with no metadata come back as `None`.
+    pub fn block_events_between(
+        &self,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<(DateTime<Utc>, Option<String>)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT occurred_at, metadata_json FROM session_events
+             WHERE type = 'BLOCK_ATTEMPT' AND occurred_at >= ?1 AND occurred_at < ?2
+             ORDER BY occurred_at ASC",
+        )?;
+        let mut out = Vec::new();
+        for row in stmt.query_map(params![from.to_rfc3339(), to.to_rfc3339()], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?))
+        })? {
+            let (occurred, meta) = row?;
+            out.push((parse_time(&occurred)?, meta));
+        }
+        Ok(out)
+    }
+
+    // ---- Bedtime settings (single row, like device_settings) ------------
+
+    /// The persisted bedtime settings, or `BedtimeSettings::default()` when the
+    /// user has never saved any.
+    pub fn get_bedtime(&self) -> Result<BedtimeSettings> {
+        let row = self.conn.query_row(
+            "SELECT enabled, wind_down_minute, sleep_minute, wake_minute, lock_at_sleep, policy_id
+             FROM bedtime_settings WHERE id = 1",
+            [],
+            |r| {
+                Ok(BedtimeSettings {
+                    enabled: r.get::<_, i64>(0)? != 0,
+                    wind_down_minute: r.get(1)?,
+                    sleep_minute: r.get(2)?,
+                    wake_minute: r.get(3)?,
+                    lock_at_sleep: r.get::<_, i64>(4)? != 0,
+                    policy_id: r.get::<_, Option<String>>(5)?,
+                })
+            },
+        );
+        match row {
+            Ok(s) => Ok(s),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(BedtimeSettings::default()),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn set_bedtime(&self, s: &BedtimeSettings) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO bedtime_settings
+                (id, enabled, wind_down_minute, sleep_minute, wake_minute, lock_at_sleep, policy_id)
+             VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT(id) DO UPDATE SET
+                enabled = excluded.enabled, wind_down_minute = excluded.wind_down_minute,
+                sleep_minute = excluded.sleep_minute, wake_minute = excluded.wake_minute,
+                lock_at_sleep = excluded.lock_at_sleep, policy_id = excluded.policy_id",
+            params![
+                s.enabled as i64,
+                s.wind_down_minute,
+                s.sleep_minute,
+                s.wake_minute,
+                s.lock_at_sleep as i64,
+                s.policy_id,
+            ],
+        )?;
+        Ok(())
+    }
 }
 
 fn parse_time(s: &str) -> Result<DateTime<Utc>> {
@@ -666,5 +774,42 @@ mod tests {
 
         assert_eq!(db.count_events_since("BLOCK_ATTEMPT", since).unwrap(), 2);
         assert_eq!(db.count_events_since("SESSION_STARTED", since).unwrap(), 1);
+    }
+
+    #[test]
+    fn bedtime_settings_round_trip_and_default() {
+        let db = Database::open_in_memory().unwrap();
+        assert!(!db.get_bedtime().unwrap().enabled, "default is disabled");
+
+        let s = BedtimeSettings {
+            enabled: true,
+            wind_down_minute: 21 * 60 + 30,
+            sleep_minute: 22 * 60,
+            wake_minute: 6 * 60,
+            lock_at_sleep: false,
+            policy_id: Some("p-night".to_string()),
+        };
+        db.set_bedtime(&s).unwrap();
+        assert_eq!(db.get_bedtime().unwrap(), s);
+    }
+
+    #[test]
+    fn focus_sessions_between_excludes_bedtime() {
+        let db = Database::open_in_memory().unwrap();
+        let policy = BlockPolicy::new("Study");
+        db.save_policy(&policy).unwrap();
+        let now = Utc::now();
+
+        let focus = FocusSession::new(&policy.id, now, now + Duration::minutes(25), "pc");
+        db.save_session(&focus).unwrap();
+        let mut bedtime = FocusSession::new(&policy.id, now, now + Duration::hours(8), "pc");
+        bedtime.session_type = SessionType::BedtimeWinddown;
+        db.save_session(&bedtime).unwrap();
+
+        let rows = db
+            .focus_sessions_between(now - Duration::hours(1), now + Duration::hours(1))
+            .unwrap();
+        assert_eq!(rows.len(), 1, "bedtime session must not be counted");
+        assert_eq!(rows[0].id, focus.id);
     }
 }

@@ -1,10 +1,21 @@
 #[cfg(windows)]
+mod commitment_store;
+#[cfg(windows)]
 mod network_enforcer;
 #[cfg(windows)]
 mod pipe_server;
 
 #[cfg(windows)]
 fn main() -> windows_service::Result<()> {
+    // Invoked by the uninstaller (elevated, while this exe still exists) to
+    // strip our hosts-file regions and commitment state before the service is
+    // deleted — so uninstalling never leaves a permanent, unmanaged block
+    // behind (nothing would expire it once the service is gone).
+    if std::env::args().any(|a| a == "--cleanup") {
+        let _ = network_enforcer::clear();
+        commitment_store::purge();
+        return Ok(());
+    }
     windows_impl::run()
 }
 
@@ -73,7 +84,20 @@ mod windows_impl {
 
         let rt =
             tokio::runtime::Runtime::new().expect("failed to start the service's tokio runtime");
-        rt.block_on(crate::pipe_server::run(shutdown_rx));
+        rt.block_on(async {
+            // Re-assert or drop the persisted commitment before serving clients
+            // (it may have expired, or had its hosts region cleared, while the
+            // service was down — mirrors macOS's restoreCommitmentOnLaunch).
+            crate::commitment_store::restore_on_launch();
+            // Self-expiry even if no client ever asks (macOS's hourly timer).
+            tokio::spawn(async {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+                    crate::commitment_store::expire_if_needed();
+                }
+            });
+            crate::pipe_server::run(shutdown_rx).await;
+        });
 
         report_stopped(&status_handle)?;
         Ok(())

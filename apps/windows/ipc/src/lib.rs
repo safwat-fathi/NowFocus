@@ -1,12 +1,14 @@
 //! The UI-to-service protocol, ported from apps/macos/NowFocusShared/
-//! XPCProtocol.swift's actual (not the aspirational architecture-doc)
-//! shape: three methods — apply a policy, clear it, ping for health. The
-//! service is deliberately *not* session-aware; it only ever knows "this
-//! policy is currently applied" or not. The user-level app is what decides
-//! when a session ends and calls `ClearPolicy` — same as the real XPC
-//! daemon. Don't grow this into the richer session-aware protocol the
-//! architecture doc sketches; that's not what either shipped platform
-//! actually does.
+//! XPCProtocol.swift's actual shape: policy apply/clear/ping, **plus** the
+//! three commitment methods (`ApplyCommitment`/`ClearCommitment`/
+//! `CommitmentStatus`) that macOS's XPC protocol also exposes.
+//!
+//! The line we still don't cross: the service is *not* session-aware. It
+//! knows "this policy is currently applied" (session enforcement, cleared by
+//! the app when a session ends) and, independently, "a commitment is in
+//! effect" (14-day, service-owned, self-expiring, and refused-if-past-grace
+//! by the service itself — the app can't lift it). Anything that would make
+//! the service track focus-session timing belongs in the app, not here.
 
 use std::io::{self, BufRead, Write};
 
@@ -27,14 +29,41 @@ pub enum Request {
     },
     ClearPolicy,
     Ping,
+    /// Start (or replace) the 14-day commitment on these domains. The service
+    /// time-anchors it and writes an independent hosts-file region. Domains are
+    /// re-validated at the write boundary, same as `ApplyPolicy`.
+    ApplyCommitment {
+        domains: Vec<String>,
+    },
+    /// Only succeeds inside the 60s grace window; the **service** decides and
+    /// returns `Error { message }` otherwise (a UI-side refusal would be
+    /// worthless — the pipe ACL lets any interactive user connect).
+    ClearCommitment,
+    CommitmentStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommitmentStatusWire {
+    pub domains: Vec<String>,
+    /// RFC3339 wall-clock end instant (a display/fallback value; the service's
+    /// own uptime anchor is authoritative for whether it's actually over).
+    pub end_at: String,
+    pub can_cancel_now: bool,
+    pub remaining_secs: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Response {
     Ack,
-    Error { message: String },
+    Error {
+        message: String,
+    },
     Pong,
+    /// Reply to `CommitmentStatus`: `None` when no commitment is in effect.
+    Commitment {
+        status: Option<CommitmentStatusWire>,
+    },
 }
 
 /// Newline-delimited JSON framing. Safe because `serde_json`'s compact
@@ -74,6 +103,11 @@ mod tests {
             },
             Request::ClearPolicy,
             Request::Ping,
+            Request::ApplyCommitment {
+                domains: vec!["youtube.com".to_string(), "x.com".to_string()],
+            },
+            Request::ClearCommitment,
+            Request::CommitmentStatus,
         ] {
             let mut buf = Vec::new();
             write_message(&mut buf, &req).unwrap();
@@ -91,6 +125,15 @@ mod tests {
                 message: "bad domain".to_string(),
             },
             Response::Pong,
+            Response::Commitment { status: None },
+            Response::Commitment {
+                status: Some(CommitmentStatusWire {
+                    domains: vec!["youtube.com".to_string()],
+                    end_at: "2026-02-01T00:00:00+00:00".to_string(),
+                    can_cancel_now: false,
+                    remaining_secs: 1_200_000,
+                }),
+            },
         ] {
             let mut buf = Vec::new();
             write_message(&mut buf, &resp).unwrap();

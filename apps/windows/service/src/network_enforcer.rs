@@ -1,25 +1,28 @@
 //! Port of apps/macos/NowFocusDaemon/NetworkEnforcer.swift. Windows'
 //! `C:\Windows\System32\drivers\etc\hosts` instead of `/etc/hosts`,
-//! `ipconfig /flushdns` instead of `killall -HUP mDNSResponder` +
-//! `dscacheutil -flushcache` — same marker-delimited edit, same
-//! re-validate-at-the-write-boundary discipline (commit d0dd7df), same
-//! www./m./mobile. subdomain-prefix limitation (hosts files don't support
-//! wildcards on either platform).
+//! `ipconfig /flushdns` instead of `killall -HUP mDNSResponder`. Same
+//! marker-delimited edit, same re-validate-at-the-write-boundary discipline
+//! (commit d0dd7df), same www./m./mobile. subdomain-prefix limitation.
 //!
-//! This is a fail-safe mechanism deliberately, not a live DNS proxy: if this
-//! service crashes, the hosts file is left exactly as last written — stale,
-//! but the user still has working DNS. A live proxy that repoints the
-//! adapter's resolver would fail the user's whole internet connection if the
-//! service died. See the plan's "fail-safe website-blocking mechanism" note.
+//! Two **independent** marked regions — session and commitment — exactly like
+//! macOS's `HostsFileMarkers` split. Each apply/clear reads the file fresh and
+//! rewrites only its own region (via the unit-tested `core::hosts_block`), so a
+//! focus session ending never wipes a live 14-day commitment, and vice-versa.
+//! That independence is the property `core::hosts_block`'s tests prove.
+//!
+//! Fail-safe by design, not a live proxy: if this service crashes, the hosts
+//! file is left exactly as last written — stale, but DNS still works.
 
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use now_focus_core::{domain_validation, BlockPolicy};
+use now_focus_core::{domain_validation, hosts_block, BlockPolicy};
 
-const START_MARKER: &str = "### FOCUS APP BLOCK START ###";
-const END_MARKER: &str = "### FOCUS APP BLOCK END ###";
+const SESSION_START: &str = "### FOCUS APP BLOCK START ###";
+const SESSION_END: &str = "### FOCUS APP BLOCK END ###";
+const COMMITMENT_START: &str = "### FOCUS COMMITMENT BLOCK START ###";
+const COMMITMENT_END: &str = "### FOCUS COMMITMENT BLOCK END ###";
 
 fn hosts_path() -> PathBuf {
     let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_string());
@@ -32,41 +35,61 @@ fn backup_path() -> PathBuf {
     p
 }
 
+// ---- Session block ----------------------------------------------------
+
 pub fn apply(policy: &BlockPolicy) -> Result<(), String> {
-    let mut content = read_hosts()?;
-    content = remove_block(&content);
-
-    if !policy.domains.is_empty() {
-        let mut block = format!("{START_MARKER}\n");
-        for rule in policy.domains.iter().filter(|d| d.enabled) {
-            // Trust boundary: the pipe client isn't strongly authenticated
-            // (see pipe_server's ACL comment), so re-validate here even
-            // though the UI already did — this writes to the system hosts
-            // file. Same lesson as macOS commit d0dd7df.
-            let Some(domain) = domain_validation::normalize(&rule.domain) else {
-                eprintln!("Skipping invalid domain in policy: {}", rule.domain);
-                continue;
-            };
-            block.push_str(&format!("127.0.0.1 {domain}\n"));
-            if rule.include_subdomains {
-                for prefix in ["www.", "m.", "mobile."] {
-                    block.push_str(&format!("127.0.0.1 {prefix}{domain}\n"));
-                }
-            }
-        }
-        block.push_str(&format!("{END_MARKER}\n"));
-        content.push('\n');
-        content.push_str(&block);
-    }
-
-    write_hosts(&content)?;
-    flush_dns_cache();
-    Ok(())
+    let lines = domain_lines(
+        policy
+            .domains
+            .iter()
+            .filter(|d| d.enabled)
+            .map(|d| (d.domain.as_str(), d.include_subdomains)),
+    );
+    rewrite_region(SESSION_START, SESSION_END, &lines)
 }
 
 pub fn clear() -> Result<(), String> {
+    rewrite_region(SESSION_START, SESSION_END, &[])
+}
+
+// ---- Commitment block (independent of the session block) --------------
+
+pub fn apply_commitment(domains: &[String]) -> Result<(), String> {
+    let lines = domain_lines(domains.iter().map(|d| (d.as_str(), true)));
+    rewrite_region(COMMITMENT_START, COMMITMENT_END, &lines)
+}
+
+pub fn clear_commitment() -> Result<(), String> {
+    rewrite_region(COMMITMENT_START, COMMITMENT_END, &[])
+}
+
+// ---- Internals --------------------------------------------------------
+
+/// Trust boundary: the pipe client isn't strongly authenticated (see
+/// pipe_server's ACL comment), so re-validate every domain here even though the
+/// UI already did — this writes to the system hosts file. Invalid entries are
+/// skipped and logged, never written (same lesson as macOS commit d0dd7df).
+fn domain_lines<'a>(domains: impl Iterator<Item = (&'a str, bool)>) -> Vec<String> {
+    let mut lines = Vec::new();
+    for (raw, include_subdomains) in domains {
+        let Some(domain) = domain_validation::normalize(raw) else {
+            eprintln!("Skipping invalid domain in policy: {raw}");
+            continue;
+        };
+        lines.push(format!("127.0.0.1 {domain}"));
+        if include_subdomains {
+            for prefix in ["www.", "m.", "mobile."] {
+                lines.push(format!("127.0.0.1 {prefix}{domain}"));
+            }
+        }
+    }
+    lines
+}
+
+fn rewrite_region(start: &str, end: &str, lines: &[String]) -> Result<(), String> {
     let content = read_hosts()?;
-    write_hosts(&remove_block(&content))?;
+    let updated = hosts_block::with_region(&content, start, end, lines);
+    write_hosts(&updated)?;
     flush_dns_cache();
     Ok(())
 }
@@ -89,56 +112,8 @@ fn write_hosts(content: &str) -> Result<(), String> {
     fs::rename(&tmp, &path).map_err(|e| format!("failed to replace hosts file: {e}"))
 }
 
-fn remove_block(content: &str) -> String {
-    let mut inside = false;
-    let mut out = Vec::new();
-    for line in content.lines() {
-        if line == START_MARKER {
-            inside = true;
-            continue;
-        }
-        if line == END_MARKER {
-            inside = false;
-            continue;
-        }
-        if !inside {
-            out.push(line);
-        }
-    }
-    out.join("\n").trim().to_string()
-}
-
 fn flush_dns_cache() {
     if let Err(e) = Command::new("ipconfig").arg("/flushdns").status() {
         eprintln!("Failed to flush DNS cache with ipconfig /flushdns: {e}");
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn remove_block_strips_only_the_marked_region() {
-        let content = "127.0.0.1 localhost\n\n### FOCUS APP BLOCK START ###\n127.0.0.1 youtube.com\n### FOCUS APP BLOCK END ###\n";
-        assert_eq!(remove_block(content), "127.0.0.1 localhost");
-    }
-
-    #[test]
-    fn remove_block_is_a_no_op_when_no_block_present() {
-        let content = "127.0.0.1 localhost";
-        assert_eq!(remove_block(content), "127.0.0.1 localhost");
-    }
-
-    #[test]
-    fn remove_block_then_reapply_does_not_duplicate() {
-        let base = "127.0.0.1 localhost";
-        let with_block = format!("{base}\n\n{START_MARKER}\n127.0.0.1 x.com\n{END_MARKER}\n");
-        let cleared = remove_block(&with_block);
-        assert_eq!(cleared, base);
-        // Simulate applying twice in a row: second apply must not stack markers.
-        let reapplied = format!("{cleared}\n\n{START_MARKER}\n127.0.0.1 y.com\n{END_MARKER}\n");
-        let cleared_again = remove_block(&reapplied);
-        assert_eq!(cleared_again, base);
     }
 }

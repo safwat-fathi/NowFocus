@@ -38,8 +38,9 @@ export function Devices({ state }: { state: AppState }) {
           {state.health.websiteBlocking !== "active" && (
             <div className="device-card__fix">
               <div className="device-card__fix-note">
-                Running in development mode on a non-Windows host — there's no real enforcement to report yet.
-                This becomes real once the Windows service (Phase 3) is built.
+                {import.meta.env.DEV
+                  ? "Running in development mode — there's no privileged service on this host, so nothing is really enforced."
+                  : "The NowFocus background service isn't running, so website blocking is off. Reinstall or repair NowFocus to restore it."}
               </div>
             </div>
           )}
@@ -54,14 +55,14 @@ export function Devices({ state }: { state: AppState }) {
         </div>
       </div>
 
-      <DevPanel />
+      {import.meta.env.DEV && <DevPanel />}
     </div>
   );
 }
 
-/** Not part of the design — a clearly-labeled way to exercise the Shield
- * screen before the real Win32 foreground hook exists (Phase 4). Remove
- * this panel once that lands and calls the same simulate_block path. */
+/** Dev-builds only — a clearly-labeled way to exercise the Shield screen
+ * without the real Win32 foreground hook. Gated to debug builds so its
+ * synthetic block events never pollute the real "most turned away" stats. */
 function DevPanel() {
   async function trigger(kind: string, name: string) {
     await api.simulateBlock(kind, name);

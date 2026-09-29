@@ -89,10 +89,14 @@ pub fn run() {
             // No periodic check existed on this platform before (macOS has
             // AppDelegate's 30s Timer) — without one, a session expiring
             // while the window is hidden in the tray would leave the icon
-            // stuck on "active" until something else happened to poll.
+            // stuck on "active" until something else happened to poll. The
+            // same tick now also drives Bedtime (start the nightly locked
+            // session / lock the screen at sleep time) and refreshes the
+            // cached commitment status — reusing this loop rather than adding
+            // a second scheduler (macOS BedtimeScheduler is also a 30s Timer).
             thread::spawn(|| loop {
                 thread::sleep(Duration::from_secs(30));
-                refresh_tray();
+                periodic_tick();
             });
 
             // User-level, no elevation needed — same as macOS's AppBlocker
@@ -120,6 +124,9 @@ pub fn run() {
             commands::confirm_unlock,
             commands::simulate_block,
             commands::dismiss_shield,
+            commands::start_commitment,
+            commands::clear_commitment,
+            commands::set_bedtime,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the NowFocus app");
@@ -141,7 +148,18 @@ fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_main_window(app),
-            "quit" => app.exit(0),
+            // Quit is refused while a session is active (any mode), mirroring
+            // macOS `applicationShouldTerminate` — quitting would silently drop
+            // app-blocking. The user must end the session in-app first (subject
+            // to its enforcement mode). OS shutdown/logoff is not routed here,
+            // so it is never blocked. Bring the window forward to show why.
+            "quit" => {
+                if session_is_active(app) {
+                    show_main_window(app);
+                } else {
+                    app.exit(0);
+                }
+            }
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {
@@ -233,4 +251,58 @@ pub(crate) fn refresh_tray() {
     if let Some(tray) = app.tray_by_id("main") {
         let _ = tray.set_icon(Some(image));
     }
+}
+
+/// The 30s background tick: advances Bedtime (may start the nightly locked
+/// session or return that the screen should lock now), refreshes the cached
+/// commitment status, and re-picks the tray icon. One loop, not a second
+/// scheduler.
+fn periodic_tick() {
+    let Some(app) = TRAY_APP.get() else { return };
+    if let Some(state) = app.try_state::<SharedState>() {
+        let lock_now = {
+            let Ok(mut guard) = state.lock() else { return };
+            let lock = guard.bedtime_tick();
+            guard.refresh_commitment();
+            lock
+        };
+        if lock_now {
+            lock_workstation();
+        }
+    }
+    refresh_tray();
+}
+
+/// Whether a focus/bedtime session is currently active — backs the tray Quit
+/// guard (mirrors `now_focus_core::session_engine::can_quit`).
+fn session_is_active(app: &AppHandle) -> bool {
+    let Some(state) = app.try_state::<SharedState>() else {
+        return false;
+    };
+    let Ok(mut guard) = state.lock() else {
+        return false;
+    };
+    guard
+        .snapshot()
+        .map(|dto| dto.session.is_some())
+        .unwrap_or(false)
+}
+
+/// Lock the interactive desktop at bedtime's sleep moment. Shells `rundll32`
+/// rather than calling `LockWorkStation` via FFI — a well-known, dependency-
+/// free path that keeps the Win32 surface thin (runs user-level, which is
+/// correct for locking the current session).
+#[cfg(windows)]
+fn lock_workstation() {
+    if let Err(e) = std::process::Command::new("rundll32.exe")
+        .args(["user32.dll,LockWorkStation"])
+        .status()
+    {
+        eprintln!("failed to lock workstation for bedtime: {e}");
+    }
+}
+
+#[cfg(not(windows))]
+fn lock_workstation() {
+    eprintln!("[dev] bedtime sleep-time lock would fire now (no-op off Windows)");
 }

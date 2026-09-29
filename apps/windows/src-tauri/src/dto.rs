@@ -90,11 +90,45 @@ pub struct HealthDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct TargetCountDto {
+    pub name: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StatsDto {
     pub today_minutes: i64,
     pub sessions_completed: i64,
     pub sessions_started: i64,
     pub block_attempts_today: i64,
+    /// Minutes focused per day, Monday..Sunday, this week (7 entries).
+    pub week_minutes: Vec<i64>,
+    pub streak_days: i64,
+    /// 0.0..=1.0 (completed / started) this week.
+    pub completion_rate: f64,
+    /// Most-turned-away targets this week, most frequent first.
+    pub top_targets: Vec<TargetCountDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CommitmentDto {
+    pub domains: Vec<String>,
+    pub end_at: String,
+    pub can_cancel_now: bool,
+    pub remaining_secs: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BedtimeDto {
+    pub enabled: bool,
+    pub wind_down_minute: i64,
+    pub sleep_minute: i64,
+    pub wake_minute: i64,
+    pub lock_at_sleep: bool,
+    pub policy_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,4 +147,8 @@ pub struct AppStateDto {
     pub shield: Option<ShieldDto>,
     pub health: HealthDto,
     pub stats: StatsDto,
+    /// `Some` while a 14-day commitment is in effect (cached; refreshed on
+    /// apply/clear and the 30s tick, never per-snapshot — see AppState).
+    pub commitment: Option<CommitmentDto>,
+    pub bedtime: BedtimeDto,
 }

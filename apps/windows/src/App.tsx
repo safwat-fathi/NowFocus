@@ -11,6 +11,8 @@ import { Shield } from "./screens/Shield";
 import { Profiles } from "./screens/Profiles";
 import { Devices } from "./screens/Devices";
 import { Stats } from "./screens/Stats";
+import { Commitment } from "./screens/Commitment";
+import { Bedtime } from "./screens/Bedtime";
 import { Tray } from "./screens/Tray";
 
 const ONBOARDING_SEEN_KEY = "nowfocus.onboardingSeen";
@@ -70,6 +72,8 @@ export default function App() {
           {view === "profiles" && <Profiles state={state} onState={refresh} />}
           {view === "devices" && <Devices state={state} />}
           {view === "stats" && <Stats state={state} />}
+          {view === "commitment" && <Commitment state={state} onState={refresh} />}
+          {view === "bedtime" && <Bedtime state={state} onState={refresh} />}
           {view === "tray" && <Tray state={state} onState={refresh} onOpen={() => navigate(state.session ? "active" : "focus")} />}
           {view === "shield" && <Shield state={state} onState={refresh} />}
         </div>

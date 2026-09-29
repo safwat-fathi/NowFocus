@@ -67,16 +67,43 @@ export interface Health {
   layers: DeviceLayer[];
 }
 
+export interface TargetCount {
+  name: string;
+  count: number;
+}
+
 export interface Stats {
   todayMinutes: number;
   sessionsCompleted: number;
   sessionsStarted: number;
   blockAttemptsToday: number;
+  /** Minutes focused per day, Monday..Sunday (7 entries), this week. */
+  weekMinutes: number[];
+  streakDays: number;
+  /** 0..1 completed/started this week. */
+  completionRate: number;
+  topTargets: TargetCount[];
 }
 
 export interface Shield {
   targetKind: string;
   targetName: string;
+}
+
+export interface Commitment {
+  domains: string[];
+  endAt: string;
+  canCancelNow: boolean;
+  remainingSecs: number;
+}
+
+export interface Bedtime {
+  enabled: boolean;
+  windDownMinute: number;
+  sleepMinute: number;
+  wakeMinute: number;
+  lockAtSleep: boolean;
+  policyId: string | null;
 }
 
 export interface AppState {
@@ -86,6 +113,8 @@ export interface AppState {
   shield: Shield | null;
   health: Health;
   stats: Stats;
+  commitment: Commitment | null;
+  bedtime: Bedtime;
 }
 
 export type ScreenId =
@@ -95,4 +124,6 @@ export type ScreenId =
   | "profiles"
   | "devices"
   | "stats"
+  | "commitment"
+  | "bedtime"
   | "tray";

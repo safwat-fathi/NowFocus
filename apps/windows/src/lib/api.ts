@@ -36,4 +36,17 @@ export const api = {
   simulateBlock: (targetKind: string, targetName: string) =>
     invoke<AppState>("simulate_block", { targetKind, targetName }),
   dismissShield: () => invoke<AppState>("dismiss_shield"),
+
+  startCommitment: (domains: string[]) => invoke<AppState>("start_commitment", { domains }),
+  // May reject with the service's refusal message once past the 60s grace.
+  clearCommitment: () => invoke<AppState>("clear_commitment"),
+
+  setBedtime: (bedtime: {
+    enabled: boolean;
+    windDownMinute: number;
+    sleepMinute: number;
+    wakeMinute: number;
+    lockAtSleep: boolean;
+    policyId: string | null;
+  }) => invoke<AppState>("set_bedtime", bedtime),
 };

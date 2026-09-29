@@ -27,16 +27,15 @@ export function Sidebar({ state, screen, onNavigate }: { state: AppState; screen
       </button>
 
       <div className="sidebar__section-label">Always on</div>
-      {/* Commitment Shield and Bedtime Wind-Down are Phase 5 — not built by
-          either sibling platform yet either (see the plan's scope note).
-          Nav entries exist so the shape is visible; they're disabled. */}
-      <button className="nav-item" disabled title="Coming soon">
+      <button className="nav-item" data-active={screen === "commitment"} onClick={() => onNavigate("commitment")}>
         <CommitmentIcon />
         <span className="nav-item__label">Commitment</span>
+        {state.commitment && <span className="nav-item__dot" />}
       </button>
-      <button className="nav-item" disabled title="Coming soon">
+      <button className="nav-item" data-active={screen === "bedtime"} onClick={() => onNavigate("bedtime")}>
         <BedtimeIcon />
         <span className="nav-item__label">Bedtime</span>
+        {state.bedtime.enabled && <span className="nav-item__dot" />}
       </button>
 
       <div className="sidebar__footer">

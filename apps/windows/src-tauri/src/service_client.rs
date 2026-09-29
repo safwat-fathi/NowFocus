@@ -12,7 +12,7 @@ use std::io;
 use std::time::Duration;
 
 use now_focus_core::BlockPolicy;
-use now_focus_ipc::{Request, Response, PIPE_NAME};
+use now_focus_ipc::{CommitmentStatusWire, Request, Response, PIPE_NAME};
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::net::windows::named_pipe::{ClientOptions, NamedPipeClient};
 
@@ -81,6 +81,35 @@ impl Enforcer for WindowsServiceEnforcer {
             Ok(Response::Error { message }) => Err(message),
             Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
             Err(e) => Err(format!("couldn't reach NowFocusService: {e}")),
+        }
+    }
+
+    fn apply_commitment(&mut self, domains: &[String]) -> Result<(), String> {
+        match self.call(&Request::ApplyCommitment {
+            domains: domains.to_vec(),
+        }) {
+            Ok(Response::Ack) => Ok(()),
+            Ok(Response::Error { message }) => Err(message),
+            Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
+            Err(e) => Err(format!("couldn't reach NowFocusService: {e}")),
+        }
+    }
+
+    /// Relays the service's decision verbatim — the `Err` message on refusal
+    /// (past the 60s grace) is authored by the service, not this client.
+    fn clear_commitment(&mut self) -> Result<(), String> {
+        match self.call(&Request::ClearCommitment) {
+            Ok(Response::Ack) => Ok(()),
+            Ok(Response::Error { message }) => Err(message),
+            Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
+            Err(e) => Err(format!("couldn't reach NowFocusService: {e}")),
+        }
+    }
+
+    fn commitment_status(&self) -> Option<CommitmentStatusWire> {
+        match self.call(&Request::CommitmentStatus) {
+            Ok(Response::Commitment { status }) => status,
+            _ => None,
         }
     }
 
