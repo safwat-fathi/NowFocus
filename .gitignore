@@ -13,3 +13,5 @@ apps/windows/**/target/
 apps/windows/node_modules/
 apps/windows/dist/
 apps/windows/src-tauri/gen/
+*.log
+scratch_log.txt
