@@ -27,6 +27,8 @@ class BootReceiver : BroadcastReceiver() {
                 val settings = repo.bedtimeSettingsFlow.first()
                 BedtimeScheduler.scheduleAll(context, settings)
                 reconcileQuietNotifications(context, settings)
+                // A reboot mid-window should re-arm the nightly locked session too.
+                reconcileBedtimeSession(context, settings)
                 if (Enforcement.shouldRun(repo)) Enforcement.start(context)
             } finally {
                 pending.finish()

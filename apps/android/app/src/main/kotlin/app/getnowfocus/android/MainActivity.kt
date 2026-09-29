@@ -12,6 +12,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -167,7 +169,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     }
 
     val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy ||
-        screen is Screen.Stats || screen is Screen.Devices
+        screen is Screen.Stats || screen is Screen.Devices || screen is Screen.Active
 
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
@@ -244,7 +246,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     onCancel = { viewModel.cancelCommitmentShield() },
                     onBack = { screen = Screen.Home },
                 )
-                Screen.Bedtime -> BedtimeScreen(settings = bedtime, onSave = viewModel::saveBedtimeSettings, onBack = { screen = Screen.Home })
+                Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, onSave = viewModel::saveBedtimeSettings, onBack = { screen = Screen.Home })
                 Screen.Devices -> DevicesScreen(resumeKey = resumeCount)
                 Screen.Onboarding -> OnboardingScreen(resumeKey = resumeCount, onDone = { viewModel.completeOnboarding(); screen = Screen.Home })
             }
@@ -836,20 +838,20 @@ private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
 }
 
 @Composable
-private fun BedtimeScreen(settings: BedtimeSettings, onSave: (BedtimeSettings) -> Unit, onBack: () -> Unit) {
+private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>, onSave: (BedtimeSettings) -> Unit, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
     val notificationPolicyOk = remember(settings) {
         context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted ?: false
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         GhostButton("‹ Back", onClick = onBack)
         Text("Bedtime Wind-Down", style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
         Text(
-            "An hour before bed, notifications quiet down. Tap a time to shift it by 30 minutes.",
+            "Each night from wind-down until wake, your chosen profile is blocked as a locked session you can't end early. Tap a time to shift it by 30 minutes.",
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
         )
         Spacer(Modifier.height(NowFocusSpace.s4))
@@ -862,6 +864,39 @@ private fun BedtimeScreen(settings: BedtimeSettings, onSave: (BedtimeSettings) -
             TimeBump("Wind-down", settings.windDownMinute, Modifier.weight(1f)) { onSave(settings.copy(windDownMinute = it)) }
             TimeBump("Sleep", settings.sleepMinute, Modifier.weight(1f)) { onSave(settings.copy(sleepMinute = it)) }
             TimeBump("Wake", settings.wakeMinute, Modifier.weight(1f)) { onSave(settings.copy(wakeMinute = it)) }
+        }
+        Spacer(Modifier.height(NowFocusSpace.s6))
+
+        Text("BLOCK PROFILE", style = kickerStyle(NowFocusColors.neutral700))
+        SectionRule()
+        if (policies.isEmpty()) {
+            Text(
+                "No profiles yet — create one in Rules first, or nothing will be blocked at bedtime.",
+                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                modifier = Modifier.padding(vertical = NowFocusSpace.s2),
+            )
+        } else {
+            policies.forEach { p ->
+                Row(
+                    Modifier.fillMaxWidth().clickable { onSave(settings.copy(policyId = p.id)) }.padding(vertical = NowFocusSpace.s3),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(18.dp).background(if (p.id == settings.policyId) NowFocusColors.accent else Color.Transparent))
+                    Spacer(Modifier.width(NowFocusSpace.s3))
+                    Column {
+                        Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
+                        Text("${p.domains.size} sites · ${p.apps.size} apps", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+                    }
+                }
+                SectionRule()
+            }
+            if (settings.enabled && settings.policyId == null) {
+                Text(
+                    "Pick a profile above, or nothing will be blocked at bedtime.",
+                    style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.accent700),
+                    modifier = Modifier.padding(top = NowFocusSpace.s2),
+                )
+            }
         }
         Spacer(Modifier.height(NowFocusSpace.s6))
 

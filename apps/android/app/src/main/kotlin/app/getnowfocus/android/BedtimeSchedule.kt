@@ -20,6 +20,9 @@ data class BedtimeSettings(
     // One-shot GLOBAL_ACTION_LOCK_SCREEN at sleep time - needs API 28, so this
     // is forced false below that (see FocusAccessibilityService/BedtimeScreen).
     val lockAtSleep: Boolean = true,
+    // The block profile enforced (as a LOCKED session) during the window, like
+    // macOS's BedtimeSettings.policyId. Null → nothing is blocked at bedtime.
+    val policyId: String? = null,
 )
 
 /**
@@ -43,6 +46,19 @@ object BedtimeSchedule {
     fun isQuietTimeNow(settings: BedtimeSettings, now: Long, zone: ZoneId): Boolean {
         val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
         return now in windowFor(settings, today, zone) || now in windowFor(settings, today.minusDays(1), zone)
+    }
+
+    /**
+     * The window containing [now] - tonight's (already started) or last night's
+     * (still running past midnight) - or null. Same today+yesterday check as
+     * [isQuietTimeNow], so a window that crossed midnight is still found. Used
+     * to start the nightly LOCKED bedtime session (see reconcileBedtimeSession).
+     */
+    fun currentWindow(settings: BedtimeSettings, now: Long, zone: ZoneId): LongRange? {
+        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        return listOf(today, today.minusDays(1))
+            .map { windowFor(settings, it, zone) }
+            .firstOrNull { now in it }
     }
 
     /**

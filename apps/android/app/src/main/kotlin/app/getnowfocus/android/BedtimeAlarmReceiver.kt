@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.ZoneId
+import java.util.UUID
 
 /**
  * Fires at each bedtime boundary (wind-down, wake) to reconcile Do Not
@@ -40,6 +41,7 @@ class BedtimeAlarmReceiver : BroadcastReceiver() {
                 val repo = SessionRepository(context)
                 val settings = repo.bedtimeSettingsFlow.first()
                 reconcileQuietNotifications(context, settings)
+                reconcileBedtimeSession(context, settings)
                 if (settings.enabled && intent.action == ACTION_SLEEP_LOCK && settings.lockAtSleep && Build.VERSION.SDK_INT >= 28) {
                     FocusAccessibilityService.instance?.performGlobalAction(
                         android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
@@ -70,6 +72,51 @@ fun reconcileQuietNotifications(context: Context, settings: BedtimeSettings) {
         QuietDecision.RESTORE_ALL -> nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
         QuietDecision.NONE -> {}
     }
+}
+
+/**
+ * Starts a LOCKED bedtime session for the chosen profile when we're inside the
+ * window and nothing else is already active — the Android counterpart of macOS
+ * BedtimeScheduler.startSessionIfNeeded. It reuses the normal session row +
+ * [Enforcement.start] path (not a parallel enforcement flow), so the
+ * ViewModel's collector expires and logs it like any session, and Stats
+ * excludes it by [SessionType].
+ *
+ * Safe to call often and from anywhere (alarm, boot, ViewModel init, settings
+ * save, session end): every guard below no-ops when it doesn't apply. It runs
+ * outside the ViewModel, so it snapshots the policy's domains/packages into the
+ * session — a mid-window policy edit can't loosen the block.
+ */
+suspend fun reconcileBedtimeSession(context: Context, settings: BedtimeSettings) {
+    if (!settings.enabled) return
+    val policyId = settings.policyId ?: return
+    val now = System.currentTimeMillis()
+    val window = BedtimeSchedule.currentWindow(settings, now, ZoneId.systemDefault()) ?: return
+
+    val repo = SessionRepository(context)
+    // Skip while any session is already active — a second session would let
+    // one's end clear the other's enforcement (macOS's guard). This also stops
+    // us restarting a bedtime session that's already running for this window.
+    val existing = repo.sessionFlow.first()
+    if (existing != null && SessionEngine.isActive(SessionEngine.evaluateState(existing, now), now)) return
+
+    // A missing profile means nothing to block — skip, like macOS.
+    val policy = repo.policiesFlow.first().find { it.id == policyId } ?: return
+
+    val session = FocusSession(
+        id = UUID.randomUUID().toString(),
+        policyId = policy.id,
+        startAt = window.first,
+        endAt = window.last + 1, // LongRange is end-exclusive: last + 1 == wake
+        status = FocusSessionStatus.SCHEDULED,
+        createdAt = now,
+        domains = policy.domains.toSet(),
+        packages = policy.apps.map { it.packageName }.toSet(),
+        enforcementMode = EnforcementMode.LOCKED,
+        sessionType = SessionType.BEDTIME_WINDDOWN,
+    )
+    repo.save(SessionEngine.evaluateState(session, now))
+    Enforcement.start(context)
 }
 
 object BedtimeScheduler {

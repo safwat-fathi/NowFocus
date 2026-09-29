@@ -2,6 +2,7 @@ package app.getnowfocus.android
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -160,5 +161,32 @@ class BedtimeScheduleTest {
             QuietDecision.NONE,
             BedtimeSchedule.decideQuietFilter(enabledSettings, outsideWindow, zone, currentFilterIsPriority = false),
         )
+    }
+
+    // currentWindow drives when the nightly LOCKED bedtime session starts
+    // (reconcileBedtimeSession) — same cross-midnight cases as isQuietTimeNow.
+
+    @Test
+    fun `currentWindow returns tonight's window late at night`() {
+        val day = LocalDate.of(2026, 9, 21)
+        assertEquals(
+            BedtimeSchedule.windowFor(settings, day, zone),
+            BedtimeSchedule.currentWindow(settings, now = at(day, 23), zone),
+        )
+    }
+
+    @Test
+    fun `currentWindow returns last night's window in the early morning`() {
+        val day = LocalDate.of(2026, 9, 21)
+        assertEquals(
+            BedtimeSchedule.windowFor(settings, day.minusDays(1), zone),
+            BedtimeSchedule.currentWindow(settings, now = at(day, 5), zone),
+        )
+    }
+
+    @Test
+    fun `currentWindow is null at midday`() {
+        val day = LocalDate.of(2026, 9, 21)
+        assertNull(BedtimeSchedule.currentWindow(settings, now = at(day, 12), zone))
     }
 }

@@ -1,6 +1,7 @@
 package app.getnowfocus.android
 
 import android.content.Context
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -12,6 +13,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -33,6 +36,10 @@ data class SessionHistoryRow(
     val endAt: Long,
     val status: FocusSessionStatus,
     val cancelledAt: Long? = null,
+    // v2. defaultValue must match MIGRATION_1_2's ADD COLUMN default exactly,
+    // or Room's schema validation fails to open for pre-existing users. Stats
+    // filters to FOCUS (see the DAO) so bedtime sessions don't inflate it.
+    @ColumnInfo(defaultValue = "FOCUS") val sessionType: SessionType = SessionType.FOCUS,
 ) {
     /** Real focused time: full duration if it ran to completion, elapsed-so-far if cancelled, 0 otherwise. */
     val focusedMillis: Long
@@ -52,12 +59,15 @@ data class BlockEventRow(
 )
 
 fun FocusSession.toHistoryRow() = SessionHistoryRow(
-    id = id, policyId = policyId, startAt = startAt, endAt = endAt, status = status, cancelledAt = cancelledAt,
+    id = id, policyId = policyId, startAt = startAt, endAt = endAt, status = status,
+    cancelledAt = cancelledAt, sessionType = sessionType,
 )
 
 class HistoryConverters {
     @TypeConverter fun statusToString(s: FocusSessionStatus): String = s.name
     @TypeConverter fun stringToStatus(s: String): FocusSessionStatus = FocusSessionStatus.valueOf(s)
+    @TypeConverter fun sessionTypeToString(s: SessionType): String = s.name
+    @TypeConverter fun stringToSessionType(s: String): SessionType = SessionType.valueOf(s)
 }
 
 @Dao
@@ -72,22 +82,34 @@ interface SessionHistoryDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertBlockEvent(row: BlockEventRow)
 
-    @Query("SELECT * FROM session_history WHERE startAt >= :from AND startAt < :to ORDER BY startAt")
+    // Focus-only (bedtime excluded) so weekly time, completion, and streak
+    // aren't inflated by nightly wind-down sessions — the single place that
+    // filter lives (mirrors macOS's sessionType == .focus read filter).
+    @Query("SELECT * FROM session_history WHERE startAt >= :from AND startAt < :to AND sessionType = 'FOCUS' ORDER BY startAt")
     suspend fun sessionsBetween(from: Long, to: Long): List<SessionHistoryRow>
 
     @Query("SELECT * FROM block_events WHERE timestampMillis >= :from AND timestampMillis < :to")
     suspend fun blockEventsBetween(from: Long, to: Long): List<BlockEventRow>
 }
 
-@Database(entities = [SessionHistoryRow::class, BlockEventRow::class], version = 1, exportSchema = false)
+@Database(entities = [SessionHistoryRow::class, BlockEventRow::class], version = 2, exportSchema = false)
 @TypeConverters(HistoryConverters::class)
 abstract class HistoryDatabase : RoomDatabase() {
     abstract fun dao(): SessionHistoryDao
 
     companion object {
+        // v1 → v2 added session_history.sessionType. The DEFAULT here must match
+        // the entity's @ColumnInfo(defaultValue = "FOCUS") exactly.
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE session_history ADD COLUMN sessionType TEXT NOT NULL DEFAULT 'FOCUS'")
+            }
+        }
+
         @Volatile private var instance: HistoryDatabase? = null
         fun get(context: Context): HistoryDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, HistoryDatabase::class.java, "history.db")
+                .addMigrations(MIGRATION_1_2)
                 .build().also { instance = it }
         }
     }

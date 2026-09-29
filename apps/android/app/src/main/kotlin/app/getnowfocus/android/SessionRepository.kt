@@ -33,6 +33,7 @@ class SessionRepository(context: Context) {
         val PACKAGES = stringSetPreferencesKey("packages")
         val POLICIES = stringPreferencesKey("policies")
         val ENFORCEMENT_MODE = stringPreferencesKey("enforcementMode")
+        val SESSION_TYPE = stringPreferencesKey("sessionType")
         val CANCELLED_AT = longPreferencesKey("cancelledAt")
         val SHIELD_START_AT = longPreferencesKey("shieldStartAt")
         val SHIELD_END_AT = longPreferencesKey("shieldEndAt")
@@ -47,6 +48,7 @@ class SessionRepository(context: Context) {
         val BEDTIME_ENABLED = booleanPreferencesKey("bedtimeEnabled")
         val BEDTIME_QUIET = booleanPreferencesKey("bedtimeQuietNotifications")
         val BEDTIME_LOCK = booleanPreferencesKey("bedtimeLockAtSleep")
+        val BEDTIME_POLICY_ID = stringPreferencesKey("bedtimePolicyId")
         val ONBOARDING_DONE = booleanPreferencesKey("onboardingDone")
     }
 
@@ -63,6 +65,9 @@ class SessionRepository(context: Context) {
             // Default, not return@map null: a session written before this field
             // existed must keep enforcing as NORMAL, not vanish from the flow.
             enforcementMode = p[Keys.ENFORCEMENT_MODE]?.let { EnforcementMode.valueOf(it) } ?: EnforcementMode.NORMAL,
+            // Default, not return@map null: a session written before this field
+            // existed keeps enforcing as a FOCUS session.
+            sessionType = p[Keys.SESSION_TYPE]?.let { SessionType.valueOf(it) } ?: SessionType.FOCUS,
             cancelledAt = p[Keys.CANCELLED_AT],
         )
     }
@@ -94,6 +99,7 @@ class SessionRepository(context: Context) {
             enabled = p[Keys.BEDTIME_ENABLED] ?: defaults.enabled,
             quietNotifications = p[Keys.BEDTIME_QUIET] ?: defaults.quietNotifications,
             lockAtSleep = p[Keys.BEDTIME_LOCK] ?: defaults.lockAtSleep,
+            policyId = p[Keys.BEDTIME_POLICY_ID],
         )
     }
 
@@ -105,6 +111,7 @@ class SessionRepository(context: Context) {
             p[Keys.BEDTIME_ENABLED] = settings.enabled
             p[Keys.BEDTIME_QUIET] = settings.quietNotifications
             p[Keys.BEDTIME_LOCK] = settings.lockAtSleep
+            if (settings.policyId != null) p[Keys.BEDTIME_POLICY_ID] = settings.policyId else p.remove(Keys.BEDTIME_POLICY_ID)
         }
     }
 
@@ -125,6 +132,7 @@ class SessionRepository(context: Context) {
             p[Keys.DOMAINS] = session.domains
             p[Keys.PACKAGES] = session.packages
             p[Keys.ENFORCEMENT_MODE] = session.enforcementMode.name
+            p[Keys.SESSION_TYPE] = session.sessionType.name
             if (session.cancelledAt != null) p[Keys.CANCELLED_AT] = session.cancelledAt else p.remove(Keys.CANCELLED_AT)
         }
     }

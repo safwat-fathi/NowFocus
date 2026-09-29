@@ -103,14 +103,21 @@ fun PolicyListScreen(
 }
 
 @Composable
-fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Unit, onBack: () -> Unit) {
+fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, onBack: () -> Unit) {
+    val context = LocalContext.current
     var name by remember(policy.id) { mutableStateOf(policy.name) }
     var newDomain by remember { mutableStateOf("") }
     var pickingApp by remember { mutableStateOf(false) }
 
+    fun saveOrToast(newPolicy: BlockPolicy) {
+        if (!onSave(newPolicy)) {
+            android.widget.Toast.makeText(context, "You can't remove blocks while a focus session is running on this profile.", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
     fun addDomain() {
         val domain = DomainValidation.normalize(newDomain) ?: return
-        if (domain !in policy.domains) onSave(policy.copy(domains = policy.domains + domain))
+        if (domain !in policy.domains) saveOrToast(policy.copy(domains = policy.domains + domain))
         newDomain = ""
     }
 
@@ -120,7 +127,7 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Unit, onBac
             GhostButton("‹ Rules", onClick = onBack)
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it; onSave(policy.copy(name = it)) },
+                onValueChange = { name = it; saveOrToast(policy.copy(name = it)) },
                 label = { Text("Profile name") },
                 modifier = Modifier.fillMaxWidth().padding(top = NowFocusSpace.s2),
             )
@@ -128,7 +135,7 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Unit, onBac
             SectionRule(thick = true)
         }
         items(policy.domains, key = { "d:$it" }) { domain ->
-            RuleRow(domain, "+ subdomains") { onSave(policy.copy(domains = policy.domains - domain)) }
+            RuleRow(domain, "+ subdomains") { saveOrToast(policy.copy(domains = policy.domains - domain)) }
         }
         item {
             Row(Modifier.padding(top = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
@@ -149,7 +156,7 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Unit, onBac
             SectionRule(thick = true)
         }
         items(policy.apps, key = { "a:${it.packageName}" }) { app ->
-            RuleRow(app.label, app.packageName) { onSave(policy.copy(apps = policy.apps - app)) }
+            RuleRow(app.label, app.packageName) { saveOrToast(policy.copy(apps = policy.apps - app)) }
         }
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
@@ -161,7 +168,7 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Unit, onBac
     if (pickingApp) {
         AppPickerDialog(
             exclude = policy.apps.map { it.packageName }.toSet(),
-            onPick = { onSave(policy.copy(apps = policy.apps + it)); pickingApp = false },
+            onPick = { saveOrToast(policy.copy(apps = policy.apps + it)); pickingApp = false },
             onDismiss = { pickingApp = false },
         )
     }

@@ -60,6 +60,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 _sessionLoaded.value = true
                 if (evaluated != null && evaluated.status == FocusSessionStatus.COMPLETED && previousStatus != FocusSessionStatus.COMPLETED) {
                     historyDao.insertSession(evaluated.toHistoryRow())
+                    // A focus session that ended inside the bedtime window (so
+                    // the wind-down alarm skipped it) should hand off to the
+                    // nightly locked session now. No-ops outside the window.
+                    reconcileBedtimeSession(getApplication(), repository.bedtimeSettingsFlow.first())
                 }
             }
         }
@@ -72,6 +76,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             val settings = repository.bedtimeSettingsFlow.first()
             BedtimeScheduler.scheduleAll(getApplication(), settings)
             reconcileQuietNotifications(getApplication(), settings)
+            // Recovery: if the app opens mid-window with bedtime configured and
+            // nothing running, start the nightly locked session now.
+            reconcileBedtimeSession(getApplication(), settings)
         }
     }
 
@@ -114,6 +121,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             // is still live, since it doesn't know about other windows.
             repository.save(cancelled)
             historyDao.insertSession(cancelled.toHistoryRow())
+            // Ending a session inside the bedtime window hands off to the
+            // nightly locked session immediately (no-ops outside the window).
+            reconcileBedtimeSession(getApplication(), repository.bedtimeSettingsFlow.first())
         }
         return true
     }
@@ -138,8 +148,65 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         return policy.id
     }
 
-    fun savePolicy(policy: BlockPolicy) {
-        viewModelScope.launch { repository.updatePolicies { list -> list.map { if (it.id == policy.id) policy else it } } }
+    /**
+     * Saves a policy edit. If a focus session is active on this policy's
+     * profile, additions are applied immediately (the session's domain/package
+     * snapshot is updated so both enforcement services pick it up
+     * reactively), while removals are silently rejected — you can't weaken
+     * enforcement mid-session (all modes).
+     *
+     * Returns `false` when the edit was rejected so the caller can show
+     * feedback (currently the composable reloads from the policy list, which
+     * restores the removed row automatically).
+     */
+    fun savePolicy(policy: BlockPolicy): Boolean {
+        val current = _session.value
+        val now = System.currentTimeMillis()
+        val isLiveEdit = current != null &&
+            SessionEngine.isActive(current, now) &&
+            current.policyId == policy.id
+
+        if (isLiveEdit) {
+            // Load the stored (pre-edit) version to detect weakening.
+            val stored = policies.value.find { it.id == policy.id } ?: run {
+                // Profile was deleted out from under us — plain save.
+                viewModelScope.launch { repository.updatePolicies { list -> list.map { if (it.id == policy.id) policy else it } } }
+                return true
+            }
+
+            if (weakensEnforcement(stored, policy)) {
+                // Reject: don't persist the removal. The UI will reload
+                // from policiesFlow and the removed row reappears.
+                return false
+            }
+
+            // Pure addition / rename / reorder — save and update the
+            // session's enforcement snapshot so both services pick it up.
+            viewModelScope.launch {
+                repository.updatePolicies { list -> list.map { if (it.id == policy.id) policy else it } }
+                val updatedSession = current!!.copy(
+                    domains = policy.domains.toSet(),
+                    packages = policy.apps.map { it.packageName }.toSet(),
+                )
+                repository.save(updatedSession)
+            }
+        } else {
+            // No active session on this profile — plain save.
+            viewModelScope.launch { repository.updatePolicies { list -> list.map { if (it.id == policy.id) policy else it } } }
+        }
+        return true
+    }
+
+    /**
+     * Returns `true` when the edit removes a domain or app that the stored
+     * version still has — i.e. it weakens enforcement.
+     */
+    private fun weakensEnforcement(old: BlockPolicy, new: BlockPolicy): Boolean {
+        if (!new.domains.containsAll(old.domains)) return true
+        val oldPackages = old.apps.map { it.packageName }.toSet()
+        val newPackages = new.apps.map { it.packageName }.toSet()
+        if (!newPackages.containsAll(oldPackages)) return true
+        return false
     }
 
     fun deletePolicy(id: String) {
@@ -188,6 +255,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             // Bedtime or its quiet-notifications toggle off mid-window must
             // restore the filter right away, not leave it stuck quiet.
             reconcileQuietNotifications(getApplication(), settings)
+            // And enabling bedtime (or picking a profile) mid-window should
+            // start the locked session now, not wait for the next boundary.
+            reconcileBedtimeSession(getApplication(), settings)
         }
     }
 
