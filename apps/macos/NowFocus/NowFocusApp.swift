@@ -14,9 +14,10 @@ struct NowFocusApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Settings {
-            PreferencesView()
+        Window("NowFocus", id: MainWindowView.windowID) {
+            MainWindowView()
         }
+        .defaultSize(width: 960, height: 640)
     }
 }
 
@@ -39,8 +40,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // so it's registered programmatically instead.
         if let fontURL = Bundle.main.url(forResource: "archivo_variable", withExtension: "ttf") {
             var registerError: Unmanaged<CFError>?
-            CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, &registerError)
+            let ok = CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, &registerError)
+            if !ok, let registerError {
+                print("Archivo font registration failed: \(registerError.takeUnretainedValue())")
+            }
+            // Debug-only: a variable font registers as one family with N/one
+            // named instance (e.g. only "Archivo SemiBold"). If `.weight()`
+            // can't reach the heavier weights NowFocusFonts.heading() asks
+            // for, this line is how we'd find out — check it in Console
+            // before trusting any Archivo heading to actually render heavy.
+            print("Archivo family members: \(NSFontManager.shared.availableMembers(ofFontFamily: "Archivo") ?? [])")
+        } else {
+            print("archivo_variable.ttf not found in bundle — headings will fall back to system font")
         }
+
+        #if DEBUG
+        HistoryStats.runSelfCheck()
+        BedtimeSchedule.runSelfCheck()
+        #endif
 
         // Initialize DB
         _ = DatabaseManager.shared
@@ -58,6 +75,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // never reopened — see SessionController's doc comment.
         sessionMonitor = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.checkSessionExpiry() }
+        }
+
+        BedtimeScheduler.shared.start()
+
+        // On first launch, bring the main window forward automatically so the
+        // onboarding wizard is visible without requiring the user to find the
+        // menu bar icon first.
+        if !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+            DispatchQueue.main.async {
+                NSApp.setActivationPolicy(.regular)
+                NSApp.activate(ignoringOtherApps: true)
+                // Post a notification that the SwiftUI openWindow action can't
+                // be called from AppDelegate — MainWindowView already renders
+                // OnboardingView instead of the sidebar via @AppStorage, and
+                // the Window scene in NowFocusApp will open on activation.
+                NSApp.windows.first { $0.identifier?.rawValue == MainWindowView.windowID }?.makeKeyAndOrderFront(nil)
+            }
         }
 
         // Preferences temporarily promotes us to a regular app (Dock/Cmd+Tab)
@@ -104,8 +138,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             engine.evaluateState(for: &session)
 
             if engine.isActive(session) {
-                guard let policy = try DatabaseManager.shared.fetchPolicy(id: session.policyId) else { return }
-                SessionController.startEnforcement(policy: policy)
+                guard let policy = try DatabaseManager.shared.fetchPolicy(id: session.policyId) else {
+                    // Policy was deleted while the app was closed (or a pre-fix
+                    // orphan) — end the session instead of leaving enforcement stuck.
+                    SessionController.endSession(session, cancelled: true)
+                    return
+                }
+                SessionController.startEnforcement(policy: policy, sessionId: session.id)
             } else {
                 // Session expired while we were closed.
                 SessionController.endSession(session)

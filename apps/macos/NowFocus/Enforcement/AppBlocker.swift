@@ -11,15 +11,25 @@ public class AppBlocker {
     private var activeBlockedApps: Set<String> = []
     private var isSessionActive: Bool = false
     private var blockedApp: NSRunningApplication?
-    
+    private var activeSessionId: String?
+
+    // De-dup window for Stats' "turned away" count: a blocked app bounced
+    // repeatedly within 3s of its last logged attempt is one attempt, not
+    // several — a single "try to open it" gesture can fire more than one
+    // foreground-change notification. Mirrors Android's shouldLogBlockEvent.
+    private var lastLoggedBundleID: String?
+    private var lastLoggedAt: Date?
+    private let blockEventDedupWindow: TimeInterval = 3
+
     private init() {
         setupObservers()
     }
-    
-    public func updatePolicy(isSessionActive: Bool, blockedApps: [String]) {
+
+    public func updatePolicy(sessionId: String?, isSessionActive: Bool, blockedApps: [String]) {
+        self.activeSessionId = sessionId
         self.isSessionActive = isSessionActive
         self.activeBlockedApps = Set(blockedApps)
-        
+
         // Check current frontmost app immediately
         if let frontmost = NSWorkspace.shared.frontmostApplication {
             checkApplication(frontmost)
@@ -59,8 +69,31 @@ public class AppBlocker {
         if activeBlockedApps.contains(bundleID) {
             blockedApp = app
             showOverlay()
+            logBlockEvent(app: app, bundleID: bundleID)
         } else {
             hideOverlay()
+        }
+    }
+
+    private func logBlockEvent(app: NSRunningApplication, bundleID: String) {
+        guard let sessionId = activeSessionId else { return }
+
+        let now = Date()
+        if let lastLoggedAt, bundleID == lastLoggedBundleID, now.timeIntervalSince(lastLoggedAt) < blockEventDedupWindow {
+            return
+        }
+        lastLoggedBundleID = bundleID
+        lastLoggedAt = now
+
+        let metadata: [String: String] = ["bundleId": bundleID, "name": app.localizedName ?? bundleID]
+        guard let metadataJson = try? JSONSerialization.data(withJSONObject: metadata),
+              let metadataString = String(data: metadataJson, encoding: .utf8) else { return }
+
+        let event = SessionEvent(sessionId: sessionId, type: "app_blocked", occurredAt: now, metadataJson: metadataString)
+        do {
+            try DatabaseManager.shared.logEvent(event)
+        } catch {
+            print("Failed to log block event: \(error)")
         }
     }
 

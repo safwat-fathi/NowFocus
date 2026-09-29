@@ -40,6 +40,7 @@ targets:
       ENABLE_HARDENED_RUNTIME: YES
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       INFOPLIST_KEY_LSUIElement: YES
+      INFOPLIST_KEY_NSMicrophoneUsageDescription: "NowFocus records a short voice message to your future self. It stays on this Mac and plays back when you need motivation to stay focused."
       GENERATE_INFOPLIST_FILE: YES
       MARKETING_VERSION: "1.0"
       CURRENT_PROJECT_VERSION: "1"
@@ -65,5 +66,5 @@ targets:
       - target: NowFocusCore
     settings:
       CODE_SIGN_IDENTITY: "-"
-      ENABLE_HARDENED_RUNTIME: YES
+      ENABLE_HARDENED_RUNTIME: NO
       LD_RUNPATH_SEARCH_PATHS: "@executable_path/../../Frameworks"

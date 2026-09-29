@@ -23,9 +23,10 @@ enum SessionController {
     static let status = SessionStatus()
 
     @MainActor
-    static func startEnforcement(policy: BlockPolicy) {
+    static func startEnforcement(policy: BlockPolicy, sessionId: String) {
         DaemonClient.shared.apply(policy: policy)
         AppBlocker.shared.updatePolicy(
+            sessionId: sessionId,
             isSessionActive: true,
             blockedApps: policy.applications.filter { $0.enabled }.map { $0.nativeIdentifier }
         )
@@ -35,20 +36,29 @@ enum SessionController {
     @MainActor
     static func stopEnforcement() {
         DaemonClient.shared.clear()
-        AppBlocker.shared.updatePolicy(isSessionActive: false, blockedApps: [])
+        AppBlocker.shared.updatePolicy(sessionId: nil, isSessionActive: false, blockedApps: [])
         status.isActive = false
     }
 
-    /// Marks `session` completed, persists it, and tears down enforcement.
-    /// Idempotent — safe to call even if enforcement was never applied.
+    /// Marks `session` completed (ran its course) or cancelled (stopped
+    /// early), persists it, and tears down enforcement. Idempotent — safe to
+    /// call even if enforcement was never applied. `cancelled` matters beyond
+    /// bookkeeping: `FocusSession.focusedDuration` (Stats) only credits full
+    /// duration to `.completed` sessions — every other status counts elapsed
+    /// time via `cancelledAt`, so a real early-stop that stayed `.completed`
+    /// would silently inflate focused-time and completion-rate.
     @MainActor
     @discardableResult
-    static func endSession(_ session: FocusSession) -> FocusSession {
+    static func endSession(_ session: FocusSession, cancelled: Bool = false) -> FocusSession {
         var ended = session
         if ended.status == .active || ended.status == .scheduled {
-            ended.status = .completed
+            ended.status = cancelled ? .cancelled : .completed
         }
-        ended.completedAt = Date()
+        if cancelled {
+            ended.cancelledAt = Date()
+        } else {
+            ended.completedAt = Date()
+        }
 
         do {
             try DatabaseManager.shared.saveSession(ended)

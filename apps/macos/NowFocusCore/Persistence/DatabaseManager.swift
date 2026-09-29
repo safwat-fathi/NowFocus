@@ -67,7 +67,34 @@ public class DatabaseManager {
                 t.column("metadataJson", .text)
             }
         }
-        
+
+        migrator.registerMigration("v2") { db in
+            try db.alter(table: "focusSession") { t in
+                t.add(column: "source", .text).notNull().defaults(to: SessionSource.user.rawValue)
+                t.add(column: "createdByExtensionId", .text)
+                t.add(column: "extensionMetadata", .blob)
+                t.add(column: "pausedAt", .datetime)
+            }
+        }
+
+        migrator.registerMigration("v3") { db in
+            try db.create(table: "userGoal") { t in
+                t.column("id", .text).primaryKey()
+                t.column("text", .text).notNull()
+                t.column("priority", .text).notNull()
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+            }
+
+            try db.create(table: "userConnection") { t in
+                t.column("id", .text).primaryKey()
+                t.column("name", .text).notNull()
+                t.column("phoneNumber", .text)
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+            }
+        }
+
         return migrator
     }
     
@@ -109,6 +136,32 @@ public class DatabaseManager {
             try event.save(db)
         }
     }
+
+    /// Sessions that *started* in `[from, to)` — Stats aggregates over this.
+    /// `sessionType` narrows it (Stats wants `.focus` only — a nightly
+    /// `.bedtime_winddown` session would otherwise dominate focused-time and
+    /// keep the streak alive every day regardless of real focus activity).
+    public func fetchSessions(from: Date, to: Date, sessionType: SessionType? = nil) throws -> [FocusSession] {
+        try dbQueue.read { db in
+            var request = FocusSession.filter(Column("startAt") >= from && Column("startAt") < to)
+            if let sessionType {
+                request = request.filter(Column("sessionType") == sessionType.rawValue)
+            }
+            return try request.order(Column("startAt")).fetchAll(db)
+        }
+    }
+
+
+    /// Logged events (e.g. "app_blocked") in `[from, to)`, optionally filtered by type.
+    public func fetchEvents(from: Date, to: Date, type: String? = nil) throws -> [SessionEvent] {
+        try dbQueue.read { db in
+            var request = SessionEvent.filter(Column("occurredAt") >= from && Column("occurredAt") < to)
+            if let type {
+                request = request.filter(Column("type") == type)
+            }
+            return try request.fetchAll(db)
+        }
+    }
     
     public func fetchAllPolicies() throws -> [BlockPolicy] {
         return try dbQueue.read { db in
@@ -119,10 +172,80 @@ public class DatabaseManager {
     
     public func deletePolicy(id: String) throws {
         try dbQueue.write { db in
+            // Cancel any active/scheduled session bound to this policy in the same
+            // transaction, so deleting a profile can never leave an orphaned session
+            // that `fetchActiveSession()` keeps returning forever.
+            let orphaned = try FocusSession
+                .filter(Column("policyId") == id)
+                .filter(Column("status") == FocusSessionStatus.active.rawValue
+                     || Column("status") == FocusSessionStatus.scheduled.rawValue)
+                .fetchAll(db)
+            for var session in orphaned {
+                session.status = .cancelled
+                session.cancelledAt = Date()
+                try session.save(db)
+            }
             _ = try BlockPolicyRecord.deleteOne(db, key: id)
         }
     }
     
+    // MARK: - Goals
+
+    public func saveGoal(_ goal: UserGoal) throws {
+        try dbQueue.write { db in try goal.save(db) }
+    }
+
+    public func fetchAllGoals() throws -> [UserGoal] {
+        try dbQueue.read { db in
+            try UserGoal.order(Column("createdAt")).fetchAll(db)
+        }
+    }
+
+    public func deleteGoal(id: String) throws {
+        try dbQueue.write { db in _ = try UserGoal.deleteOne(db, key: id) }
+    }
+
+    /// Returns a random high-priority goal, falling back to any goal.
+    /// Used in unlock and block overlays for motivation.
+    public func fetchRandomGoal() throws -> UserGoal? {
+        try dbQueue.read { db in
+            let high = try UserGoal
+                .filter(Column("priority") == GoalPriority.high.rawValue)
+                .fetchAll(db)
+            if let picked = high.randomElement() { return picked }
+            return try UserGoal.fetchAll(db).randomElement()
+        }
+    }
+
+    // MARK: - Connections
+
+    public func saveConnection(_ connection: UserConnection) throws {
+        try dbQueue.write { db in try connection.save(db) }
+    }
+
+    public func fetchAllConnections() throws -> [UserConnection] {
+        try dbQueue.read { db in
+            try UserConnection.order(Column("createdAt")).fetchAll(db)
+        }
+    }
+
+    public func deleteConnection(id: String) throws {
+        try dbQueue.write { db in _ = try UserConnection.deleteOne(db, key: id) }
+    }
+
+    /// Returns a random connection (prefers ones with a phone number).
+    public func fetchRandomConnection() throws -> UserConnection? {
+        try dbQueue.read { db in
+            let withPhone = try UserConnection
+                .filter(Column("phoneNumber") != nil)
+                .fetchAll(db)
+            if let picked = withPhone.randomElement() { return picked }
+            return try UserConnection.fetchAll(db).randomElement()
+        }
+    }
+
+    // MARK: - Seed
+
     public func seedDefaultPolicyIfNeeded() {
         do {
             let existing = try fetchAllPolicies()
