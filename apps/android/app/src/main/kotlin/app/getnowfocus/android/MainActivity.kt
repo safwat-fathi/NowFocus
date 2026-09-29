@@ -253,7 +253,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
         }
         if (tabsVisible) {
             BottomTabBar(
-                onFocus = { screen = Screen.Home },
+                onFocus = { screen = if (running) Screen.Active else Screen.Home },
                 onRules = { screen = Screen.Policies },
                 onDevices = { screen = Screen.Devices },
                 onStats = { screen = Screen.Stats },
@@ -279,14 +279,16 @@ private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onDevices: ()
 
 @Composable
 private fun TabItem(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    // Bar first and flush with the rule above (no top padding), inset from the tab edges.
     Column(
-        modifier
-            .clickable(onClick = onClick)
-            .padding(vertical = NowFocusSpace.s3),
+        modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.height(3.dp).fillMaxWidth().background(if (selected) NowFocusColors.accent else Color.Transparent))
-        Spacer(Modifier.height(NowFocusSpace.s1))
+        Box(
+            Modifier.padding(horizontal = NowFocusSpace.s4).height(3.dp).fillMaxWidth()
+                .background(if (selected) NowFocusColors.accent else Color.Transparent),
+        )
+        Spacer(Modifier.height(NowFocusSpace.s3))
         Text(
             label,
             style = TextStyle(
@@ -296,6 +298,7 @@ private fun TabItem(label: String, selected: Boolean, modifier: Modifier = Modif
                 color = if (selected) NowFocusColors.text else NowFocusColors.neutral600,
             ),
         )
+        Spacer(Modifier.height(NowFocusSpace.s3))
     }
 }
 
