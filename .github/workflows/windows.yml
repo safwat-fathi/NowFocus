@@ -39,6 +39,17 @@ jobs:
           cache: npm
           cache-dependency-path: apps/windows/package-lock.json
 
+      # Must run before any NowFocus build: the merged tauri.windows.conf.json
+      # declares now-focus-service as an externalBin sidecar, and
+      # generate_context! resolves it at compile time. Tauri's sidecar
+      # resolution expects the target-triple-suffixed name.
+      - name: Build & stage the privileged service as a sidecar
+        shell: pwsh
+        run: |
+          cargo build -p now-focus-service --release
+          New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null
+          Copy-Item target/release/now-focus-service.exe src-tauri/binaries/now-focus-service-x86_64-pc-windows-msvc.exe
+
       - run: cargo fmt --all -- --check
       - run: cargo build --workspace --verbose
       - run: cargo test --workspace --verbose
@@ -53,6 +64,7 @@ jobs:
       # the right flag set for a from-scratch CI runner as of Tauri CLI v2 —
       # if this step fails on first real run, check `npx tauri build --help`
       # before assuming the Rust side is broken.)
+      # Bundles the app + the staged service sidecar and runs the NSIS
+      # installer hooks (which register the service). Proves the whole thing
+      # links and packages; not a signed release artifact.
       - run: npx tauri build --debug
-      - name: Build the background service binary
-        run: cargo build -p now-focus-service --verbose
