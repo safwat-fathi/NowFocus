@@ -60,7 +60,7 @@ fn monitor_work_areas() -> Vec<RECT> {
     // retains the pointer beyond that.
     unsafe {
         EnumDisplayMonitors(
-            0,
+            std::ptr::null_mut(),
             std::ptr::null(),
             Some(monitor_enum_proc),
             &mut areas as *mut Vec<RECT> as LPARAM,

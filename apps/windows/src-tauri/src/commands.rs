@@ -136,11 +136,17 @@ pub fn end_session_normal(state: State<SharedState>) -> Result<AppStateDto, Stri
 }
 
 #[tauri::command]
-pub fn begin_unlock(state: State<SharedState>) -> Result<AppStateDto, String> {
+pub fn begin_unlock(
+    app: tauri::AppHandle,
+    state: State<SharedState>,
+) -> Result<AppStateDto, String> {
     state
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .begin_unlock()?;
+    // Reached from the shield overlay too, whose windows can't show the main
+    // window from JS, and the main window may be hidden in the tray.
+    crate::show_main_window(&app);
     snapshot(&state)
 }
 

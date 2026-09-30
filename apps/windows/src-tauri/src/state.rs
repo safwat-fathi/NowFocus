@@ -436,6 +436,7 @@ impl AppState {
             .record_event(&session.id, event, None)
             .map_err(|e| e.to_string())?;
         self.unlock = None;
+        self.shield = None;
         Ok(())
     }
 
@@ -450,6 +451,9 @@ impl AppState {
             typed: String::new(),
             wait_started_at: None,
         });
+        // The shield has no unlock UI and covers every screen: step aside so
+        // the flow (rendered in the main window) is reachable.
+        self.shield = None;
         Ok(())
     }
 
@@ -906,6 +910,10 @@ mod tests {
     /// Helper: create an AppState with a profile and an active session on it.
     /// Returns (state, profile_id, enforcer_log).
     fn setup() -> (AppState, String, Arc<Mutex<Vec<BlockPolicy>>>) {
+        setup_mode("normal")
+    }
+
+    fn setup_mode(mode: &str) -> (AppState, String, Arc<Mutex<Vec<BlockPolicy>>>) {
         let db = Database::open_in_memory().expect("in-memory DB");
         let (fake, log) = FakeEnforcer::new();
         let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
@@ -923,7 +931,7 @@ mod tests {
             .id
             .clone();
 
-        state.start_session(&profile_id, 60, "normal").unwrap();
+        state.start_session(&profile_id, 60, mode).unwrap();
 
         // start_session calls enforcer.apply — clear that from the log so
         // assertions below only see re-applies triggered by add_domain.
@@ -1003,6 +1011,40 @@ mod tests {
         assert!(
             result.is_err(),
             "remove_application should be rejected during an active session"
+        );
+    }
+
+    #[test]
+    fn finish_session_clears_shield() {
+        let (mut state, _profile_id, _log) = setup();
+        state
+            .simulate_block("app".into(), "Notepad".into())
+            .unwrap();
+        assert!(state.snapshot().unwrap().shield.is_some());
+
+        state.end_session_normal().unwrap();
+
+        assert!(
+            state.snapshot().unwrap().shield.is_none(),
+            "the shield must not outlive the session it was raised for"
+        );
+    }
+
+    #[test]
+    fn begin_unlock_clears_shield() {
+        let (mut state, _profile_id, _log) = setup_mode("strict");
+        state
+            .simulate_block("app".into(), "Notepad".into())
+            .unwrap();
+        assert!(state.snapshot().unwrap().shield.is_some());
+
+        state.begin_unlock().unwrap();
+
+        let snap = state.snapshot().unwrap();
+        assert!(snap.unlock.is_some(), "unlock flow should be open");
+        assert!(
+            snap.shield.is_none(),
+            "the shield covers the screen and has no unlock UI, so it must step aside"
         );
     }
 }

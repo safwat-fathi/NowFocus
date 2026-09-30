@@ -11,11 +11,13 @@ path = "src/main.rs"
 [dependencies]
 now-focus-core = { path = "../core" }
 now-focus-ipc = { path = "../ipc" }
+serde = "1"
 serde_json = "1"
+chrono = "0.4"
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.7"
-tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "sync", "time", "macros"] }
 windows-sys = { version = "0.59", features = [
     "Win32_Foundation",
     "Win32_Security",

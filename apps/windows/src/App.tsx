@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
+import { UnlockDialog } from "./components/UnlockDialog";
 import { api } from "./lib/api";
 import type { AppState, ScreenId } from "./types";
 
@@ -46,9 +47,10 @@ export default function App() {
     return <div className="app-shell" />;
   }
 
-  // A real block event takes over the screen no matter what the user was
-  // looking at — matches the design's `full` takeover for "shield".
-  const view: ScreenId | "shield" = state.shield ? "shield" : screen;
+  // An open unlock flow wins over everything (it is the way out of the shield);
+  // otherwise a real block event takes over the screen no matter what the user
+  // was looking at — matches the design's `full` takeover for "shield".
+  const view: ScreenId | "shield" = state.unlock ? "active" : state.shield ? "shield" : screen;
   const showChrome = view !== "shield" && view !== "tray";
   const showSidebar = showChrome && view !== "onboard";
 
@@ -78,6 +80,7 @@ export default function App() {
           {view === "shield" && <Shield state={state} onState={refresh} />}
         </div>
       </div>
+      {state.unlock && <UnlockDialog state={state} onState={refresh} />}
     </div>
   );
 }

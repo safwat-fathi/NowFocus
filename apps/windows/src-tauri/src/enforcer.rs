@@ -27,6 +27,7 @@ pub trait Enforcer: Send {
 /// tell users they're protected" mistake the architecture doc warns against
 /// (focus_app_technical_architecture.md §35). Phase 3/4 replace this with a
 /// real `WindowsEnforcer` behind `#[cfg(windows)]`.
+#[cfg_attr(windows, allow(dead_code))] // only constructed off-Windows; the real enforcer is used there
 pub struct NoopEnforcer {
     applied: bool,
     /// Dev-mode only: a synthesized commitment so the Commitment screen's
@@ -35,6 +36,7 @@ pub struct NoopEnforcer {
     commitment: Option<CommitmentStatusWire>,
 }
 
+#[cfg_attr(windows, allow(dead_code))]
 impl NoopEnforcer {
     pub fn new() -> Self {
         Self {

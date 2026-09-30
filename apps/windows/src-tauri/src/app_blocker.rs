@@ -13,7 +13,9 @@
 //! from memory. If this silently never fires on real Windows, check those
 //! three first.
 
-use std::sync::atomic::{AtomicIsize, Ordering};
+use std::ffi::c_void;
+use std::ptr::null_mut;
+use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::OnceLock;
 
 use tauri::{AppHandle, Manager};
@@ -30,9 +32,9 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 use crate::commands::SharedState;
 
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
-/// Raw `HWINEVENTHOOK` value (an opaque handle, i.e. just an integer) — 0
-/// means "not installed" or "installation failed", matching `NULL`.
-static HOOK: AtomicIsize = AtomicIsize::new(0);
+/// Raw `HWINEVENTHOOK` (an opaque pointer-sized handle in windows-sys 0.59) —
+/// null means "not installed" or "installation failed".
+static HOOK: AtomicPtr<c_void> = AtomicPtr::new(null_mut());
 
 /// Call once at startup. Safe to call even if it fails; `is_active()`
 /// reflects the real result for the Devices screen instead of assuming success.
@@ -49,7 +51,7 @@ pub fn install(app: AppHandle) {
         SetWinEventHook(
             EVENT_SYSTEM_FOREGROUND,
             EVENT_SYSTEM_FOREGROUND,
-            0,
+            null_mut(),
             Some(win_event_proc),
             0,
             0,
@@ -57,7 +59,7 @@ pub fn install(app: AppHandle) {
         )
     };
     HOOK.store(hook, Ordering::SeqCst);
-    if hook == 0 {
+    if hook.is_null() {
         eprintln!("SetWinEventHook failed — app blocking will not detect foreground changes");
     }
 }
@@ -67,7 +69,7 @@ pub fn install(app: AppHandle) {
 /// `AppBlocker.checkHealth()`, this is a real check, not a hardcoded `true`,
 /// because this specific API can genuinely fail.
 pub fn is_active() -> bool {
-    HOOK.load(Ordering::SeqCst) != 0
+    !HOOK.load(Ordering::SeqCst).is_null()
 }
 
 const OBJID_WINDOW: i32 = 0;
@@ -81,7 +83,7 @@ unsafe extern "system" fn win_event_proc(
     _event_thread: u32,
     _event_time: u32,
 ) {
-    if event != EVENT_SYSTEM_FOREGROUND || hwnd == 0 || id_object != OBJID_WINDOW {
+    if event != EVENT_SYSTEM_FOREGROUND || hwnd.is_null() || id_object != OBJID_WINDOW {
         return;
     }
     let Some(exe_path) = foreground_process_path(hwnd) else {
@@ -124,7 +126,7 @@ fn foreground_process_path(hwnd: HWND) -> Option<String> {
     // needs and works even for processes owned by other users/elevated
     // processes, which a plain user-level `AppBlocker` should expect to see.
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
-    if handle == 0 {
+    if handle.is_null() {
         return None;
     }
 

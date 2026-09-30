@@ -98,7 +98,7 @@ fn build_security_descriptor(sddl: &str) -> io::Result<*mut c_void> {
     let ok = unsafe {
         ConvertStringSecurityDescriptorToSecurityDescriptorW(
             wide.as_ptr(),
-            SDDL_REVISION_1 as u32,
+            SDDL_REVISION_1,
             &mut psd,
             std::ptr::null_mut(),
         )
