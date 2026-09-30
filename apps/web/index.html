@@ -295,10 +295,13 @@
 <script>
   // Set both to publish the demo video: a same-origin file (e.g. "/media/promo-16x9.mp4") and its upload date ("YYYY-MM-DD").
   // The date also adds VideoObject structured data for search engines.
-  const VIDEO_URL = "";
-  const VIDEO_UPLOADED = "";
+  const mobile = matchMedia("(max-width: 640px)").matches;
+  const VIDEO_URL = mobile ? "/media/promo-9x16.mp4" : "/media/promo-16x9.mp4";
+  const VIDEO_POSTER = VIDEO_URL.replace(".mp4", ".jpg").replace("promo-", "poster-");
+  const VIDEO_UPLOADED = "2026-09-29";
   if (VIDEO_URL) {
     const v = document.getElementById("demo-video");
+    v.poster = VIDEO_POSTER;
     v.src = VIDEO_URL;
     v.hidden = false;
     document.getElementById("demo-placeholder").hidden = true;
@@ -309,7 +312,7 @@
         "@context": "https://schema.org", "@type": "VideoObject",
         name: "NowFocus demo: a focus session",
         description: "Start a session, meet a blocked app and try to quit early.",
-        thumbnailUrl: ["https://nowfocus.online/og-image.png"],
+        thumbnailUrl: [new URL(VIDEO_POSTER, location.href).href],
         uploadDate: VIDEO_UPLOADED, contentUrl: new URL(VIDEO_URL, location.href).href,
       });
       document.head.appendChild(ld);

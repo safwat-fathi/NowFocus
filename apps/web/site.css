@@ -119,6 +119,7 @@ a.btn-secondary:hover { color: var(--color-text); }
 }
 
 @media (max-width: 640px) {
+  .video { aspect-ratio: 9 / 16; width: min(100%, 85svh * 9 / 16); margin-inline: auto; }
   .video-top { padding: 12px 16px; }
   .video-play { width: 64px; height: 64px; }
   .video-play svg { width: 24px; height: 24px; }
