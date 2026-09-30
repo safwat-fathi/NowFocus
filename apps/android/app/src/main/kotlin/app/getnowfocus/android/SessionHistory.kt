@@ -188,6 +188,14 @@ object HistoryStats {
         return streak
     }
 
+    /** Every blocked attempt in [from, to) across all apps (the top-3 list alone would undercount). */
+    fun turnedAwayCount(events: List<BlockEventRow>, from: Long, to: Long): Int =
+        events.count { it.timestampMillis in from until to }
+
+    /** Local midnight at the start of the day containing [now]. */
+    fun startOfDayMillis(now: Long, zone: ZoneId): Long =
+        Instant.ofEpochMilli(now).atZone(zone).toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
+
     fun topBlockedPackages(events: List<BlockEventRow>, from: Long, to: Long, limit: Int = 3): List<Pair<String, Int>> =
         events.filter { it.timestampMillis in from until to }
             .groupingBy { it.packageName }

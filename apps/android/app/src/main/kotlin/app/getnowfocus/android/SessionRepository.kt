@@ -54,6 +54,7 @@ class SessionRepository(context: Context) {
         val BEDTIME_POLICY_ID = stringPreferencesKey("bedtimePolicyId")
         val ONBOARDING_DONE = booleanPreferencesKey("onboardingDone")
         val PEOPLE = stringPreferencesKey("people")
+        val GOALS = stringPreferencesKey("goals")
     }
 
     val sessionFlow: Flow<FocusSession?> = store.data.map { p ->
@@ -133,6 +134,18 @@ class SessionRepository(context: Context) {
         store.edit { p ->
             val current = p[Keys.PEOPLE]?.let { Person.listFromJson(it) } ?: emptyList()
             p[Keys.PEOPLE] = Person.listToJson(transform(current))
+        }
+    }
+
+    /** Empty until the user adds a goal - the Strict pause and block screen then show none. */
+    val goalsFlow: Flow<List<Goal>> = store.data.map { p ->
+        p[Keys.GOALS]?.let { Goal.listFromJson(it) } ?: emptyList()
+    }
+
+    suspend fun updateGoals(transform: (List<Goal>) -> List<Goal>) {
+        store.edit { p ->
+            val current = p[Keys.GOALS]?.let { Goal.listFromJson(it) } ?: emptyList()
+            p[Keys.GOALS] = Goal.listToJson(transform(current))
         }
     }
 

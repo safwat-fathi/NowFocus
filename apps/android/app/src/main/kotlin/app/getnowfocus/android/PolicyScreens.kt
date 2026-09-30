@@ -47,6 +47,8 @@ fun PolicyListScreen(
     onOpenBedtime: () -> Unit,
     peopleCount: Int,
     onOpenPeople: () -> Unit,
+    goalsCount: Int,
+    onOpenGoals: () -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
@@ -110,6 +112,20 @@ fun PolicyListScreen(
                     Text("People who matter", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
                     Text(
                         if (peopleCount == 0) "Not set up" else "$peopleCount shown on the block screen",
+                        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                    )
+                }
+            }
+            SectionRule()
+
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onOpenGoals).padding(vertical = NowFocusSpace.s3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Your goals", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(
+                        if (goalsCount == 0) "Not set up" else "$goalsCount to remind you why",
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                     )
                 }
@@ -198,7 +214,7 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
 @Composable
 fun PartialRulesSection(selected: Set<PartialRule>, onChange: (Set<PartialRule>) -> Unit) {
     val context = LocalContext.current
-    Text("PARTIAL BLOCKING", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+    Text("PARTIAL BLOCKING \u00b7 EXPERIMENTAL", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
     SectionRule(thick = true)
     if (selected.isNotEmpty() && !Enforcement.isAccessibilityEnabled(context)) {
         Text(

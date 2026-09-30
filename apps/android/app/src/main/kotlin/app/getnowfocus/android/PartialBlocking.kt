@@ -8,6 +8,8 @@ enum class PartialRule(val label: String, val detail: String, val action: Partia
     YT_HOME("YouTube Home feed", "Hides recommended videos on the Home tab", PartialAction.COVER),
     YT_RELATED("YouTube up next / related", "Hides the list under a playing video", PartialAction.COVER),
     FB_REELS("Facebook Reels", "Backs out of the Reels tab and viewer", PartialAction.LEAVE),
+    IG_REELS("Instagram Reels & Explore", "Backs out of the Reels tab, viewer and Explore tab", PartialAction.LEAVE),
+    X_FOR_YOU("X \u201cFor you\u201d feed", "Hides the For you timeline; Following stays open", PartialAction.COVER),
 }
 
 /** Plain-data copy of an AccessibilityNodeInfo subtree, so matching is testable on the JVM (no android.graphics.Rect). */
@@ -29,17 +31,27 @@ data class PartialMatch(val rule: PartialRule, val left: Int, val top: Int, val 
  *
  * Candidates, NOT yet verified on a device - confirm with a uiautomator dump / Accessibility
  * Inspector, then record the app versions here:
- *   YouTube: unverified   Facebook: unverified
+ *   YouTube: unverified   Facebook: unverified   Instagram: unverified   X: unverified
+ * Instagram and X are the newest and least checked (written from how those apps are commonly
+ * described, with no device to test on): expect to correct their ids and labels.
  */
 object PartialSignatures {
     const val YOUTUBE = "com.google.android.youtube"
     val FACEBOOK = setOf("com.facebook.katana", "com.facebook.lite")
-    val PACKAGES = FACEBOOK + YOUTUBE
+    const val INSTAGRAM = "com.instagram.android"
+    const val X = "com.twitter.android"
+    val PACKAGES = FACEBOOK + YOUTUBE + INSTAGRAM + X
 
     private const val YT = "$YOUTUBE:id/"
     val SHORTS_IDS = setOf("${YT}reel_recycler", "${YT}reel_player_page_container")
     const val HOME_FEED_ID = "${YT}results"
     const val RELATED_LIST_ID = "${YT}watch_list"
+
+    const val IG_REELS_VIEWER_ID_PART = "clips_viewer"
+    val IG_TAB_LABELS = listOf("Reels", "Search and explore")
+
+    const val X_TIMELINE_ID = "$X:id/timeline"
+    const val X_FOR_YOU_LABEL = "For you"
 }
 
 object PartialBlocking {
@@ -53,6 +65,8 @@ object PartialBlocking {
         return when (pkg) {
             PartialSignatures.YOUTUBE -> youtube(root, enabled)
             in PartialSignatures.FACEBOOK -> facebook(root, enabled)
+            PartialSignatures.INSTAGRAM -> instagram(root, enabled)
+            PartialSignatures.X -> x(root, enabled)
             else -> null
         }
     }
@@ -81,6 +95,23 @@ object PartialBlocking {
         val reels = root.find { it.selected && it.label().startsWith("Reels", ignoreCase = true) }
             ?: root.find { it.viewId?.contains("reels_viewer") == true }
         return reels?.let { PartialMatch(PartialRule.FB_REELS, it.left, it.top, it.right, it.bottom) }
+    }
+
+    private fun instagram(root: NodeSnapshot, enabled: Set<PartialRule>): PartialMatch? {
+        if (PartialRule.IG_REELS !in enabled) return null
+        // The bottom-bar buttons always exist, so only a SELECTED Reels / Explore tab (or the full-screen
+        // viewer) counts. Reels text inside the feed must not match: backing out of the feed leaves Instagram.
+        val surface = root.find { n -> n.selected && PartialSignatures.IG_TAB_LABELS.any { n.label().startsWith(it, ignoreCase = true) } }
+            ?: root.find { it.viewId?.contains(PartialSignatures.IG_REELS_VIEWER_ID_PART) == true }
+        return surface?.let { PartialMatch(PartialRule.IG_REELS, it.left, it.top, it.right, it.bottom) }
+    }
+
+    private fun x(root: NodeSnapshot, enabled: Set<PartialRule>): PartialMatch? {
+        if (PartialRule.X_FOR_YOU !in enabled) return null
+        // COVER, never LEAVE: BACK from X's home timeline exits the app.
+        if (root.find { it.selected && it.label().startsWith(PartialSignatures.X_FOR_YOU_LABEL, ignoreCase = true) } == null) return null
+        return root.find { it.viewId == PartialSignatures.X_TIMELINE_ID && it.hasArea() }
+            ?.let { PartialMatch(PartialRule.X_FOR_YOU, it.left, it.top, it.right, it.bottom) }
     }
 
     private fun NodeSnapshot.label() = desc ?: text ?: ""
@@ -117,4 +148,23 @@ class LeaveGate {
         const val COOLDOWN_MS = 600L
         const val WINDOW_MS = 3_000L
     }
+}
+
+/**
+ * One block event per stretch on a matched surface. A COVER rule keeps matching on every re-check
+ * while the user sits on the feed, so logging each match would turn one urge into a row every few
+ * seconds and inflate Home stats, "Tries today" and the urge map.
+ */
+class MatchLogGate {
+    private var last: Pair<String, PartialRule>? = null
+
+    fun shouldLog(pkg: String, rule: PartialRule): Boolean {
+        val key = pkg to rule
+        if (key == last) return false
+        last = key
+        return true
+    }
+
+    /** The surface is gone (or the app was left): the next match is a new attempt. */
+    fun clear() { last = null }
 }

@@ -107,6 +107,7 @@ private sealed interface Screen {
     data object Devices : Screen
     data object Onboarding : Screen
     data object People : Screen
+    data object Goals : Screen
 }
 
 // Same presets as the macOS menu bar picker.
@@ -129,6 +130,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val bedtime by viewModel.bedtimeSettings.collectAsStateWithLifecycle()
     val onboardingDone by viewModel.onboardingDone.collectAsStateWithLifecycle()
     val people by viewModel.people.collectAsStateWithLifecycle()
+    val goals by viewModel.goals.collectAsStateWithLifecycle()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var elapsedNow by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
     // Boot count doesn't change during a session, so it's read once, not ticked.
@@ -224,6 +226,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                         onCancel = { completed, listened -> viewModel.cancelSession(completed, listened) },
                         onCancelled = { screen = Screen.Home },
                         onBack = { screen = Screen.Active },
+                        goals = goals,
                     )
                 }
                 Screen.Policies -> {
@@ -241,6 +244,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                         onOpenBedtime = { screen = Screen.Bedtime },
                         peopleCount = people.size,
                         onOpenPeople = { screen = Screen.People },
+                        goalsCount = goals.size,
+                        onOpenGoals = { screen = Screen.Goals },
                     )
                 }
                 is Screen.EditPolicy -> {
@@ -264,6 +269,9 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                 Screen.Devices -> DevicesScreen(resumeKey = resumeCount)
                 Screen.Onboarding -> OnboardingScreen(
                     resumeKey = resumeCount,
+                    goals = goals,
+                    onAddGoal = viewModel::addGoal,
+                    onRemoveGoal = viewModel::removeGoal,
                     people = people,
                     onAddPerson = { name, phone -> viewModel.addPerson(name, phone, lastTalkedAt = null) },
                     onRemovePerson = viewModel::removePerson,
@@ -275,6 +283,12 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     onAdd = { name, phone -> viewModel.addPerson(name, phone, lastTalkedAt = null) },
                     onRemove = viewModel::removePerson,
                     onSetLastTalked = viewModel::setLastTalked,
+                    onBack = { screen = Screen.Policies },
+                )
+                Screen.Goals -> GoalsScreen(
+                    goals = goals,
+                    onAdd = viewModel::addGoal,
+                    onRemove = viewModel::removeGoal,
                     onBack = { screen = Screen.Policies },
                 )
             }
@@ -343,7 +357,18 @@ private fun HomeScreen(
     onOpenBedtime: () -> Unit,
 ) {
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d")) }
-    val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+    val context = LocalContext.current
+    val is24Hour = DateFormat.is24HourFormat(context)
+    // Today's numbers, re-read when the user returns or a session starts/ends.
+    var todayRows by remember { mutableStateOf<List<SessionHistoryRow>>(emptyList()) }
+    var todayEvents by remember { mutableStateOf<List<BlockEventRow>>(emptyList()) }
+    LaunchedEffect(resumeKey, running) {
+        val from = HistoryStats.startOfDayMillis(System.currentTimeMillis(), ZoneId.systemDefault())
+        val to = from + 24 * 60 * 60 * 1000L
+        val dao = HistoryDatabase.get(context).dao()
+        todayRows = dao.sessionsBetween(from, to)
+        todayEvents = dao.blockEventsBetween(from, to)
+    }
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3), verticalAlignment = Alignment.Bottom) {
@@ -364,6 +389,16 @@ private fun HomeScreen(
         SectionRule()
         Spacer(Modifier.height(NowFocusSpace.s3))
         key(resumeKey) { HealthRow() }
+        SectionRule()
+        val dayFrom = HistoryStats.startOfDayMillis(now, ZoneId.systemDefault())
+        val dayTo = dayFrom + 24 * 60 * 60 * 1000L
+        val focusedMinutes = HistoryStats.totalFocusedMillis(todayRows, dayFrom, dayTo) / 60_000
+        Row(Modifier.fillMaxWidth()) {
+            StatCell("Today", "${focusedMinutes / 60}h ${focusedMinutes % 60}m", Modifier.weight(1f))
+            StatCell("Turned away", "${HistoryStats.turnedAwayCount(todayEvents, dayFrom, dayTo)}", Modifier.weight(1f))
+            StatCell("Sessions", "${HistoryStats.sessionsCount(todayRows, dayFrom, dayTo)}", Modifier.weight(1f))
+        }
+        SectionRule()
         Spacer(Modifier.height(NowFocusSpace.s6))
 
         PrimaryButton(
@@ -461,9 +496,9 @@ private fun SetupScreen(
         Spacer(Modifier.height(NowFocusSpace.s4))
 
         if (policies.isEmpty()) {
-            Text("No policies yet.", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
+            Text("No profiles yet.", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
             Spacer(Modifier.height(NowFocusSpace.s2))
-            SecondaryButton("Manage policies", onClick = onManagePolicies)
+            SecondaryButton("Manage profiles", onClick = onManagePolicies)
             return@Column
         }
         val selected = policies.find { it.id == policyId } ?: policies.first()
@@ -487,7 +522,7 @@ private fun SetupScreen(
             SectionRule()
         }
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("Manage policies", onClick = onManagePolicies)
+        GhostButton("Manage profiles", onClick = onManagePolicies)
 
         Spacer(Modifier.height(NowFocusSpace.s4))
         Text("DURATION", style = kickerStyle(NowFocusColors.neutral700))
@@ -623,8 +658,11 @@ private fun UnlockScreen(
     onCancel: (Boolean, Boolean) -> Boolean,
     onCancelled: () -> Unit,
     onBack: () -> Unit,
+    goals: List<Goal>,
 ) {
     BackHandler(onBack = onBack)
+    // Picked once per visit, so the reminder doesn't change under the user's eyes each second.
+    val goal = remember { Goals.pick(goals)?.text }
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         GhostButton("‹ Back to focus", onClick = onBack)
@@ -681,6 +719,11 @@ private fun UnlockScreen(
                         else "Take a breath, then hear what you told yourself. You can leave once you have.",
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
                     )
+                    if (goal != null) {
+                        Spacer(Modifier.height(NowFocusSpace.s3))
+                        Text("REMEMBER WHY YOU STARTED", style = kickerStyle(NowFocusColors.neutral700))
+                        Text(goal, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    }
                     Spacer(Modifier.height(NowFocusSpace.s3))
                     Text("${waitRemainingMs / 1000 + if (waitRemainingMs % 1000 > 0) 1 else 0}", style = headingStyle(96.sp, color = NowFocusColors.accent))
                     Spacer(Modifier.height(NowFocusSpace.s4))
@@ -786,6 +829,10 @@ private fun StatsScreen() {
         Row(Modifier.fillMaxWidth()) {
             StatCell("Sessions", "$sessionsThisWeek", Modifier.weight(1f))
             StatCell("Completed", "${(completion * 100).toInt()}%", Modifier.weight(1f))
+        }
+        SectionRule()
+        Row(Modifier.fillMaxWidth()) {
+            StatCell("Turned away", "${HistoryStats.turnedAwayCount(weekEvents, weekFrom, weekTo)}", Modifier.weight(1f))
             StatCell("Streak", "$streak days", Modifier.weight(1f))
         }
         SectionRule()
@@ -907,6 +954,7 @@ private fun CommitmentSetup(onCreate: (Set<String>, Set<String>, Set<PartialRule
     var apps by remember { mutableStateOf(listOf<AppRule>()) }
     var partial by remember { mutableStateOf(setOf<PartialRule>()) }
     var pickingApp by remember { mutableStateOf(false) }
+    var confirming by remember { mutableStateOf(false) }
     // Without this, a shield with sites but no VPN consent would silently
     // enforce nothing for 14 days - the same consent flow SetupScreen uses.
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -952,9 +1000,23 @@ private fun CommitmentSetup(onCreate: (Set<String>, Set<String>, Set<PartialRule
     PartialRulesSection(partial) { partial = it }
 
     Spacer(Modifier.height(NowFocusSpace.s6))
-    PrimaryButton("Lock for 14 days", enabled = domains.isNotEmpty() || apps.isNotEmpty() || partial.isNotEmpty()) {
-        val consentIntent = if (domains.isNotEmpty()) VpnService.prepare(context) else null
-        if (consentIntent != null) vpnConsent.launch(consentIntent) else onCreate(domains, apps.map { it.packageName }.toSet(), partial)
+    if (!confirming) {
+        PrimaryButton("Lock for 14 days", enabled = domains.isNotEmpty() || apps.isNotEmpty() || partial.isNotEmpty()) { confirming = true }
+    } else {
+        // Same two-step as Windows: the 60-second undo after this is a second chance, not the first.
+        Text("Are you sure?", style = headingStyle(22.sp))
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        Text(
+            "${domains.size} site${if (domains.size == 1) "" else "s"} and ${apps.size} app${if (apps.size == 1) "" else "s"} will be blocked for 14 days. You'll have 60 seconds to undo, then it's locked in.",
+            style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
+        )
+        Spacer(Modifier.height(NowFocusSpace.s3))
+        PrimaryButton("Yes, commit") {
+            val consentIntent = if (domains.isNotEmpty()) VpnService.prepare(context) else null
+            if (consentIntent != null) vpnConsent.launch(consentIntent) else onCreate(domains, apps.map { it.packageName }.toSet(), partial)
+        }
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        SecondaryButton("Back") { confirming = false }
     }
 
     if (pickingApp) {

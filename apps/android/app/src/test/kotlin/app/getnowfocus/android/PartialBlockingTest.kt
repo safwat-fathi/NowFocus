@@ -1,7 +1,9 @@
 package app.getnowfocus.android
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PartialBlockingTest {
@@ -92,6 +94,79 @@ class PartialBlockingTest {
         assertNull(PartialBlocking.detect(fb, tree, all))
     }
 
+    private val ig = "com.instagram.android"
+    private val x = "com.twitter.android"
+
+    @Test
+    fun `selected Reels tab in instagram is detected`() {
+        val tree = root(node(desc = "Reels, tab 4 of 5", selected = true))
+        assertEquals(PartialRule.IG_REELS, PartialBlocking.detect(ig, tree, all)?.rule)
+    }
+
+    @Test
+    fun `selected Explore tab in instagram is detected`() {
+        val tree = root(node(desc = "Search and Explore", selected = true))
+        assertEquals(PartialRule.IG_REELS, PartialBlocking.detect(ig, tree, all)?.rule)
+    }
+
+    @Test
+    fun `the full-screen reels viewer in instagram is detected`() {
+        val tree = root(node(id = "$ig:id/clips_viewer_view_pager"))
+        assertEquals(PartialRule.IG_REELS, PartialBlocking.detect(ig, tree, all)?.rule)
+    }
+
+    @Test
+    fun `unselected instagram tabs and feed reels text are not a match`() {
+        // The bottom-bar buttons always exist; only the selected one means the user is on that surface,
+        // and backing out of the feed would leave Instagram altogether.
+        val tree = root(
+            node(id = "$ig:id/clips_tab", desc = "Reels", selected = false),
+            node(id = "$ig:id/search_tab", desc = "Search and Explore", selected = false),
+            node(text = "Suggested Reels"),
+        )
+        assertNull(PartialBlocking.detect(ig, tree, all))
+    }
+
+    @Test
+    fun `instagram rule only applies inside instagram and only when enabled`() {
+        val tree = root(node(desc = "Reels", selected = true))
+        assertNull(PartialBlocking.detect(x, tree, all))
+        assertNull(PartialBlocking.detect(yt, tree, all))
+        assertNull(PartialBlocking.detect(ig, tree, setOf(PartialRule.FB_REELS)))
+    }
+
+    @Test
+    fun `x For you timeline is covered with the timeline bounds`() {
+        val tree = root(
+            node(desc = "For you", selected = true),
+            node(id = "$x:id/timeline", bounds = listOf(0, 300, 1080, 2100)),
+        )
+        val m = PartialBlocking.detect(x, tree, all)!!
+        assertEquals(PartialRule.X_FOR_YOU, m.rule)
+        assertEquals(listOf(0, 300, 1080, 2100), listOf(m.left, m.top, m.right, m.bottom))
+    }
+
+    @Test
+    fun `x Following tab and an unselected For you tab are not a match`() {
+        val following = root(node(desc = "Following", selected = true), node(desc = "For you", selected = false), node(id = "$x:id/timeline"))
+        assertNull(PartialBlocking.detect(x, following, all))
+    }
+
+    @Test
+    fun `x is not covered without a visible timeline`() {
+        val missing = root(node(desc = "For you", selected = true))
+        assertNull(PartialBlocking.detect(x, missing, all))
+        val invisible = root(node(desc = "For you", selected = true), node(id = "$x:id/timeline", bounds = listOf(0, 0, 0, 0)))
+        assertNull(PartialBlocking.detect(x, invisible, all))
+    }
+
+    @Test
+    fun `x rule only applies inside x and only when enabled`() {
+        val tree = root(node(desc = "For you", selected = true), node(id = "$x:id/timeline"))
+        assertNull(PartialBlocking.detect(ig, tree, all))
+        assertNull(PartialBlocking.detect(x, tree, setOf(PartialRule.YT_HOME)))
+    }
+
     @Test
     fun `empty or null tree matches nothing`() {
         assertNull(PartialBlocking.detect(yt, null, all))
@@ -127,5 +202,31 @@ class LeaveGateTest {
         assertEquals(LeaveStep.BACK, g.next(1_000))
         assertEquals(LeaveStep.BACK, g.next(1_700))
         assertEquals(LeaveStep.BACK, g.next(10_000))
+    }
+}
+
+class MatchLogGateTest {
+    @Test
+    fun `a surface that keeps matching is logged once, not on every re-check`() {
+        val g = MatchLogGate()
+        assertTrue(g.shouldLog("com.google.android.youtube", PartialRule.YT_HOME))
+        assertFalse(g.shouldLog("com.google.android.youtube", PartialRule.YT_HOME))
+        assertFalse(g.shouldLog("com.google.android.youtube", PartialRule.YT_HOME))
+    }
+
+    @Test
+    fun `moving to a different rule or app is a new attempt`() {
+        val g = MatchLogGate()
+        assertTrue(g.shouldLog("com.google.android.youtube", PartialRule.YT_HOME))
+        assertTrue(g.shouldLog("com.google.android.youtube", PartialRule.YT_RELATED))
+        assertTrue(g.shouldLog("com.facebook.katana", PartialRule.FB_REELS))
+    }
+
+    @Test
+    fun `after the surface goes away the same match counts again`() {
+        val g = MatchLogGate()
+        assertTrue(g.shouldLog("com.google.android.youtube", PartialRule.YT_SHORTS))
+        g.clear()
+        assertTrue(g.shouldLog("com.google.android.youtube", PartialRule.YT_SHORTS))
     }
 }

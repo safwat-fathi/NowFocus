@@ -41,6 +41,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val people: StateFlow<List<Person>> =
         repository.peopleFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val goals: StateFlow<List<Goal>> =
+        repository.goalsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     // Defaults true (skip onboarding) until the real, persisted value loads, so
     // an existing user is never bounced back into onboarding for one frame.
     val onboardingDone: StateFlow<Boolean> =
@@ -155,7 +158,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun addPolicy(): String {
-        val policy = BlockPolicy(name = "New Policy")
+        val policy = BlockPolicy(name = "New profile")
         viewModelScope.launch { repository.updatePolicies { it + policy } }
         return policy.id
     }
@@ -290,6 +293,16 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     fun removePerson(id: String) {
         viewModelScope.launch { repository.updatePeople { list -> list.filterNot { it.id == id } } }
+    }
+
+    fun addGoal(text: String, priority: GoalPriority) {
+        val clean = text.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch { repository.updateGoals { it + Goal(text = clean, priority = priority) } }
+    }
+
+    fun removeGoal(id: String) {
+        viewModelScope.launch { repository.updateGoals { list -> list.filterNot { it.id == id } } }
     }
 
     fun setLastTalked(id: String, lastTalkedAt: Long?) {

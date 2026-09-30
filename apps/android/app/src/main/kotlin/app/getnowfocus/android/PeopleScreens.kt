@@ -120,7 +120,7 @@ fun PeopleEditor(
 }
 
 @Composable
-private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
+internal fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .background(if (selected) NowFocusColors.text else Color.Transparent)

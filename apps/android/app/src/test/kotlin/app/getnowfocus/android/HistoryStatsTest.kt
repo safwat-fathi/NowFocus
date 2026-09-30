@@ -190,4 +190,24 @@ class HistoryStatsTest {
     fun `a bounce after the dedup window logs as a new attempt`() {
         assertTrue(HistoryStats.shouldLogBlockEvent(now = 4000, lastLoggedAt = 500, windowMs = 3000))
     }
+
+    @Test
+    fun `turnedAwayCount counts every attempt in range across all apps, not just the top few`() {
+        val day = LocalDate.of(2026, 9, 21)
+        val events = listOf("a", "b", "c", "d", "e").map { attempt(it, day, 10) } +
+            attempt("a", day, 11) + attempt("outside", day.plusDays(1), 10)
+        val from = millisAt(day, 0)
+        val to = millisAt(day.plusDays(1), 0)
+        assertEquals(6, HistoryStats.turnedAwayCount(events, from, to))
+        assertEquals(0, HistoryStats.turnedAwayCount(emptyList(), from, to))
+    }
+
+    @Test
+    fun `startOfDay is local midnight in the given zone`() {
+        val day = LocalDate.of(2026, 9, 21)
+        val cairo = java.time.ZoneId.of("Africa/Cairo")
+        val noonUtc = millisAt(day, 12)
+        assertEquals(millisAt(day, 0), HistoryStats.startOfDayMillis(noonUtc, ZoneOffset.UTC))
+        assertEquals(day.atStartOfDay(cairo).toInstant().toEpochMilli(), HistoryStats.startOfDayMillis(noonUtc, cairo))
+    }
 }

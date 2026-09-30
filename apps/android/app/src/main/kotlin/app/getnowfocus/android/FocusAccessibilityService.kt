@@ -23,8 +23,9 @@ import kotlinx.coroutines.launch
 /**
  * Android counterpart of macOS AppBlocker. Two jobs:
  *  - bounce blocked apps, using only which package comes to the foreground; and
- *  - partial blocking: while a session/shield has partial rules live, and only while YouTube or
- *    Facebook is in front, read that app's screen to spot Shorts / Reels / recommendation lists.
+ *  - partial blocking: while a session/shield has partial rules live, and only while YouTube,
+ *    Facebook, Instagram or X is in front, read that app's screen to spot Shorts / Reels /
+ *    recommendation lists. Experimental: the screen signatures are unverified (see PartialSignatures).
  * Screen content is read only in that case, is matched in memory and never stored or sent anywhere.
  */
 class FocusAccessibilityService : AccessibilityService() {
@@ -53,6 +54,7 @@ class FocusAccessibilityService : AccessibilityService() {
     private var expiryJob: Job? = null
     private var contentEventsOn = false
     private val leaveGate = LeaveGate()
+    private val matchLog = MatchLogGate()
     private var overlay: View? = null
 
     override fun onServiceConnected() {
@@ -72,7 +74,7 @@ class FocusAccessibilityService : AccessibilityService() {
         rules = r
         val now = System.currentTimeMillis()
         val partialLive = r.livePartial(now).isNotEmpty()
-        if (!partialLive) clearOverlay()
+        if (!partialLive) { clearOverlay(); matchLog.clear() }
         if (partialLive != contentEventsOn) {
             serviceInfo = serviceInfo?.apply {
                 eventTypes = if (partialLive) eventTypes or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
@@ -95,7 +97,7 @@ class FocusAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 if (blockApp(pkg)) return
                 // The cover is a system-level window: drop it once the user is somewhere else.
-                if (pkg !in PartialSignatures.PACKAGES && pkg != SYSTEM_UI) clearOverlay()
+                if (pkg !in PartialSignatures.PACKAGES && pkg != SYSTEM_UI) { clearOverlay(); matchLog.clear() }
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {}
             else -> return
@@ -153,9 +155,10 @@ class FocusAccessibilityService : AccessibilityService() {
         val match = PartialBlocking.detect(pkg, snapshot, enabled)
         if (match == null) {
             clearOverlay()
+            matchLog.clear()
             return
         }
-        logBlock(pkg, now)
+        if (matchLog.shouldLog(pkg, match.rule)) logBlock(pkg, now)
         when (match.rule.action) {
             PartialAction.COVER -> cover(match)
             PartialAction.LEAVE -> {

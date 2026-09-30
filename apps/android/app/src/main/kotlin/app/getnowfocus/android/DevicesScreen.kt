@@ -48,7 +48,7 @@ fun DevicesScreen(resumeKey: Int) {
             SectionRule(thick = true)
             Spacer(Modifier.height(NowFocusSpace.s4))
             Text(
-                "One device today. Cross-device sync is planned but not built yet - see native_tech_stack_spec.md.",
+                "This phone only, for now. Linking other devices isn't available yet.",
                 style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
             )
             Spacer(Modifier.height(NowFocusSpace.s6))

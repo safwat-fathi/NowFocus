@@ -22,7 +22,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -50,6 +53,8 @@ class BlockedActivity : ComponentActivity() {
     // for the next block, and returning from the dialer/SMS app after Call/Text
     // must rotate to whoever is now the longest-ago.
     private var person by mutableStateOf<Person?>(null)
+    private var goal by mutableStateOf<String?>(null)
+    private var triesToday by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,7 +63,13 @@ class BlockedActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        lifecycleScope.launch { person = PeopleRotation.next(repository.peopleFlow.first()) }
+        lifecycleScope.launch {
+            person = PeopleRotation.next(repository.peopleFlow.first())
+            goal = Goals.pick(repository.goalsFlow.first())?.text
+            val now = System.currentTimeMillis()
+            val from = HistoryStats.startOfDayMillis(now, java.time.ZoneId.systemDefault())
+            triesToday = HistoryStats.turnedAwayCount(HistoryDatabase.get(this@BlockedActivity).dao().blockEventsBetween(from, now + 1), from, now + 1)
+        }
     }
 
     // singleTask means a block screen left open (Home button, not Back) is
@@ -84,8 +95,11 @@ class BlockedActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
                     ShieldScreen(
                         until = until,
+                        endAt = endAt,
                         fromShield = fromShield,
                         person = person,
+                        goal = goal,
+                        triesToday = triesToday,
                         onCall = { person?.let { reachOut(it, Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(it.phone)}"))) } },
                         onText = { person?.let { reachOut(it, Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(it.phone)}"))) } },
                         onReturn = { goHome() },
@@ -130,8 +144,11 @@ class BlockedActivity : ComponentActivity() {
 @Composable
 private fun ShieldScreen(
     until: String,
+    endAt: Long,
     fromShield: Boolean,
     person: Person?,
+    goal: String?,
+    triesToday: Int,
     onCall: () -> Unit,
     onText: () -> Unit,
     onReturn: () -> Unit,
@@ -149,9 +166,20 @@ private fun ShieldScreen(
             if (fromShield) "Locked by your Commitment Shield until $until." else "You're in a focus session until $until.",
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 17.sp, color = NowFocusColors.neutral300),
         )
+        Spacer(Modifier.height(NowFocusSpace.s4))
+        // Ticks each half-minute: "1h 12m" doesn't need a per-second clock.
+        var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+        LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
+        SideRow(if (fromShield) "Locked for" else "Left in session", DurationFormat.remaining(endAt - now))
+        SideRow("Tries today", "$triesToday")
         if (person != null) {
             Spacer(Modifier.height(NowFocusSpace.s8))
             ReachOutCard(person, onCall, onText)
+        } else if (goal != null) {
+            Spacer(Modifier.height(NowFocusSpace.s8))
+            Text("REMEMBER", style = kickerStyle(NowFocusColors.neutral400))
+            Spacer(Modifier.height(NowFocusSpace.s2))
+            Text(goal, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, color = NowFocusColors.bg))
         }
         Spacer(Modifier.weight(1f))
         PrimaryButton("Back to focus", onClick = onReturn)
@@ -161,6 +189,14 @@ private fun ShieldScreen(
             GhostButton("I really need it", onClick = onNeedIt)
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
+    }
+}
+
+@Composable
+private fun SideRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s1), verticalAlignment = Alignment.CenterVertically) {
+        Text(label.uppercase(), style = kickerStyle(NowFocusColors.neutral400), modifier = Modifier.weight(1f))
+        Text(value, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = NowFocusColors.bg))
     }
 }
 
