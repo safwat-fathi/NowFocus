@@ -1,0 +1,6 @@
+version: 2
+secret:
+  ignored_paths:
+    - services/api/test/**
+    - services/api/vitest.config*.ts
+    - .github/workflows/api.yml
