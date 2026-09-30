@@ -1,0 +1,37 @@
+name: Deploy web
+
+# Publishes apps/web (the nowfocus.online landing site) to the VPS. The deploy
+# key is restricted server-side to `rrsync /var/www/nowfocus.online`, so it can
+# only write into the web root.
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/web/**", ".github/workflows/web.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync apps/web to the VPS
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          rsync -az --delete --itemize-changes --exclude check.mjs \
+            -e "ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" \
+            apps/web/ "safwat@${DEPLOY_HOST}:./"
+
+      - name: Smoke test
+        run: curl -fsS https://nowfocus.online/ | grep -q "<title>NowFocus"
