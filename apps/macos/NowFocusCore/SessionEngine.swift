@@ -17,6 +17,19 @@ public class SessionEngine {
 
     public init() {}
 
+    /// The one place exit friction is decided. Normal always allows it; Strict only once the
+    /// type-the-sentence-then-wait flow has completed; Locked never does, whatever
+    /// `unlockCompleted` says. A Strict session that has a voice note also needs it played through
+    /// (`listened`); with no note (never recorded, mic denied, file gone) Strict is the plain
+    /// unlock, so a missing file can't trap anyone. Same table as Android's `canCancel`.
+    public static func canCancel(mode: EnforcementMode, unlockCompleted: Bool, hasVoiceNote: Bool = false, listened: Bool = false) -> Bool {
+        switch mode {
+        case .normal: return true
+        case .strict: return unlockCompleted && (!hasVoiceNote || listened)
+        case .locked: return false
+        }
+    }
+
     public func stopGate(for session: FocusSession) -> SessionStopGate {
         switch session.enforcementMode {
         case .normal:

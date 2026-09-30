@@ -16,6 +16,16 @@ struct MenuBarView: View {
 
     @State private var showUnlockFlow = false
 
+    // The optional note to yourself, recorded here for the next Strict session (10s max).
+    @State private var noteRecorder = VoiceRecorder()
+    @State private var today = TodayStats()
+
+    private struct TodayStats {
+        var focusedMinutes = 0
+        var turnedAway = 0
+        var sessions = 0
+    }
+
     private let durations: [(String, TimeInterval)] = [
         ("25m", 25 * 60),
         ("45m", 45 * 60),
@@ -60,9 +70,9 @@ struct MenuBarView: View {
             if showUnlockFlow, let session = activeSession {
                 UnlockOverlayView(
                     session: session,
-                    onConfirmEnd: {
+                    onConfirmEnd: { listened in
                         showUnlockFlow = false
-                        stopSession()
+                        stopSession(listened: listened)
                     },
                     onCancel: { showUnlockFlow = false }
                 )
@@ -73,6 +83,9 @@ struct MenuBarView: View {
         .onAppear {
             loadPolicies()
             refreshState()
+            loadToday()
+            noteRecorder.checkPermission()
+            VoiceNoteStore.shared.removeLegacyGlobalNote()
         }
     }
 
@@ -117,6 +130,8 @@ struct MenuBarView: View {
                     .font(NowFocusFonts.body(12))
                     .foregroundColor(NowFocusColors.neutral700)
             } else {
+                todayRow
+
                 sectionLabel("Profile")
                 VStack(spacing: 0) {
                     ForEach(policies) { policy in
@@ -129,6 +144,12 @@ struct MenuBarView: View {
 
                 sectionLabel("Mode")
                 NowFocusSegmentedControl(options: modes.map { (label: $0.0, value: $0.1) }, selection: $selectedMode)
+                Text(modeBlurb)
+                    .font(NowFocusFonts.body(12))
+                    .foregroundColor(NowFocusColors.neutral700)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if selectedMode == .strict { voiceNoteSection }
 
                 NowFocusPrimaryButton(title: "Start Focus Session", enabled: selectedPolicyId != nil) {
                     startSession()
@@ -136,6 +157,85 @@ struct MenuBarView: View {
             }
         }
         .padding(.bottom, NowFocusSpace.s3)
+    }
+
+    /// Same copy as Android's Setup screen.
+    private var modeBlurb: String {
+        switch selectedMode {
+        case .normal: return "You can end any time. Good for light days."
+        case .strict: return "To leave early you'll type a short sentence, then wait 30 seconds."
+        case .locked: return "No early exit on this device until the timer ends."
+        }
+    }
+
+    @ViewBuilder
+    private var voiceNoteSection: some View {
+        VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
+            sectionLabel("Your voice note")
+            Text("Optional. Record 10 seconds to yourself; to leave early you'll have to hear it first. Skip it and Strict works as described above.")
+                .font(NowFocusFonts.body(12))
+                .foregroundColor(NowFocusColors.neutral700)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: NowFocusSpace.s2) {
+                switch noteRecorder.recorderState {
+                case .recording:
+                    NowFocusSecondaryButton(title: "Stop · \(Int(noteRecorder.recordingDuration))s") { noteRecorder.stopRecording() }
+                case .recorded, .playing:
+                    NowFocusSecondaryButton(title: noteRecorder.recorderState == .playing ? "Stop" : "Play") {
+                        if noteRecorder.recorderState == .playing { noteRecorder.stopPlayback() } else { noteRecorder.startPlayback() }
+                    }
+                    NowFocusSecondaryButton(title: "Re-record") { noteRecorder.startRecording() }
+                    NowFocusTagPill(text: "Recorded", accent: false)
+                case .idle:
+                    NowFocusSecondaryButton(title: "Record") { noteRecorder.startRecording() }
+                }
+            }
+
+            if noteRecorder.permissionStatus == .denied {
+                Text("Mic access is off, so Strict will use the typed sentence and 30-second wait.")
+                    .font(NowFocusFonts.body(12))
+                    .foregroundColor(NowFocusColors.accent800)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private var todayRow: some View {
+        HStack(alignment: .top, spacing: 0) {
+            todayCell("Today", "\(today.focusedMinutes / 60)h \(today.focusedMinutes % 60)m")
+            todayCell("Turned away", "\(today.turnedAway)")
+            todayCell("Sessions", "\(today.sessions)")
+        }
+        .padding(.vertical, NowFocusSpace.s2)
+        .overlay(NowFocusRule(), alignment: .top)
+        .overlay(NowFocusRule(), alignment: .bottom)
+    }
+
+    private func todayCell(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            sectionLabel(label)
+            Text(value)
+                .font(NowFocusFonts.heading(17))
+                .foregroundColor(NowFocusColors.ink)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func loadToday() {
+        let start = Calendar.current.startOfDay(for: Date())
+        let now = Date()
+        do {
+            let sessions = try DatabaseManager.shared.fetchSessions(from: start, to: now, sessionType: .focus)
+            let events = try DatabaseManager.shared.fetchEvents(from: start, to: now, type: "app_blocked")
+            today = TodayStats(
+                focusedMinutes: Int(HistoryStats.totalFocusedSeconds(sessions) / 60),
+                turnedAway: HistoryStats.turnedAwayCount(events),
+                sessions: HistoryStats.sessionsCount(sessions)
+            )
+        } catch {
+            print("Failed to load today's stats: \(error)")
+        }
     }
 
     private func profileRow(_ policy: BlockPolicy) -> some View {
@@ -353,8 +453,13 @@ struct MenuBarView: View {
 
         do {
             try DatabaseManager.shared.saveSession(session)
-            SessionController.startEnforcement(policy: policy, sessionId: session.id)
+            // A recorded note belongs to this session only if it's Strict; every other note goes.
+            if selectedMode == .strict { VoiceNoteStore.shared.adoptPending(as: session.id) }
+            VoiceNoteStore.shared.purge(except: VoiceNoteStore.shared.hasNote(sessionId: session.id) ? session.id : nil)
+            noteRecorder = VoiceRecorder()
+            SessionController.startEnforcement(policy: policy, sessionId: session.id, endAt: session.endAt)
             refreshState()
+            loadToday()
         } catch {
             print("Failed to start session: \(error)")
         }
@@ -371,9 +476,13 @@ struct MenuBarView: View {
         }
     }
 
-    private func stopSession() {
+    /// Re-checks the gate here, not just in the unlock view: disabling a button isn't enforcement.
+    private func stopSession(listened: Bool = true) {
         guard let session = activeSession else { return }
+        let hasNote = VoiceNoteStore.shared.hasNote(sessionId: session.id)
+        guard SessionEngine.canCancel(mode: session.enforcementMode, unlockCompleted: true, hasVoiceNote: hasNote, listened: listened) else { return }
         SessionController.endSession(session, cancelled: true)
         refreshState()
+        loadToday()
     }
 }

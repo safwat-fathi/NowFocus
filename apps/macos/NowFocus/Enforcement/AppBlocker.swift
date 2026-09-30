@@ -12,6 +12,7 @@ public class AppBlocker {
     private var isSessionActive: Bool = false
     private var blockedApp: NSRunningApplication?
     private var activeSessionId: String?
+    private var activeEndAt: Date?
 
     // De-dup window for Stats' "turned away" count: a blocked app bounced
     // repeatedly within 3s of its last logged attempt is one attempt, not
@@ -25,8 +26,9 @@ public class AppBlocker {
         setupObservers()
     }
 
-    public func updatePolicy(sessionId: String?, isSessionActive: Bool, blockedApps: [String]) {
+    public func updatePolicy(sessionId: String?, isSessionActive: Bool, blockedApps: [String], endAt: Date? = nil) {
         self.activeSessionId = sessionId
+        self.activeEndAt = endAt
         self.isSessionActive = isSessionActive
         self.activeBlockedApps = Set(blockedApps)
 
@@ -68,8 +70,9 @@ public class AppBlocker {
 
         if activeBlockedApps.contains(bundleID) {
             blockedApp = app
-            showOverlay()
+            // Logged first so the overlay's "Tries today" already counts this attempt.
             logBlockEvent(app: app, bundleID: bundleID)
+            showOverlay()
         } else {
             hideOverlay()
         }
@@ -107,19 +110,27 @@ public class AppBlocker {
             overlayPanels = NSScreen.screens.map { _ in
                 let panel = BlockOverlayPanel()
                 panel.onClose = { self.closeBlockedApp() }
+                panel.onNeedIt = { self.needIt() }
                 return panel
             }
         }
         for (panel, screen) in zip(overlayPanels, NSScreen.screens) {
             // visibleFrame excludes the menu bar and Dock, so the user is never
             // trapped needing Cmd-Tab to reach NowFocus's own menu.
-            panel.show(over: screen.visibleFrame)
+            panel.show(over: screen.visibleFrame, endAt: activeEndAt)
         }
     }
 
     private func hideOverlay() {
         overlayPanels.forEach { $0.hide() }
         blockedApp = nil
+    }
+
+    // Leave the block screen and open the unlock flow in its own window. If the user backs out of it,
+    // NowFocus is frontmost (not the blocked app), so the overlay correctly stays down until they return.
+    private func needIt() {
+        hideOverlay()
+        Task { @MainActor in UnlockWindowController.shared.present() }
     }
 
     // Graceful quit, not forceTerminate — respects the app's own quit sequence

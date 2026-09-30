@@ -14,7 +14,6 @@ struct CommitmentView: View {
     @State private var domainError: String?
     @State private var showConfirm = false
     @State private var actionError: String?
-    @State private var voiceRecorder = VoiceRecorder()
 
     var body: some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s4) {
@@ -152,25 +151,6 @@ struct CommitmentView: View {
                 }
             }
 
-            // Voice message opt-in (only when cancelling an active commitment)
-            if status != nil, VoiceMessageStore.shared.hasVoiceMessage {
-                let isPlaying = voiceRecorder.recorderState == .playing
-                Button {
-                    if isPlaying { voiceRecorder.stopPlayback() }
-                    else { voiceRecorder.startPlayback() }
-                } label: {
-                    HStack(spacing: NowFocusSpace.s2) {
-                        Image(systemName: isPlaying ? "pause.fill" : "headphones")
-                        Text(isPlaying ? "Stop" : "🎧 Listen to your message first")
-                            .font(NowFocusFonts.body(13))
-                    }
-                    .foregroundColor(NowFocusColors.accent)
-                    .padding(.vertical, NowFocusSpace.s1)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            }
-
             HStack(spacing: NowFocusSpace.s2) {
                 NowFocusSecondaryButton(title: "Cancel") { showConfirm = false }
                 NowFocusPrimaryButton(title: "Start commitment") { start() }
@@ -179,7 +159,6 @@ struct CommitmentView: View {
         .padding(NowFocusSpace.s6)
         .frame(width: 360)
         .background(NowFocusColors.ground)
-        .onDisappear { voiceRecorder.stopPlayback() }
     }
 
     private func sectionLabel(_ text: String) -> some View {

@@ -16,9 +16,10 @@ struct MainWindowView: View {
         case profiles = "Profiles"
         case devices = "Devices"
         case stats = "Stats"
-        case myWhy = "My Why"
-        case commitment = "Commitment"
-        case bedtime = "Bedtime"
+        case commitment = "Commitment Shield"
+        case bedtime = "Bedtime Wind-Down"
+        case people = "People who matter"
+        case goals = "Your goals"
         case general = "General"
 
         var id: String { rawValue }
@@ -64,19 +65,7 @@ struct MainWindowView: View {
             navRow(.devices, systemImage: "laptopcomputer")
             navRow(.stats, systemImage: "chart.bar")
 
-            Text("MY CONTEXT")
-                .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.0)
-                .foregroundColor(NowFocusColors.neutral700)
-                .padding(.horizontal, NowFocusSpace.s4)
-                .padding(.top, NowFocusSpace.s6)
-                .padding(.bottom, NowFocusSpace.s2)
-
-            NowFocusRule()
-
-            navRow(.myWhy, systemImage: "heart.text.square")
-
-            Text("ALWAYS ON")
+            Text("PROTECTIONS")
                 .font(NowFocusFonts.body(11).weight(.semibold))
                 .tracking(1.0)
                 .foregroundColor(NowFocusColors.neutral700)
@@ -88,6 +77,8 @@ struct MainWindowView: View {
 
             navRow(.commitment, systemImage: "lock.shield")
             navRow(.bedtime, systemImage: "moon.stars")
+            navRow(.people, systemImage: "person.2")
+            navRow(.goals, systemImage: "target")
 
             Spacer(minLength: 0)
 
@@ -131,9 +122,10 @@ struct MainWindowView: View {
         case .profiles:   PolicyListView()
         case .devices:    DevicesView()
         case .stats:      StatsView()
-        case .myWhy:      MyWhyView()
         case .commitment: CommitmentView()
         case .bedtime:    BedtimeView()
+        case .people:     PeopleView()
+        case .goals:      GoalsView()
         case .general:    GeneralSettingsView(updaterController: updaterController)
         }
     }

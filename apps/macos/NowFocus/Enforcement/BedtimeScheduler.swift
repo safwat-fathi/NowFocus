@@ -129,7 +129,7 @@ final class BedtimeScheduler {
 
         do {
             try DatabaseManager.shared.saveSession(session)
-            SessionController.startEnforcement(policy: policy, sessionId: session.id)
+            SessionController.startEnforcement(policy: policy, sessionId: session.id, endAt: session.endAt)
         } catch {
             print("Failed to start Bedtime session: \(error)")
         }

@@ -63,27 +63,7 @@ public struct BlockPolicyRecord: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
-// MARK: - SessionEvent
-public struct SessionEvent: Codable, Identifiable {
-    public let id: String
-    public let sessionId: String
-    public let type: String
-    public let occurredAt: Date
-    public let metadataJson: String?
-    
-    public init(id: String = UUID().uuidString,
-                sessionId: String,
-                type: String,
-                occurredAt: Date = Date(),
-                metadataJson: String? = nil) {
-        self.id = id
-        self.sessionId = sessionId
-        self.type = type
-        self.occurredAt = occurredAt
-        self.metadataJson = metadataJson
-    }
-}
-
+// MARK: - SessionEvent (struct lives in SessionEvent.swift so it compiles without GRDB)
 extension SessionEvent: FetchableRecord, PersistableRecord {
     public static let databaseTableName = "sessionEvent"
 }

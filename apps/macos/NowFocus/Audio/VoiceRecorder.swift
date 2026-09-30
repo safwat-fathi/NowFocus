@@ -2,9 +2,8 @@ import Foundation
 import AVFoundation
 import NowFocusCore
 
-/// Manages in-app microphone recording and playback for the user's motivation
-/// voice message. The recording is saved to `VoiceMessageStore.voiceMessageURL`
-/// and capped at 60 seconds.
+/// Records the optional note to yourself for a Strict session: at most 10 seconds, saved as the
+/// pending note (`VoiceNoteStore.pendingURL`) until a Strict session starts and adopts it.
 ///
 /// Marked `@Observable` so SwiftUI views reactively update on state changes
 /// without manual Combine plumbing.
@@ -30,7 +29,7 @@ final class VoiceRecorder: NSObject {
     var recordingDuration: TimeInterval = 0   // seconds elapsed while recording
     var playbackProgress: TimeInterval = 0    // seconds elapsed during playback
 
-    static let maxDuration: TimeInterval = 60
+    static let maxDuration: TimeInterval = 10
 
     // MARK: - Private
 
@@ -39,13 +38,13 @@ final class VoiceRecorder: NSObject {
     private var recordingTimer: Timer?
     private var playbackTimer: Timer?
 
-    private let store = VoiceMessageStore.shared
+    private let store = VoiceNoteStore.shared
 
     // MARK: - Init
 
     override init() {
         super.init()
-        recorderState = store.hasVoiceMessage ? .recorded : .idle
+        recorderState = store.hasPending ? .recorded : .idle
     }
 
     // MARK: - Permission
@@ -83,7 +82,8 @@ final class VoiceRecorder: NSObject {
         ]
 
         do {
-            audioRecorder = try AVAudioRecorder(url: store.voiceMessageURL, settings: settings)
+            store.deletePending()
+            audioRecorder = try AVAudioRecorder(url: store.pendingURL, settings: settings)
             audioRecorder?.delegate = self
             audioRecorder?.record()
             recorderState = .recording
@@ -108,13 +108,20 @@ final class VoiceRecorder: NSObject {
         recordingTimer = nil
         audioRecorder?.stop()
         audioRecorder = nil
-        recorderState = .recorded
+        // A file that can't be played back would leave a Strict session with a note nobody can hear:
+        // discard it, the same as a note that was never recorded.
+        if store.hasPending, (try? AVAudioPlayer(contentsOf: store.pendingURL)) != nil {
+            recorderState = .recorded
+        } else {
+            store.deletePending()
+            recorderState = .idle
+        }
     }
 
     func deleteRecording() {
         stopRecording()
         stopPlayback()
-        store.deleteVoiceMessage()
+        store.deletePending()
         recordingDuration = 0
         playbackProgress = 0
         recorderState = .idle
@@ -123,9 +130,9 @@ final class VoiceRecorder: NSObject {
     // MARK: - Playback
 
     func startPlayback() {
-        guard store.hasVoiceMessage else { return }
+        guard store.hasPending else { return }
         do {
-            audioPlayer = try AVAudioPlayer(contentsOf: store.voiceMessageURL)
+            audioPlayer = try AVAudioPlayer(contentsOf: store.pendingURL)
             audioPlayer?.delegate = self
             audioPlayer?.play()
             recorderState = .playing

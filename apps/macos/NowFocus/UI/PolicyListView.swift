@@ -198,7 +198,7 @@ struct PolicyListView: View {
 
                 // Pure addition / rename / reorder — save and re-apply.
                 try DatabaseManager.shared.savePolicy(policy)
-                SessionController.startEnforcement(policy: policy, sessionId: session!.id)
+                SessionController.startEnforcement(policy: policy, sessionId: session!.id, endAt: session!.endAt)
             } else {
                 // No active session on this profile — plain save.
                 try DatabaseManager.shared.savePolicy(policy)

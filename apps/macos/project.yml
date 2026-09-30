@@ -40,7 +40,8 @@ targets:
       ENABLE_HARDENED_RUNTIME: YES
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       INFOPLIST_KEY_LSUIElement: YES
-      INFOPLIST_KEY_NSMicrophoneUsageDescription: "NowFocus records a short voice message to your future self. It stays on this Mac and plays back when you need motivation to stay focused."
+      INFOPLIST_KEY_NSMicrophoneUsageDescription: "NowFocus can record a 10-second note to yourself for a Strict session. It stays on this Mac, and you hear it only if you try to end that session early."
+      CODE_SIGN_ENTITLEMENTS: NowFocus/NowFocus.entitlements
       GENERATE_INFOPLIST_FILE: YES
       MARKETING_VERSION: "1.0"
       CURRENT_PROJECT_VERSION: "1"

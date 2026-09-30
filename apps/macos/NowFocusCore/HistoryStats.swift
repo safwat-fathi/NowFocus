@@ -10,6 +10,13 @@ extension FocusSession {
     }
 }
 
+/// The local hour of day with the most blocked attempts, and the app tried most in that hour.
+public struct Urge: Equatable {
+    public let hour: Int
+    public let count: Int
+    public let topApp: String
+}
+
 /// Pure aggregation over already-fetched rows — no GRDB/Context involved, so
 /// it's plain-Swift testable. Mirrors Android's `HistoryStats` object.
 public enum HistoryStats {
@@ -92,6 +99,37 @@ public enum HistoryStats {
             .sorted { $0.value > $1.value }
             .prefix(limit)
             .map { (displayNames[$0.key] ?? $0.key, $0.value) }
+    }
+
+    /// Every blocked-app attempt, across all apps (`topBlockedApps` is limited to a top list, so
+    /// summing it undercounts).
+    public static func turnedAwayCount(_ events: [SessionEvent]) -> Int {
+        events.filter { $0.type == "app_blocked" }.count
+    }
+
+    /// Blocked-app attempts per local hour of day: always 24 entries, index = hour (0-23).
+    /// Only app attempts are known: hosts-file blocks can't be observed.
+    public static func urgeByHour(_ events: [SessionEvent], calendar: Calendar) -> [Int] {
+        var counts = [Int](repeating: 0, count: 24)
+        for event in events where event.type == "app_blocked" {
+            counts[calendar.component(.hour, from: event.occurredAt)] += 1
+        }
+        return counts
+    }
+
+    /// The busiest hour (ties go to the earlier hour) and the app tried most in it, or nil with no attempts.
+    public static func peakUrge(_ events: [SessionEvent], calendar: Calendar) -> Urge? {
+        let counts = urgeByHour(events, calendar: calendar)
+        guard let count = counts.max(), count > 0, let hour = counts.firstIndex(of: count) else { return nil }
+        var perApp: [String: (name: String, count: Int)] = [:]
+        for event in events where event.type == "app_blocked" && calendar.component(.hour, from: event.occurredAt) == hour {
+            guard let data = event.metadataJson?.data(using: .utf8),
+                  let meta = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+                  let bundleId = meta["bundleId"] else { continue }
+            perApp[bundleId] = (meta["name"] ?? bundleId, (perApp[bundleId]?.count ?? 0) + 1)
+        }
+        let top = perApp.values.max { $0.count < $1.count }?.name ?? "a blocked app"
+        return Urge(hour: hour, count: count, topApp: top)
     }
 
     #if DEBUG

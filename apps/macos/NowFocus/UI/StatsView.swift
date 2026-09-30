@@ -9,6 +9,11 @@ struct StatsView: View {
     @State private var streak = 0
     @State private var weekBuckets: [Double] = Array(repeating: 0, count: 7)
     @State private var topBlocked: [(name: String, count: Int)] = []
+    @State private var turnedAway = 0
+    /// Four weeks of blocked-app attempts: a week is too thin to show a time-of-day pattern.
+    @State private var urgeEvents: [SessionEvent] = []
+
+    private static let urgeWindowDays = 28
 
     private let calendar = HistoryStats.mondayFirstCalendar()
     private let dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -85,7 +90,7 @@ struct StatsView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 0) {
                 statCell("Sessions", "\(weekSessions.count)")
                 statCell("Completed", "\(Int(HistoryStats.completionRate(weekSessions) * 100))%")
-                statCell("Turned away", "\(topBlocked.reduce(0) { $0 + $1.count })")
+                statCell("Turned away", "\(turnedAway)")
                 statCell("Streak", "\(streak) day\(streak == 1 ? "" : "s")")
             }
             .overlay(alignment: .top) { NowFocusRule(thick: true) }
@@ -116,8 +121,65 @@ struct StatsView: View {
                     }
                 }
             }
+
+            urgesSection
+
+            Text("Counted on your Mac. We never see what you browse.")
+                .font(NowFocusFonts.body(11))
+                .foregroundColor(NowFocusColors.neutral700)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// "Tried to open a blocked app", not "reached for your Mac": attempts are only logged while a session is
+    /// running, and only for apps (a blocked website can't be observed).
+    @ViewBuilder
+    private var urgesSection: some View {
+        VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
+            Text("YOUR URGES")
+                .font(NowFocusFonts.body(11).weight(.semibold))
+                .tracking(1.0)
+                .foregroundColor(NowFocusColors.neutral700)
+
+            if let urge = HistoryStats.peakUrge(urgeEvents, calendar: Calendar.current) {
+                Text("You tried to open a blocked app \(urge.count == 1 ? "once" : "\(urge.count) times") between \(hourLabel(urge.hour)) and \(hourLabel(urge.hour + 1)), usually \(urge.topApp). (last \(Self.urgeWindowDays) days)")
+                    .font(NowFocusFonts.body(14))
+                    .foregroundColor(NowFocusColors.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                let byHour = HistoryStats.urgeByHour(urgeEvents, calendar: Calendar.current)
+                let maxCount = max(byHour.max() ?? 0, 1)
+                HStack(alignment: .bottom, spacing: 2) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Rectangle()
+                            .fill(hour == urge.hour ? NowFocusColors.accent : NowFocusColors.ink)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: max(1, CGFloat(byHour[hour]) / CGFloat(maxCount) * 60))
+                    }
+                }
+                .frame(height: 60, alignment: .bottom)
+                HStack {
+                    ForEach([0, 6, 12, 18], id: \.self) { hour in
+                        Text(hourLabel(hour))
+                            .font(NowFocusFonts.body(10))
+                            .foregroundColor(NowFocusColors.neutral700)
+                        if hour != 18 { Spacer() }
+                    }
+                }
+            } else {
+                Text("Nothing to map yet.")
+                    .font(NowFocusFonts.body(13))
+                    .foregroundColor(NowFocusColors.neutral700)
+            }
+        }
+    }
+
+    /// 0-24 -> "12 AM" ... "3 PM"; 24 wraps to midnight so an hour's closing edge reads right.
+    private func hourLabel(_ hour: Int) -> String {
+        let date = Calendar.current.date(bySettingHour: hour % 24, minute: 0, second: 0, of: Date()) ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h a"
+        return formatter.string(from: date)
     }
 
     private func statCell(_ label: String, _ value: String) -> some View {
@@ -168,6 +230,10 @@ struct StatsView: View {
 
             let events = try DatabaseManager.shared.fetchEvents(from: week.start, to: week.end, type: "app_blocked")
             topBlocked = HistoryStats.topBlockedApps(events)
+            turnedAway = HistoryStats.turnedAwayCount(events)
+
+            let urgeStart = calendar.date(byAdding: .day, value: -Self.urgeWindowDays, to: now) ?? now
+            urgeEvents = try DatabaseManager.shared.fetchEvents(from: urgeStart, to: now.addingTimeInterval(1), type: "app_blocked")
         } catch {
             print("Failed to load stats: \(error)")
         }

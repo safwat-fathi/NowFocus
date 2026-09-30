@@ -95,6 +95,13 @@ public class DatabaseManager {
             }
         }
 
+        // Null = "can't remember", the oldest possible answer for the reach-out rotation.
+        migrator.registerMigration("v4") { db in
+            try db.alter(table: "userConnection") { t in
+                t.add(column: "lastTalkedAt", .datetime)
+            }
+        }
+
         return migrator
     }
     
@@ -205,16 +212,10 @@ public class DatabaseManager {
         try dbQueue.write { db in _ = try UserGoal.deleteOne(db, key: id) }
     }
 
-    /// Returns a random high-priority goal, falling back to any goal.
+    /// A random high-priority goal, falling back to any goal (see `Goals.pick`).
     /// Used in unlock and block overlays for motivation.
     public func fetchRandomGoal() throws -> UserGoal? {
-        try dbQueue.read { db in
-            let high = try UserGoal
-                .filter(Column("priority") == GoalPriority.high.rawValue)
-                .fetchAll(db)
-            if let picked = high.randomElement() { return picked }
-            return try UserGoal.fetchAll(db).randomElement()
-        }
+        Goals.pick(try fetchAllGoals())
     }
 
     // MARK: - Connections
@@ -233,14 +234,28 @@ public class DatabaseManager {
         try dbQueue.write { db in _ = try UserConnection.deleteOne(db, key: id) }
     }
 
-    /// Returns a random connection (prefers ones with a phone number).
-    public func fetchRandomConnection() throws -> UserConnection? {
-        try dbQueue.read { db in
-            let withPhone = try UserConnection
-                .filter(Column("phoneNumber") != nil)
-                .fetchAll(db)
-            if let picked = withPhone.randomElement() { return picked }
-            return try UserConnection.fetchAll(db).randomElement()
+    /// Whoever you talked to longest ago (see `PeopleRotation`); nil when nobody has a number.
+    public func fetchNextConnection() throws -> UserConnection? {
+        PeopleRotation.next(try fetchAllConnections())
+    }
+
+    /// Stamps "talked just now". A Call/Text tap counts even if it never becomes a call.
+    public func markTalked(connectionId: String, at date: Date = Date()) throws {
+        try dbQueue.write { db in
+            guard var connection = try UserConnection.fetchOne(db, key: connectionId) else { return }
+            connection.lastTalkedAt = date
+            connection.updatedAt = date
+            try connection.update(db)
+        }
+    }
+
+    /// Sets the "last talked" chip's date directly (nil = can't remember).
+    public func setLastTalked(connectionId: String, to date: Date?) throws {
+        try dbQueue.write { db in
+            guard var connection = try UserConnection.fetchOne(db, key: connectionId) else { return }
+            connection.lastTalkedAt = date
+            connection.updatedAt = Date()
+            try connection.update(db)
         }
     }
 

@@ -10,27 +10,11 @@ struct OnboardingView: View {
 
     @State private var step: Int = 0
 
-    // Step 1 – Schedule
-    @State private var workStart: Date = minutesToDate(9 * 60)
-    @State private var workEnd: Date   = minutesToDate(17 * 60)
+    // Step 1 – Bedtime (seeds Bedtime Wind-Down; still off until you turn it on)
     @State private var sleepTime: Date = minutesToDate(23 * 60)
     @State private var wakeTime: Date  = minutesToDate(7 * 60)
 
-    // Step 2 – Goals
-    @State private var goals: [UserGoal] = []
-    @State private var newGoalText: String = ""
-    @State private var newGoalPriority: GoalPriority = .high
-    @State private var goalError: String? = nil
-
-    // Step 3 – Connections
-    @State private var connections: [UserConnection] = []
-    @State private var newConnName: String = ""
-    @State private var newConnPhone: String = ""
-
-    // Step 4 – Voice
-    @State private var recorder = VoiceRecorder()
-
-    private let totalSteps = 5  // 0..4
+    private let totalSteps = 4  // 0..3: Welcome, Bedtime, Goals, People
 
     var body: some View {
         HStack(spacing: 0) {
@@ -60,7 +44,6 @@ struct OnboardingView: View {
         }
         .frame(minWidth: 880, minHeight: 540)
         .background(NowFocusColors.ground)
-        .onAppear { recorder.checkPermission() }
     }
 
     // MARK: - Brand Rail
@@ -109,21 +92,12 @@ struct OnboardingView: View {
         case 0: welcomeStep
         case 1: scheduleStep
         case 2: goalsStep
-        case 3: connectionsStep
-        case 4: voiceStep
+        case 3: peopleStep
         default: EmptyView()
         }
     }
 
     // MARK: - Navigation
-
-    private var canAdvance: Bool {
-        switch step {
-        case 2: return !goals.isEmpty
-        case 4: return recorder.recorderState == .recorded || recorder.recorderState == .playing
-        default: return true
-        }
-    }
 
     private var nextLabel: String {
         step == totalSteps - 1 ? "Get Started →" : "Continue →"
@@ -138,14 +112,14 @@ struct OnboardingView: View {
             }
             Spacer()
 
-            // Skip — only on schedule (1) and connections (3) and voice (4 if denied)
-            if step == 1 || step == 3 || (step == 4 && recorder.permissionStatus == .denied) {
+            // Everything after Welcome is optional.
+            if step >= 1 {
                 NowFocusGhostButton(title: "Skip") {
                     advanceOrComplete()
                 }
             }
 
-            NowFocusPrimaryButton(title: nextLabel, enabled: canAdvance) {
+            NowFocusPrimaryButton(title: nextLabel) {
                 saveCurrentStep()
                 advanceOrComplete()
             }
@@ -169,21 +143,12 @@ struct OnboardingView: View {
 
     // MARK: - Save per step
 
+    // Goals and people save as they're added (see the editors), so only Bedtime needs saving here.
     private func saveCurrentStep() {
-        switch step {
-        case 1: saveSchedule()
-        case 2: saveGoals()
-        case 3: saveConnections()
-        default: break
-        }
+        if step == 1 { saveBedtime() }
     }
 
-    private func saveSchedule() {
-        var work = WorkSchedule()
-        work.startMinute = dateToMinutes(workStart)
-        work.endMinute   = dateToMinutes(workEnd)
-        WorkScheduleStore.shared.schedule = work
-
+    private func saveBedtime() {
         let sleepMin = dateToMinutes(sleepTime)
         let wakeMin  = dateToMinutes(wakeTime)
         var bedtime  = BedtimeSettingsStore.shared.settings
@@ -192,18 +157,6 @@ struct OnboardingView: View {
         bedtime.windDownMinute  = max(0, sleepMin - 60)
         bedtime.enabled         = false // user enables manually
         BedtimeSettingsStore.shared.settings = bedtime
-    }
-
-    private func saveGoals() {
-        for goal in goals {
-            try? DatabaseManager.shared.saveGoal(goal)
-        }
-    }
-
-    private func saveConnections() {
-        for conn in connections {
-            try? DatabaseManager.shared.saveConnection(conn)
-        }
     }
 
     // MARK: - Step 0: Welcome
@@ -223,7 +176,7 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(3)
 
-            Text("We'll ask you three quick questions and record a short voice message — then you're done.")
+            Text("A few quick questions, all optional, and you're done. Everything stays on this Mac.")
                 .font(NowFocusFonts.body(14))
                 .foregroundColor(NowFocusColors.neutral700)
                 .fixedSize(horizontal: false, vertical: true)
@@ -231,28 +184,19 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step 1: Schedule
+    // MARK: - Step 1: Bedtime
 
     private var scheduleStep: some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s6) {
             stepHeader(
-                title: "When do you work\nand sleep?",
-                body: "This helps NowFocus fit around your day. You can change these anytime."
+                title: "When do you\nsleep?",
+                body: "NowFocus can wind this Mac down at night. You can change these anytime."
             )
 
-            VStack(alignment: .leading, spacing: NowFocusSpace.s3) {
-                scheduleSection(label: "WORK HOURS") {
-                    VStack(spacing: 0) {
-                        timeRow("Start", binding: $workStart)
-                        timeRow("End",   binding: $workEnd)
-                    }
-                }
-
-                scheduleSection(label: "BEDTIME") {
-                    VStack(spacing: 0) {
-                        timeRow("Sleep at", binding: $sleepTime)
-                        timeRow("Wake at",  binding: $wakeTime)
-                    }
+            scheduleSection(label: "BEDTIME") {
+                VStack(spacing: 0) {
+                    timeRow("Sleep at", binding: $sleepTime)
+                    timeRow("Wake at",  binding: $wakeTime)
                 }
             }
 
@@ -292,290 +236,23 @@ struct OnboardingView: View {
     private var goalsStep: some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s4) {
             stepHeader(
-                title: "What are you\nworking toward?",
-                body: "NowFocus will show these when you're about to quit a session early."
+                title: "What are you\nfocusing for?",
+                body: "We'll remind you while you wait to end a Strict session early, and when a blocked app opens."
             )
-
-            // Add row
-            VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
-                HStack(spacing: NowFocusSpace.s2) {
-                    TextField("e.g. Finish my thesis", text: $newGoalText)
-                        .textFieldStyle(.plain)
-                        .font(NowFocusFonts.body(14))
-                        .foregroundColor(NowFocusColors.ink)
-                        .padding(.vertical, NowFocusSpace.s2)
-                        .overlay(NowFocusRule(), alignment: .bottom)
-                        .onSubmit { addGoal() }
-
-                    NowFocusSegmentedControl(
-                        options: GoalPriority.allCases.map { (label: $0.label, value: $0) },
-                        selection: $newGoalPriority
-                    )
-                    .frame(width: 150)
-
-                    NowFocusSecondaryButton(title: "Add") { addGoal() }
-                }
-
-                if let err = goalError {
-                    Text(err)
-                        .font(NowFocusFonts.body(11))
-                        .foregroundColor(NowFocusColors.accent700)
-                }
-            }
-
-            // Goal list
-            if !goals.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(goals) { goal in
-                        HStack(spacing: NowFocusSpace.s2) {
-                            NowFocusTagPill(text: goal.priority.label, accent: goal.priority == .high)
-                                .frame(width: 42)
-                            Text(goal.text)
-                                .font(NowFocusFonts.body(14))
-                                .foregroundColor(NowFocusColors.ink)
-                            Spacer()
-                            Button {
-                                goals.removeAll { $0.id == goal.id }
-                            } label: {
-                                Image(systemName: "trash")
-                                    .foregroundColor(NowFocusColors.neutral500)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.vertical, NowFocusSpace.s2)
-                        .overlay(alignment: .bottom) { NowFocusRule() }
-                    }
-                }
-            }
-
-            if goals.isEmpty {
-                Text("Add at least one goal to continue.")
-                    .font(NowFocusFonts.body(12))
-                    .foregroundColor(NowFocusColors.accent700)
-            }
+            GoalsEditorView()
         }
     }
 
-    private func addGoal() {
-        let text = newGoalText.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else {
-            goalError = "Enter a goal first."
-            return
-        }
-        goals.append(UserGoal(text: text, priority: newGoalPriority))
-        newGoalText = ""
-        goalError = nil
-    }
+    // MARK: - Step 3: People
 
-    // MARK: - Step 3: Connections
-
-    private var connectionsStep: some View {
+    private var peopleStep: some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s4) {
             stepHeader(
-                title: "Who would you rather\nconnect with?",
-                body: "Instead of scrolling, NowFocus can remind you to call someone who matters."
+                title: "Who matters\nto you?",
+                body: "When a blocked app opens, we'll point you to someone you haven't talked to in a while, with a way to call or text. Nothing leaves this Mac."
             )
-
-            // Add row
-            VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
-                HStack(spacing: NowFocusSpace.s2) {
-                    TextField("Name", text: $newConnName)
-                        .textFieldStyle(.plain)
-                        .font(NowFocusFonts.body(14))
-                        .foregroundColor(NowFocusColors.ink)
-                        .padding(.vertical, NowFocusSpace.s2)
-                        .overlay(NowFocusRule(), alignment: .bottom)
-                        .frame(maxWidth: 160)
-
-                    TextField("Phone (optional)", text: $newConnPhone)
-                        .textFieldStyle(.plain)
-                        .font(NowFocusFonts.body(14))
-                        .foregroundColor(NowFocusColors.ink)
-                        .padding(.vertical, NowFocusSpace.s2)
-                        .overlay(NowFocusRule(), alignment: .bottom)
-
-                    NowFocusSecondaryButton(title: "Add") { addConnection() }
-                }
-            }
-
-            // Connection list
-            if !connections.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(connections) { conn in
-                        HStack(spacing: NowFocusSpace.s2) {
-                            Image(systemName: "person.circle")
-                                .foregroundColor(NowFocusColors.neutral500)
-                            Text(conn.name)
-                                .font(NowFocusFonts.body(14).weight(.semibold))
-                                .foregroundColor(NowFocusColors.ink)
-                            if let phone = conn.phoneNumber, !phone.isEmpty {
-                                Text(phone)
-                                    .font(NowFocusFonts.body(13))
-                                    .foregroundColor(NowFocusColors.neutral700)
-                            }
-                            Spacer()
-                            Button {
-                                connections.removeAll { $0.id == conn.id }
-                            } label: {
-                                Image(systemName: "trash")
-                                    .foregroundColor(NowFocusColors.neutral500)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.vertical, NowFocusSpace.s2)
-                        .overlay(alignment: .bottom) { NowFocusRule() }
-                    }
-                }
-            }
+            PeopleEditorView()
         }
-    }
-
-    private func addConnection() {
-        let name = newConnName.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { return }
-        let phone = newConnPhone.trimmingCharacters(in: .whitespaces)
-        connections.append(UserConnection(
-            name: name,
-            phoneNumber: phone.isEmpty ? nil : phone
-        ))
-        newConnName = ""
-        newConnPhone = ""
-    }
-
-    // MARK: - Step 4: Voice Message
-
-    private var voiceStep: some View {
-        VStack(alignment: .leading, spacing: NowFocusSpace.s4) {
-            stepHeader(
-                title: "Record a message\nto your future self.",
-                body: "When you're about to quit a session, you'll hear this. Make it count."
-            )
-
-            switch recorder.permissionStatus {
-            case .denied:
-                deniedPermissionNote
-
-            case .unknown:
-                NowFocusPrimaryButton(title: "Allow Microphone Access") {
-                    recorder.requestPermission()
-                }
-                Text("NowFocus needs mic access to record. The file stays on this Mac.")
-                    .font(NowFocusFonts.body(12))
-                    .foregroundColor(NowFocusColors.neutral700)
-
-            case .granted:
-                voiceRecordingControls
-            }
-        }
-    }
-
-    private var voiceRecordingControls: some View {
-        VStack(alignment: .leading, spacing: NowFocusSpace.s4) {
-            // Big record / stop button
-            HStack(spacing: NowFocusSpace.s4) {
-                Button {
-                    switch recorder.recorderState {
-                    case .idle, .recorded:
-                        recorder.startRecording()
-                    case .recording:
-                        recorder.stopRecording()
-                    case .playing:
-                        recorder.stopPlayback()
-                    }
-                } label: {
-                    ZStack {
-                        Circle()
-                            .fill(recorder.recorderState == .recording
-                                  ? NowFocusColors.accent
-                                  : NowFocusColors.neutral200)
-                            .frame(width: 72, height: 72)
-                            .scaleEffect(recorder.recorderState == .recording ? 1.05 : 1.0)
-                            .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true),
-                                       value: recorder.recorderState == .recording)
-
-                        Image(systemName: recorder.recorderState == .recording ? "stop.fill" : "mic.fill")
-                            .font(.system(size: 26))
-                            .foregroundColor(recorder.recorderState == .recording
-                                             ? NowFocusColors.ground
-                                             : NowFocusColors.ink)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                VStack(alignment: .leading, spacing: NowFocusSpace.s1) {
-                    switch recorder.recorderState {
-                    case .idle:
-                        Text("Tap to record")
-                            .font(NowFocusFonts.body(14).weight(.semibold))
-                            .foregroundColor(NowFocusColors.ink)
-                        Text("Up to 60 seconds")
-                            .font(NowFocusFonts.body(12))
-                            .foregroundColor(NowFocusColors.neutral700)
-                    case .recording:
-                        Text(String(format: "Recording… %.0fs / 60s", recorder.recordingDuration))
-                            .font(NowFocusFonts.body(14).weight(.semibold))
-                            .foregroundColor(NowFocusColors.accent)
-                        Text("Tap to stop")
-                            .font(NowFocusFonts.body(12))
-                            .foregroundColor(NowFocusColors.neutral700)
-                    case .recorded:
-                        Text("Recording saved ✓")
-                            .font(NowFocusFonts.body(14).weight(.semibold))
-                            .foregroundColor(NowFocusColors.ink)
-                        Text(String(format: "%.0f seconds", recorder.recordingDuration))
-                            .font(NowFocusFonts.body(12))
-                            .foregroundColor(NowFocusColors.neutral700)
-                    case .playing:
-                        Text(String(format: "Playing… %.0fs", recorder.playbackProgress))
-                            .font(NowFocusFonts.body(14).weight(.semibold))
-                            .foregroundColor(NowFocusColors.accent)
-                        Text("Tap to stop")
-                            .font(NowFocusFonts.body(12))
-                            .foregroundColor(NowFocusColors.neutral700)
-                    }
-                }
-            }
-
-            // Play / re-record row (only when a recording exists)
-            if recorder.recorderState == .recorded || recorder.recorderState == .playing {
-                HStack(spacing: NowFocusSpace.s3) {
-                    NowFocusSecondaryButton(title: recorder.recorderState == .playing ? "■ Stop" : "▶ Play") {
-                        if recorder.recorderState == .playing {
-                            recorder.stopPlayback()
-                        } else {
-                            recorder.startPlayback()
-                        }
-                    }
-                    NowFocusGhostButton(title: "Re-record") {
-                        recorder.deleteRecording()
-                    }
-                }
-            }
-        }
-    }
-
-    private var deniedPermissionNote: some View {
-        VStack(alignment: .leading, spacing: NowFocusSpace.s3) {
-            Text("Microphone access is required to record a voice message.")
-                .font(NowFocusFonts.body(14))
-                .foregroundColor(NowFocusColors.accent800)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("You can enable it in System Settings → Privacy & Security → Microphone, then re-open NowFocus.")
-                .font(NowFocusFonts.body(13))
-                .foregroundColor(NowFocusColors.neutral700)
-                .fixedSize(horizontal: false, vertical: true)
-            NowFocusGhostButton(title: "Open Privacy Settings") {
-                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-            Text("You can also skip this step and add a voice message later from \"My Why\" in Preferences.")
-                .font(NowFocusFonts.body(12))
-                .foregroundColor(NowFocusColors.neutral600)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(NowFocusSpace.s3)
-        .background(NowFocusColors.accent100)
     }
 
     // MARK: - Helpers

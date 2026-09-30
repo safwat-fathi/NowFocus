@@ -8,7 +8,8 @@ import AVFoundation
 /// this view has no opinion of its own about which modes get which flow.
 struct UnlockOverlayView: View {
     let session: FocusSession
-    let onConfirmEnd: () -> Void
+    /// `listened`: the session's voice note was played to the end (or couldn't be played), or there is none.
+    let onConfirmEnd: (_ listened: Bool) -> Void
     let onCancel: () -> Void
 
     @State private var typed: String = ""
@@ -16,7 +17,8 @@ struct UnlockOverlayView: View {
     @State private var pauseEnd: Date?
     @State private var now = Date()
     @State private var motivationGoal: UserGoal? = nil
-    @State private var voiceRecorder = VoiceRecorder()
+    /// The note recorded for this session, if any. Nil means there is nothing to hear first.
+    @State private var notePlayer: VoiceNotePlayer?
 
     private let engine = SessionEngine()
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -47,16 +49,25 @@ struct UnlockOverlayView: View {
         .onReceive(ticker) { tick in now = tick }
         .onAppear {
             motivationGoal = try? DatabaseManager.shared.fetchRandomGoal()
-            voiceRecorder.checkPermission()
+            if VoiceNoteStore.shared.hasNote(sessionId: session.id) {
+                notePlayer = VoiceNotePlayer(url: VoiceNoteStore.shared.noteURL(sessionId: session.id))
+            }
         }
         .onDisappear {
-            voiceRecorder.stopPlayback()
+            notePlayer?.stop()
         }
     }
 
     private var pauseElapsed: Bool {
         guard let pauseEnd else { return false }
         return now >= pauseEnd
+    }
+
+    private var listened: Bool { notePlayer?.listened ?? true }
+
+    /// One rule for the button, shared with the ViewModel-side check in MenuBarView.stopSession.
+    private var canEnd: Bool {
+        SessionEngine.canCancel(mode: session.enforcementMode, unlockCompleted: pauseElapsed, hasVoiceNote: notePlayer != nil, listened: notePlayer?.listened ?? false)
     }
 
     @ViewBuilder
@@ -113,7 +124,9 @@ struct UnlockOverlayView: View {
     @ViewBuilder
     private func pauseStage(pauseSeconds: Int) -> some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
-            Text("Take a breath. If you still want out when this hits zero, it's yours.")
+            Text(notePlayer == nil
+                 ? "Take a breath. If you still want out when this hits zero, it's yours."
+                 : "Take a breath, then hear what you told yourself. You can leave once you have.")
                 .font(NowFocusFonts.body(13))
                 .foregroundColor(NowFocusColors.neutral800)
 
@@ -140,32 +153,29 @@ struct UnlockOverlayView: View {
                 .background(NowFocusColors.neutral100)
             }
 
-            // Voice message playback
-            if VoiceMessageStore.shared.hasVoiceMessage {
-                voiceMessageButton
+            if let notePlayer {
+                noteButton(notePlayer)
             }
 
             HStack(spacing: NowFocusSpace.s2) {
                 NowFocusPrimaryButton(title: "Stay focused", action: onCancel)
                 NowFocusSecondaryButton(
-                    title: pauseElapsed ? "End session now" : "Wait…",
-                    action: { if pauseElapsed { onConfirmEnd() } }
+                    title: canEnd ? "End session now" : (pauseElapsed ? "Hear your note first" : "Waiting…"),
+                    action: { if canEnd { onConfirmEnd(listened) } }
                 )
             }
         }
     }
 
     @ViewBuilder
-    private var voiceMessageButton: some View {
-        let isPlaying = voiceRecorder.recorderState == .playing
+    private func noteButton(_ player: VoiceNotePlayer) -> some View {
         Button {
-            if isPlaying { voiceRecorder.stopPlayback() }
-            else { voiceRecorder.startPlayback() }
+            player.play()
         } label: {
             HStack(spacing: NowFocusSpace.s2) {
-                Image(systemName: isPlaying ? "pause.fill" : "headphones")
+                Image(systemName: player.isPlaying ? "waveform" : "headphones")
                     .font(.system(size: 13))
-                Text(isPlaying ? "Stop message" : "🎧 Listen to your message")
+                Text(player.isPlaying ? "Playing…" : (player.listened ? "Play again" : "Play your note"))
                     .font(NowFocusFonts.body(13))
             }
             .foregroundColor(NowFocusColors.accent)

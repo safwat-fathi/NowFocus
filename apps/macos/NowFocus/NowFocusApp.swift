@@ -144,7 +144,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     SessionController.endSession(session, cancelled: true)
                     return
                 }
-                SessionController.startEnforcement(policy: policy, sessionId: session.id)
+                SessionController.startEnforcement(policy: policy, sessionId: session.id, endAt: session.endAt)
             } else {
                 // Session expired while we were closed.
                 SessionController.endSession(session)
