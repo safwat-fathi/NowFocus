@@ -34,6 +34,9 @@ static TRAY_APP: OnceLock<AppHandle> = OnceLock::new();
 /// `set_icon` call when neither session state nor taskbar theme changed.
 static LAST_TRAY_STATE: Mutex<Option<(bool, bool)>> = Mutex::new(None);
 
+/// Last tooltip applied, so it is only rewritten when the minute label changes.
+static LAST_TRAY_TOOLTIP: Mutex<Option<String>> = Mutex::new(None);
+
 // Tray icons: one 32px thick-stroke render per idle/active x light/dark —
 // `include_image!` decodes at compile time, so no `image-png` Cargo feature
 // is needed (see the brand-import plan for why 32px/one-size-each).
@@ -220,10 +223,17 @@ pub(crate) fn refresh_tray() {
         return;
     };
 
-    let active = {
+    let (active, tooltip) = {
         let Ok(mut guard) = state.lock() else { return };
         match guard.snapshot() {
-            Ok(dto) => dto.session.is_some(),
+            Ok(dto) => {
+                // Minute granularity: this runs on every command, so a per-second label would rewrite the tooltip constantly.
+                let tip = match &dto.session {
+                    Some(s) => format!("NowFocus · {}m left", (s.remaining_ms.max(0) + 59_999) / 60_000),
+                    None => "NowFocus".to_string(),
+                };
+                (dto.session.is_some(), tip)
+            }
             Err(_) => return,
         }
     };
@@ -233,6 +243,17 @@ pub(crate) fn refresh_tray() {
         .and_then(|w| w.theme().ok())
         .map(|t| t == Theme::Dark)
         .unwrap_or(false);
+
+    // Tooltip before the icon dedupe below: the icon doesn't change as the minutes tick down.
+    {
+        let mut last = LAST_TRAY_TOOLTIP.lock().unwrap();
+        if last.as_deref() != Some(tooltip.as_str()) {
+            if let Some(tray) = app.tray_by_id("main") {
+                let _ = tray.set_tooltip(Some(tooltip.as_str()));
+            }
+            *last = Some(tooltip);
+        }
+    }
 
     {
         let mut last = LAST_TRAY_STATE.lock().unwrap();

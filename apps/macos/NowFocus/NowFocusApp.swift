@@ -26,7 +26,14 @@ struct NowFocusApp: App {
 /// `MenuBarExtra`'s label wouldn't re-evaluate on its own.
 private struct MenuBarIcon: View {
     var body: some View {
-        Image(SessionController.status.isActive ? "MenuBarActiveTemplate" : "MenuBarIdleTemplate")
+        let status = SessionController.status
+        HStack(spacing: 4) {
+            Image(status.isActive ? "MenuBarActiveTemplate" : "MenuBarIdleTemplate")
+            if status.isActive, let endAt = status.endAt {
+                Text(timerInterval: Date.now...max(endAt, Date.now), countsDown: true)
+                    .monospacedDigit()
+            }
+        }
     }
 }
 

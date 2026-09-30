@@ -10,6 +10,8 @@ import NowFocusCore
 @Observable
 final class SessionStatus {
     var isActive: Bool = false
+    /// When the running session ends, for the menu bar countdown.
+    var endAt: Date?
 }
 
 /// Single place that starts/stops enforcement (daemon + app blocker) so they
@@ -32,6 +34,7 @@ enum SessionController {
             endAt: endAt
         )
         status.isActive = true
+        status.endAt = endAt
     }
 
     @MainActor
@@ -39,6 +42,7 @@ enum SessionController {
         DaemonClient.shared.clear()
         AppBlocker.shared.updatePolicy(sessionId: nil, isSessionActive: false, blockedApps: [])
         status.isActive = false
+        status.endAt = nil
     }
 
     /// Marks `session` completed (ran its course) or cancelled (stopped
