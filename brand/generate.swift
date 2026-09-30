@@ -658,9 +658,8 @@ func generateExports() {
     writePNG(touchCtx, to: exportsDir + "/web/apple-touch-icon-180.png")
     _ = fav48
 
-    // Store/web collateral — domain left as `nowfocus.app` per the design
-    // sheet; flagged in the plan as needing confirmation against the repo's
-    // actual `getnowfocus` bundle IDs before this is treated as final.
+    // Store/web collateral. The site lives at nowfocus.online (apps/web); the
+    // `app.getnowfocus.*` bundle IDs are reverse-DNS identifiers and stay as they are.
     let pfW = 1024, pfH = 500
     let pfCtx = makeContext(width: pfW, height: pfH, opaque: true)
     pfCtx.setFillColor(hexColor(accentHex))
@@ -675,10 +674,10 @@ func generateExports() {
     ogCtx.setFillColor(hexColor(groundHex))
     ogCtx.fill(CGRect(x: 0, y: 0, width: ogW, height: ogH))
     drawMark(ogCtx, rect: CGRect(x: 64, y: 64, width: 80, height: 80), strokeThick: false, color: hexColor(inkHex), accent: hexColor(accentHex))
-    drawText(ogCtx, "Focus that follows you.", at: CGPoint(x: 64, y: 220), size: 68, color: hexColor(inkHex))
+    drawText(ogCtx, "Your focus. Your rules.", at: CGPoint(x: 64, y: 220), size: 68, color: hexColor(inkHex))
     ogCtx.setFillColor(hexColor(accentHex))
     ogCtx.fill(CGRect(x: 0, y: ogH - 140, width: ogW / 2, height: 140))
-    drawText(ogCtx, "nowfocus.app", at: CGPoint(x: 64, y: ogH - 100), size: 36, color: hexColor(whiteHex))
+    drawText(ogCtx, "nowfocus.online", at: CGPoint(x: 64, y: ogH - 100), size: 36, color: hexColor(whiteHex))
     writePNG(ogCtx, to: exportsDir + "/store/og-image-1200x630.png")
 
     print("iOS/store/web exports + canonical SVGs written")
