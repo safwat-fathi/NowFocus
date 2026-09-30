@@ -176,7 +176,7 @@ a.btn-secondary:hover { color: var(--color-text); }
 .callout h3, .callout h4 { margin: 0 0 6px; color: var(--color-text); text-transform: none; letter-spacing: -0.01em; font-size: 17px; }
 .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
 
-.spec th { width: 32%; font-size: 14px; letter-spacing: 0; text-transform: none; color: inherit; font-weight: 700; vertical-align: top; }
+.spec th { width: 32%; font-size: 14px; letter-spacing: 0; text-transform: none; color: inherit; font-weight: 700; vertical-align: top; border-bottom: 1px solid var(--color-divider); }
 .spec td { vertical-align: top; }
 .matrix th, .matrix td { vertical-align: top; }
 .matrix tbody th { font-size: inherit; letter-spacing: 0; text-transform: none; color: inherit; font-weight: 700; padding: var(--space-2); border-bottom: 1px solid var(--color-divider); }
@@ -188,9 +188,9 @@ a.btn-secondary:hover { color: var(--color-text); }
 .faq details p { margin: 12px 0 0; }
 
 .plat-cards { margin-top: 24px; }
-.plat-cards .platform { gap: 14px; }
-.plat-cards .platform .status { align-self: flex-start; }
-.plat-cards .platform ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; color: var(--color-neutral-800); }
+.plat-cards .platform { gap: 14px; justify-content: flex-start; }
+.plat-cards .platform .status { margin-bottom: 10px; }
+.plat-cards .platform ul { flex: 1; margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; color: var(--color-neutral-800); }
 
 .next-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
 
@@ -208,4 +208,7 @@ a.btn-secondary:hover { color: var(--color-text); }
   .guide-hero { padding: 24px 0 32px; }
   .guide-body > section { padding: 32px 0; }
   .spec th { width: 38%; }
+  .matrix tbody th { padding: 4px 0; border: 0; }
 }
+
+.hub { padding: 32px 0 88px; }

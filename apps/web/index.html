@@ -4,34 +4,129 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NowFocus — Your focus. Your rules.</title>
-<meta name="description" content="NowFocus is a privacy-first focus app for Android, macOS and Windows. It blocks the apps and sites that distract you, and makes leaving a session early a decision instead of a reflex.">
+<meta name="description" content="NowFocus is a privacy-first focus app for Android, macOS and Windows. It blocks distracting apps and sites and makes quitting early a decision, not a reflex.">
+<meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#f3f2f2">
 <link rel="canonical" href="https://nowfocus.online/">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="icon" href="favicon.ico" sizes="any">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/archivo-800.woff2" as="font" type="font/woff2" crossorigin>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NowFocus">
 <meta property="og:title" content="NowFocus — Your focus. Your rules.">
-<meta property="og:description" content="Blocks the apps and sites that distract you, and makes leaving a session early a decision instead of a reflex.">
+<meta property="og:description" content="NowFocus is a privacy-first focus app for Android, macOS and Windows. It blocks distracting apps and sites and makes quitting early a decision, not a reflex.">
 <meta property="og:url" content="https://nowfocus.online/">
 <meta property="og:image" content="https://nowfocus.online/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="NowFocus: Your focus. Your rules.">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="site.css">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://nowfocus.online/#org",
+      "name": "NowFocus",
+      "url": "https://nowfocus.online/",
+      "logo": {
+        "@type": "ImageObject",
+        "@id": "https://nowfocus.online/#logo",
+        "url": "https://nowfocus.online/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "safwat.rashwan@gmail.com",
+        "availableLanguage": "en"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://nowfocus.online/#website",
+      "url": "https://nowfocus.online/",
+      "name": "NowFocus",
+      "description": "NowFocus is a privacy-first focus app for Android, macOS and Windows.",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://nowfocus.online/#webpage",
+      "url": "https://nowfocus.online/",
+      "name": "NowFocus — Your focus. Your rules.",
+      "description": "NowFocus is a privacy-first focus app for Android, macOS and Windows. It blocks distracting apps and sites and makes quitting early a decision, not a reflex.",
+      "isPartOf": {
+        "@id": "https://nowfocus.online/#website"
+      },
+      "inLanguage": "en",
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://nowfocus.online/og-image.png",
+        "width": 1200,
+        "height": 630
+      },
+      "datePublished": "2026-09-30",
+      "dateModified": "2026-09-30",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "about": {
+        "@id": "https://nowfocus.online/#app"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://nowfocus.online/#app",
+      "name": "NowFocus",
+      "url": "https://nowfocus.online/",
+      "description": "NowFocus blocks distracting sites and apps during focus sessions and makes leaving early a decision instead of a reflex. Everything runs on your device.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Android 8.0+, macOS 14+, Windows 10+ (64-bit)",
+      "featureList": [
+        "Block websites and apps during focus sessions",
+        "Normal, Strict and Locked exit modes",
+        "Strict mode: type a sentence and wait 30 seconds",
+        "14-day Commitment Shield with a 60-second undo window",
+        "Bedtime Wind-Down",
+        "Weekly stats",
+        "Runs on your device, with no account"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "image": "https://nowfocus.online/og-image.png",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      }
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
 <nav class="nav" aria-label="Main">
-  <a class="nav-brand" href="#top">
+  <a class="nav-brand" href="/">
     <svg class="mark" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
     NowFocus
   </a>
-  <a class="nav-link" href="#what">What it is</a>
-  <a class="nav-link" href="#different">Why it’s different</a>
-  <a class="nav-link" href="#platforms">Platforms</a>
-  <a class="btn btn-primary" href="#platforms">Get NowFocus</a>
+  <a class="nav-link" href="/#what">What it is</a>
+  <a class="nav-link" href="/#different">Why it’s different</a>
+  <a class="nav-link" href="/#platforms">Platforms</a>
+  <a class="nav-link" href="/download/">Download</a>
+  <a class="btn btn-primary" href="/download/">Get NowFocus</a>
 </nav>
 
 <main id="main">
@@ -42,7 +137,7 @@
     <div class="hero-row">
       <p class="lede">Your phone is built to take your attention. NowFocus gives it back: it blocks what distracts you, and makes leaving a session early a decision instead of a reflex.</p>
       <div class="actions">
-        <a class="btn btn-primary" href="#platforms">Get NowFocus</a>
+        <a class="btn btn-primary" href="/download/">Get NowFocus</a>
         <a class="btn btn-ghost" href="#what">What is it?</a>
       </div>
     </div>
@@ -86,7 +181,7 @@
         <span class="step-n"><i></i>02</span>
         <div>
           <h3>Distractions go dark</h3>
-          <p>Blocked apps and sites are replaced by a calm “This can wait.” screen. On Android it offers a one-tap call or text to someone who matters instead.</p>
+          <p>Blocked apps are covered by a full-screen message, and blocked sites simply won’t load. On Android the message is a calm “This can wait.” with a one-tap call or text to someone who matters.</p>
         </div>
       </li>
       <li class="step">
@@ -112,13 +207,13 @@
         <span class="diff-n">A</span>
         <h3>Friction, not willpower</h3>
         <p>Quitting early is possible in Strict mode, but slow and deliberate: type a sentence, then wait 30 seconds. On Android you also hear a 10-second note you recorded to yourself. It becomes a decision, not a reflex.</p>
-        <p class="diff-note">Strict mode · Android, macOS, Windows</p>
+        <p class="diff-note">Strict mode · Android, macOS and Windows (in development)</p>
       </article>
       <article class="diff">
         <span class="diff-n">B</span>
         <h3>Blocks the feed, not the app</h3>
-        <p>Keep YouTube, lose the Shorts. Partial blocking hides Shorts, Reels and recommendation lists while the rest of the app keeps working.</p>
-        <p class="diff-note">Android · YouTube Shorts, Home feed and Up next; Facebook Reels</p>
+        <p>Keep YouTube, lose the Shorts. Experimental partial blocking hides Shorts, Reels and recommendation lists while the rest of the app keeps working.</p>
+        <p class="diff-note">Android, experimental · YouTube Shorts, Home feed and Up next; Facebook Reels</p>
       </article>
       <article class="diff">
         <span class="diff-n">C</span>
@@ -133,7 +228,7 @@
         <thead><tr><th><span class="sr-only">Feature</span></th><th>Typical focus apps</th><th>NowFocus</th></tr></thead>
         <tbody>
           <tr><th scope="row">Ending early</th><td data-label="Typical focus apps">One tap</td><td data-label="NowFocus">Your call: any time, type-and-wait, or locked</td></tr>
-          <tr><th scope="row">Blocking a feed</th><td data-label="Typical focus apps">The whole app, or nothing</td><td data-label="NowFocus">Just Shorts, Reels and recommendations (Android)</td></tr>
+          <tr><th scope="row">Blocking a feed</th><td data-label="Typical focus apps">The whole app, or nothing</td><td data-label="NowFocus">Just Shorts, Reels and recommendations (Android, experimental)</td></tr>
           <tr><th scope="row">Commitment</th><td data-label="Typical focus apps">Switch it off whenever</td><td data-label="NowFocus">14-day Commitment Shield, with a 60-second undo window</td></tr>
           <tr><th scope="row">Your data</th><td data-label="Typical focus apps">Often kept in an account</td><td data-label="NowFocus">Counted on your device, no account</td></tr>
         </tbody>
@@ -150,26 +245,25 @@
       <h2 class="title">Android, macOS and Windows. iOS is next.</h2>
     </div>
 
-    <!-- When a build is live, swap its <span aria-disabled> for: <a class="btn btn-secondary" href="URL">Download</a> -->
     <div class="platforms">
       <div class="platform">
-        <div><h3>Android</h3><p>Android 8 or later</p></div>
-        <span class="btn btn-secondary" aria-disabled="true">Coming soon</span>
+        <div><h3>Android</h3><p>Android 8 or later · early access</p></div>
+        <a class="btn btn-secondary" href="/download/android/">Guide and status</a>
       </div>
       <div class="platform">
-        <div><h3>macOS</h3><p>macOS 14 or later</p></div>
-        <span class="btn btn-secondary" aria-disabled="true">Coming soon</span>
+        <div><h3>macOS</h3><p>macOS 14 or later · early build</p></div>
+        <a class="btn btn-secondary" href="/download/macos/">Guide and status</a>
       </div>
       <div class="platform">
-        <div><h3>Windows</h3><p>Windows 10 · 11</p></div>
-        <span class="btn btn-secondary" aria-disabled="true">Coming soon</span>
+        <div><h3>Windows</h3><p>Windows 10 · 11 · in development</p></div>
+        <a class="btn btn-secondary" href="/download/windows/">Guide and status</a>
       </div>
       <div class="platform">
         <div><h3>iOS</h3><p>iPhone · iPad. On the roadmap.</p></div>
-        <span class="btn btn-secondary" aria-disabled="true">Coming soon</span>
+        <span class="btn btn-secondary" aria-disabled="true">Planned</span>
       </div>
     </div>
-    <p class="fine">Cross-device sessions, where you start once and every linked device joins, are on the way. Want to know when NowFocus is out? <a href="mailto:safwat.rashwan@gmail.com?subject=NowFocus%20updates">Email us</a>.</p>
+    <p class="fine">Nothing is published to a store yet. See the <a href="/download/">download page</a> for status, requirements and what each version can do. Cross-device sessions, where you start once and every linked device joins, are on the way. Want to know when NowFocus is out? <a href="mailto:safwat.rashwan@gmail.com?subject=NowFocus%20updates">Email us</a>.</p>
   </section>
 
 </div>
@@ -178,7 +272,7 @@
 <section class="banner">
   <div class="banner-in">
     <h2><span>Start the next</span><span>session now.</span></h2>
-    <a class="btn btn-ghost" href="#platforms">Get NowFocus</a>
+    <a class="btn btn-ghost" href="/download/">Get NowFocus</a>
   </div>
 </section>
 
@@ -188,20 +282,38 @@
     © 2026 NowFocus
   </span>
   <nav class="foot-links" aria-label="Footer">
-    <a href="privacy.html">Privacy</a>
-    <a href="terms.html">Terms</a>
+    <a href="/download/">Download</a>
+    <a href="/download/android/">Android</a>
+    <a href="/download/macos/">macOS</a>
+    <a href="/download/windows/">Windows</a>
+    <a href="/privacy/">Privacy</a>
+    <a href="/terms/">Terms</a>
     <a href="mailto:safwat.rashwan@gmail.com">Contact</a>
   </nav>
 </footer>
 
 <script>
-  // Set to a same-origin file (e.g. "/media/promo-16x9.mp4") to swap the placeholder for the player.
+  // Set both to publish the demo video: a same-origin file (e.g. "/media/promo-16x9.mp4") and its upload date ("YYYY-MM-DD").
+  // The date also adds VideoObject structured data for search engines.
   const VIDEO_URL = "";
+  const VIDEO_UPLOADED = "";
   if (VIDEO_URL) {
     const v = document.getElementById("demo-video");
     v.src = VIDEO_URL;
     v.hidden = false;
     document.getElementById("demo-placeholder").hidden = true;
+    if (VIDEO_UPLOADED) {
+      const ld = document.createElement("script");
+      ld.type = "application/ld+json";
+      ld.textContent = JSON.stringify({
+        "@context": "https://schema.org", "@type": "VideoObject",
+        name: "NowFocus demo: a focus session",
+        description: "Start a session, meet a blocked app and try to quit early.",
+        thumbnailUrl: ["https://nowfocus.online/og-image.png"],
+        uploadDate: VIDEO_UPLOADED, contentUrl: new URL(VIDEO_URL, location.href).href,
+      });
+      document.head.appendChild(ld);
+    }
   }
 </script>
 </body>

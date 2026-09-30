@@ -4,28 +4,127 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy — NowFocus</title>
-<meta name="description" content="How NowFocus handles your data: everything stays on your device.">
+<meta name="description" content="How NowFocus handles your data: everything stays on your device, with no account, ads or trackers, and no NowFocus server involved today.">
+<meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#f3f2f2">
-<link rel="canonical" href="https://nowfocus.online/privacy.html">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="icon" href="favicon.ico" sizes="any">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="site.css">
+<link rel="canonical" href="https://nowfocus.online/privacy/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/archivo-800.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NowFocus">
+<meta property="og:title" content="Privacy — NowFocus">
+<meta property="og:description" content="How NowFocus handles your data: everything stays on your device, with no account, ads or trackers, and no NowFocus server involved today.">
+<meta property="og:url" content="https://nowfocus.online/privacy/">
+<meta property="og:image" content="https://nowfocus.online/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="NowFocus: Your focus. Your rules.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://nowfocus.online/#org",
+      "name": "NowFocus",
+      "url": "https://nowfocus.online/",
+      "logo": {
+        "@type": "ImageObject",
+        "@id": "https://nowfocus.online/#logo",
+        "url": "https://nowfocus.online/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "safwat.rashwan@gmail.com",
+        "availableLanguage": "en"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://nowfocus.online/#website",
+      "url": "https://nowfocus.online/",
+      "name": "NowFocus",
+      "description": "NowFocus is a privacy-first focus app for Android, macOS and Windows.",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://nowfocus.online/privacy/#webpage",
+      "url": "https://nowfocus.online/privacy/",
+      "name": "Privacy — NowFocus",
+      "description": "How NowFocus handles your data: everything stays on your device, with no account, ads or trackers, and no NowFocus server involved today.",
+      "isPartOf": {
+        "@id": "https://nowfocus.online/#website"
+      },
+      "inLanguage": "en",
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://nowfocus.online/og-image.png",
+        "width": 1200,
+        "height": 630
+      },
+      "datePublished": "2026-09-30",
+      "dateModified": "2026-09-30",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://nowfocus.online/privacy/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://nowfocus.online/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Privacy",
+          "item": "https://nowfocus.online/privacy/"
+        }
+      ]
+    }
+  ]
+}
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
 <nav class="nav" aria-label="Main">
-  <a class="nav-brand" href="index.html">
+  <a class="nav-brand" href="/">
     <svg class="mark" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
     NowFocus
   </a>
-  <a class="btn btn-secondary" href="index.html">Home</a>
+  <a class="nav-link" href="/#what">What it is</a>
+  <a class="nav-link" href="/#different">Why it’s different</a>
+  <a class="nav-link" href="/#platforms">Platforms</a>
+  <a class="nav-link" href="/download/">Download</a>
+  <a class="btn btn-primary" href="/download/">Get NowFocus</a>
 </nav>
 
 <main id="main">
 <div class="page">
+<nav class="crumbs" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Home</a></li>
+    <li aria-current="page">Privacy</li>
+  </ol>
+</nav>
 <article class="prose">
   <h1>Privacy</h1>
   <p class="updated">Last updated: 30 September 2026</p>
@@ -40,7 +139,7 @@
     <li>Commitment Shield items and Bedtime settings.</li>
     <li>Things you add for yourself: the people you’d rather reach out to (a name and a phone number), your goals, and short voice notes.</li>
   </ul>
-  <p>The apps don’t connect to any NowFocus server. On Android, if you have Google’s device backup turned on, Android may copy the app’s data to your own Google account backup and restore it if you reinstall or set up a new phone. Voice notes are excluded from that backup. The backup is between you and Google; we can’t see it. Uninstalling removes the data from the device, and on macOS and Windows it lives in the app’s own data folder on the computer.</p>
+  <p>The apps don’t connect to any NowFocus server. On Android, if you have Google’s device backup turned on, Android may copy the app’s data to your own Google account backup and restore it if you reinstall or set up a new phone. Voice notes are excluded from that backup. The backup is between you and Google; we can’t see it. Uninstalling the Android app removes its data. On macOS and Windows, uninstalling doesn’t remove everything, and on macOS dragging the app to the Trash leaves data and website blocks behind. See the uninstall notes for <a href="/download/macos/#uninstall">macOS</a> and <a href="/download/windows/#uninstall">Windows</a>.</p>
 
   <h2>Android permissions, and why</h2>
   <ul>
@@ -81,8 +180,12 @@
     © 2026 NowFocus
   </span>
   <nav class="foot-links" aria-label="Footer">
-    <a href="privacy.html" aria-current="page">Privacy</a>
-    <a href="terms.html">Terms</a>
+    <a href="/download/">Download</a>
+    <a href="/download/android/">Android</a>
+    <a href="/download/macos/">macOS</a>
+    <a href="/download/windows/">Windows</a>
+    <a href="/privacy/" aria-current="page">Privacy</a>
+    <a href="/terms/">Terms</a>
     <a href="mailto:safwat.rashwan@gmail.com">Contact</a>
   </nav>
 </footer>

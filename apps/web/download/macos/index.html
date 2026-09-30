@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NowFocus for macOS: install, setup and every screen</title>
+<meta name="description" content="NowFocus for macOS (early build): requirements, setup, every screen and menu-bar control explained step by step, plus honest limits and an FAQ.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="theme-color" content="#f3f2f2">
+<link rel="canonical" href="https://nowfocus.online/download/macos/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/archivo-800.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="NowFocus">
+<meta property="og:title" content="NowFocus for macOS: install, setup and every screen">
+<meta property="og:description" content="NowFocus for macOS (early build): requirements, setup, every screen and menu-bar control explained step by step, plus honest limits and an FAQ.">
+<meta property="og:url" content="https://nowfocus.online/download/macos/">
+<meta property="og:image" content="https://nowfocus.online/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="NowFocus: Your focus. Your rules.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://nowfocus.online/#org",
+      "name": "NowFocus",
+      "url": "https://nowfocus.online/",
+      "logo": {
+        "@type": "ImageObject",
+        "@id": "https://nowfocus.online/#logo",
+        "url": "https://nowfocus.online/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "safwat.rashwan@gmail.com",
+        "availableLanguage": "en"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://nowfocus.online/#website",
+      "url": "https://nowfocus.online/",
+      "name": "NowFocus",
+      "description": "NowFocus is a privacy-first focus app for Android, macOS and Windows.",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://nowfocus.online/download/macos/#webpage",
+      "url": "https://nowfocus.online/download/macos/",
+      "name": "NowFocus for macOS: install, setup and every screen",
+      "description": "NowFocus for macOS (early build): requirements, setup, every screen and menu-bar control explained step by step, plus honest limits and an FAQ.",
+      "isPartOf": {
+        "@id": "https://nowfocus.online/#website"
+      },
+      "inLanguage": "en",
+      "primaryImageOfPage": {
+        "@type": "ImageObject",
+        "url": "https://nowfocus.online/og-image.png",
+        "width": 1200,
+        "height": 630
+      },
+      "datePublished": "2026-09-30",
+      "dateModified": "2026-09-30",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "about": {
+        "@id": "https://nowfocus.online/download/macos/#app"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://nowfocus.online/download/macos/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://nowfocus.online/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Download",
+          "item": "https://nowfocus.online/download/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "macOS",
+          "item": "https://nowfocus.online/download/macos/"
+        }
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://nowfocus.online/download/macos/#app",
+      "name": "NowFocus for macOS",
+      "url": "https://nowfocus.online/download/macos/",
+      "description": "NowFocus for macOS is a menu-bar app that blocks distracting sites and apps during focus sessions and makes leaving early a decision instead of a reflex.",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "macOS 14+",
+      "softwareRequirements": "macOS 14 (Sonoma) or later, Apple silicon or Intel",
+      "featureList": [
+        "Block websites and apps during focus sessions",
+        "Normal, Strict and Locked exit modes",
+        "Strict mode: type a sentence and wait 30 seconds while your goals are shown",
+        "14-day Commitment for websites with a 60-second undo window",
+        "Bedtime Wind-Down (while the app is open)",
+        "My Why: goals, connections and a voice message",
+        "Weekly stats",
+        "Menu-bar app"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "image": "https://nowfocus.online/og-image.png",
+      "isPartOf": {
+        "@id": "https://nowfocus.online/#app"
+      },
+      "softwareHelp": {
+        "@type": "CreativeWork",
+        "url": "https://nowfocus.online/download/macos/"
+      },
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "permissions": "Background helper approved in System Settings (website blocking and Commitment), microphone (only when recording a voice message)"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://nowfocus.online/download/macos/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Why does NowFocus ask me to approve something in Login Items?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Website blocking edits your hosts file, which needs administrator rights. NowFocus registers a small background helper for that, and macOS asks you to approve background items in System Settings, under General, then Login Items & Extensions. The popover says “Website blocking needs approval.” until you do."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does NowFocus work without the helper?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Partly. App blocking, Strict and Locked sessions, Bedtime and Stats don’t use it. Website blocking and Commitment do."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is my data sent anywhere?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Profiles, stats, goals and your voice message stay on your Mac, and the app doesn’t make network requests."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I quit NowFocus during a session?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Quit is refused while a session is running. Force Quit isn’t blocked, and NowFocus re-applies enforcement the next time it opens."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why are sites still blocked after my session ended?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The app clears the block when the timer runs out. If NowFocus wasn’t running at that moment, sites stay blocked until you open it again."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will it block sites in every browser?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It blocks names in your hosts file, which most browsers honour. Tor Browser isn’t covered, and we haven’t tested browsers that use their own encrypted DNS or iCloud Private Relay."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does NowFocus start when I log in?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not yet. Bedtime and app blocking only work while the app is open."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="nav" aria-label="Main">
+  <a class="nav-brand" href="/">
+    <svg class="mark" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
+    NowFocus
+  </a>
+  <a class="nav-link" href="/#what">What it is</a>
+  <a class="nav-link" href="/#different">Why it’s different</a>
+  <a class="nav-link" href="/#platforms">Platforms</a>
+  <a class="nav-link" href="/download/" aria-current="page">Download</a>
+  <a class="btn btn-primary" href="/download/">Get NowFocus</a>
+</nav>
+
+<main id="main">
+<div class="page">
+  <nav class="crumbs" aria-label="Breadcrumb">
+  <ol>
+    <li><a href="/">Home</a></li>
+    <li><a href="/download/">Download</a></li>
+    <li aria-current="page">macOS</li>
+  </ol>
+</nav>
+
+  <header class="guide-hero">
+    <span class="status ">Early build · Not yet released</span>
+    <h1>NowFocus for macOS</h1>
+    <p class="lede">A menu-bar app that blocks distracting sites and apps during focus sessions, and makes leaving early a decision instead of a reflex. Your data stays on your Mac.</p>
+    <div class="actions">
+      <span class="btn btn-primary" aria-disabled="true">Coming soon</span>
+      <a class="btn btn-ghost" href="mailto:safwat.rashwan@gmail.com?subject=NowFocus%20updates">Email me when it’s out</a>
+    </div>
+  </header>
+
+  <div class="guide">
+<aside class="toc">
+  <nav aria-label="On this page">
+    <h2 class="toc-title">On this page</h2>
+    <ol class="toc-list">
+      <li><a href="#requirements">Requirements</a>
+      </li>
+      <li><a href="#install">Install</a>
+      </li>
+      <li><a href="#setup">First-run setup</a>
+      </li>
+      <li><a href="#screens">Every screen and how to use it</a>
+        <ol class="toc-sub">
+          <li><a href="#s-menubar">Menu-bar icon and popover</a></li>
+          <li><a href="#s-onboarding">Onboarding</a></li>
+          <li><a href="#s-ending">Ending a session early</a></li>
+          <li><a href="#s-profiles">Profiles</a></li>
+          <li><a href="#s-blocking">What blocking looks like</a></li>
+          <li><a href="#s-devices">Devices (This Mac)</a></li>
+          <li><a href="#s-stats">Stats</a></li>
+          <li><a href="#s-mywhy">My Why</a></li>
+          <li><a href="#s-commitment">Commitment</a></li>
+          <li><a href="#s-bedtime">Bedtime Wind-Down</a></li>
+          <li><a href="#s-general">General</a></li>
+        </ol>
+      </li>
+      <li><a href="#limits">What it can’t do</a>
+      </li>
+      <li><a href="#uninstall">Uninstall</a>
+      </li>
+      <li><a href="#faq">FAQ</a>
+      </li>
+    </ol>
+  </nav>
+</aside>
+
+<article class="guide-body">
+<section id="requirements">
+  <h2>Requirements</h2>
+  <table class="table spec">
+  <tbody>
+    <tr><th scope="row">Version</th><td>1.0, an early build that hasn’t been released. It isn’t notarized by Apple yet.</td></tr>
+    <tr><th scope="row">macOS</th><td>macOS 14 (Sonoma) or later, on Apple silicon or Intel.</td></tr>
+    <tr><th scope="row">Permissions</th><td>A background helper that you approve in System Settings (needed for website blocking and Commitment), and the microphone when you record a voice message. No Accessibility, Full Disk Access or notification permission.</td></tr>
+    <tr><th scope="row">Network</th><td>None. The app doesn’t make network requests today.</td></tr>
+    <tr><th scope="row">Price</th><td>Free.</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section id="install">
+  <h2>Install</h2>
+  <p class="lead">NowFocus for macOS isn’t published yet and there’s no download link yet. This is what installing an early build is expected to look like.</p>
+  <ol>
+  <li>Download <code>NowFocus.dmg</code>. When a build is published, the button at the top of this page will link to it.</li>
+  <li>Open the disk image and drag <strong>NowFocus</strong> into <strong>Applications</strong>.</li>
+  <li>Open NowFocus. Early builds aren’t notarized, so macOS may refuse the first launch. If it does, open <strong>System Settings → Privacy &amp; Security</strong> and choose <strong>Open Anyway</strong> for NowFocus.</li>
+  <li>The menu-bar popover may say <strong>Website blocking needs approval.</strong> Click <strong>Open Login Items Settings</strong> and switch NowFocus on under <strong>General → Login Items &amp; Extensions</strong>.</li>
+  <li>Work through the five onboarding steps (see <a href="#s-onboarding">Onboarding</a>).</li>
+</ol>
+  <div class="callout"><h4>Not yet verified</h4><p>We haven’t confirmed on a clean Mac that the background helper registers after installing from the disk image, and the “Open Anyway” step is what we expect rather than what we’ve seen. Until that’s checked, treat website blocking and Commitment as unproven. App blocking, Strict and Locked sessions, Bedtime and Stats don’t use the helper.</p></div>
+</section>
+
+<section id="setup">
+  <h2>First-run setup</h2>
+  <p class="lead">NowFocus asks for two things, and only these:</p>
+  <ol>
+  <li><strong>The background helper.</strong> Website blocking edits your hosts file, which needs administrator rights, so NowFocus registers a small helper at launch. macOS asks you to approve background items in System Settings. There’s no administrator-password prompt inside the app.</li>
+  <li><strong>The microphone.</strong> macOS asks when you click “Allow Microphone Access” during onboarding or the mic button in My Why. The recording stays on this Mac.</li>
+</ol>
+  <p>NowFocus doesn’t start at login. Bedtime and app blocking only work while the app is open.</p>
+</section>
+
+<section id="screens">
+  <h2>Every screen and how to use it</h2>
+  <p class="lead">Every screen in the app. Button names and messages are quoted from the app.</p>
+<section class="screen" id="s-menubar">
+  <h3>Menu-bar icon and popover</h3>
+  <p>NowFocus lives in the menu bar and has no Dock icon until you open a window. The icon is a four-corner frame when idle and gains a solid dot in the centre while you’re focusing. Both follow your light or dark menu bar.</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li>A header pill: “Ready” or “Focusing”.</li>
+    <li><strong>Profile</strong> list, <strong>Duration</strong> (25m, 45m, 1h, 1.5h, 2h, 3h, 4h; default 1h) and <strong>Mode</strong> (Normal, Strict, Locked).</li>
+    <li>“Start Focus Session”. While running: the profile and mode (for example “Deep Work · Strict”), a countdown, “Open” (the main window) and “End early”.</li>
+    <li>An “Enforcement” row: Checking, Active, Degraded or Unavailable, with a fix box when the helper needs approval.</li>
+    <li>“Preferences…” and “Quit NowFocus”. Quit is greyed out during a session.</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Click the menu-bar icon.</li>
+    <li>Pick a profile, a duration and a mode.</li>
+    <li>Click Start Focus Session.</li>
+    <li>Use Open for the main window, or End early to leave.</li>
+  </ol>
+</section>
+<section class="screen" id="s-onboarding">
+  <h3>Onboarding</h3>
+  <p>A five-step window on first launch, about two minutes.</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li><strong>Welcome:</strong> what matters to you.</li>
+    <li><strong>“When do you work and sleep?”</strong> Work hours, sleep and wake times. Skippable. Bedtime stays off until you enable it.</li>
+    <li><strong>“What are you working toward?”</strong> Add at least one goal with a priority. There’s no skip.</li>
+    <li><strong>“Who would you rather connect with?”</strong> Names and optional phone numbers. Skippable.</li>
+    <li><strong>“Record a message to your future self.”</strong> Ends with “Get Started →”. Skip only appears if you deny microphone access; you can record later in My Why.</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Click Continue on each step.</li>
+    <li>Add a goal and, if you like, a person.</li>
+    <li>Record your message, or deny the microphone and skip.</li>
+    <li>Click Get Started.</li>
+  </ol>
+  <div class="callout"><p>Work hours are saved but aren’t used for anything yet.</p></div>
+</section>
+<section class="screen" id="s-ending">
+  <h3>Ending a session early</h3>
+  <p>What happens when you try to quit depends on the mode you chose.</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li><strong>Normal:</strong> “End early” ends the session at once.</li>
+    <li><strong>Strict:</strong> an overlay titled “End early?”. Type “I am choosing to end this focus session early.” exactly, click “Start 30s pause”, then wait through a 30-second “One moment” countdown that shows “Remember why you started:” with one of your high-priority goals. If you recorded a message, “Listen to your message” plays it when you click it (it doesn’t autoplay). Then “End session now”.</li>
+    <li><strong>Locked:</strong> “This one’s locked, by you.” The only button is “Back to focus”.</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Click End early in the popover.</li>
+    <li>In Strict, type the sentence and start the pause.</li>
+    <li>Wait out the countdown, then click End session now, or Stay focused to keep going.</li>
+  </ol>
+  <div class="callout"><p>Ending a Strict session counts as cancelled: only the time that actually passed counts as focused, and it lowers your completion rate. You can’t delete a profile while a session is running on it.</p></div>
+</section>
+<section class="screen" id="s-profiles">
+  <h3>Profiles</h3>
+  <p>Open the main window and choose Profiles in the sidebar. The list on the left has a + button that creates “New Profile”. Each row shows “N sites · N apps”, with a trash icon on hover or “Delete Profile” on right-click (it asks first).</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li><strong>Profile name</strong>, saved on Return or when you click away.</li>
+    <li><strong>Blocked websites:</strong> “Add domain (e.g. youtube.com)”. Pasted links are cleaned down to the bare domain. “+ subdomains” adds the www., m. and mobile. variants.</li>
+    <li><strong>Blocked applications:</strong> “Add Application…” opens a file picker titled “Select an Application to Block”, starting in Applications. Apps are matched by their bundle ID.</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Click + and name the profile.</li>
+    <li>Add the sites you lose time to.</li>
+    <li>Add the apps you lose time to.</li>
+    <li>Start a session from the menu-bar popover.</li>
+  </ol>
+  <div class="callout"><p>The first launch creates “Deep Work”, which blocks youtube.com, twitter.com, x.com, reddit.com, instagram.com, tiktok.com and facebook.com, and no apps. During a running session you can add, rename and reorder, but not remove: “You can’t remove blocks while a focus session is running on this profile.”</p></div>
+</section>
+<section class="screen" id="s-blocking">
+  <h3>What blocking looks like</h3>
+  <p>Websites and apps are blocked differently.</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li><strong>Websites:</strong> the background helper points each blocked domain, with its www., m. and mobile. variants, at 127.0.0.1 in your hosts file. There’s no block page. The browser just fails to load the site.</li>
+    <li><strong>Apps:</strong> when a blocked app comes to the front, a full-screen overlay covers every display: “This application is blocked by NowFocus”, a “Quit App” button and a nudge, such as a name to call or a goal to remember. It hides when you switch to another app.</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Add the site or app to a profile.</li>
+    <li>Start a session.</li>
+    <li>If you land on the overlay, click Quit App or switch to something else.</li>
+  </ol>
+  <div class="callout"><p>“Quit App” asks the app to quit politely, so it can decline, for example to ask about unsaved changes. Phone numbers on the overlay are plain text, not clickable.</p></div>
+</section>
+<section class="screen" id="s-devices">
+  <h3>Devices (This Mac)</h3>
+  <p>There’s no multi-device screen yet, because sync isn’t available. Devices is a health check for this Mac: “Active” or “Degraded”, and three cells that each read On, Off, Idle or Checking.</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li><strong>Root daemon:</strong> is the background helper responding.</li>
+    <li><strong>DNS filter:</strong> despite the name, this checks that the helper has written its block into the hosts file. It reads Idle when nothing should be blocked.</li>
+    <li><strong>App blocking:</strong> is the app-overlay blocker running.</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>If a cell isn’t On, check the Enforcement row in the popover and approve the helper in Login Items Settings.</li>
+  </ol>
+</section>
+<section class="screen" id="s-stats">
+  <h3>Stats</h3>
+  <p>“This week” with a Monday-to-Sunday date range: a big “Xh Ym focused” figure, a seven-bar chart and cells for Sessions, Completed (a percentage), Turned away and Streak (days).</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li>“Most turned away”: your top three blocked apps, or “Nothing turned away this week.”</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Open Stats in the sidebar after a few sessions.</li>
+  </ol>
+  <div class="callout"><p>Only normal focus sessions count, not Bedtime. “Turned away” counts blocked apps only, because website hits can’t be observed. The streak allows one day of grace. Everything is stored on this Mac, in <code>~/Library/Application Support/NowFocus/</code>.</p></div>
+</section>
+<section class="screen" id="s-mywhy">
+  <h3>My Why</h3>
+  <p>Under “My context” in the sidebar. Your goals, connections and a voice message that NowFocus shows when you’re tempted to quit.</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li><strong>Goals</strong> with High, Med or Low priority. High goals appear first and are the ones picked for the Strict pause screen.</li>
+    <li><strong>Connections:</strong> a name and an optional phone number, used in the block overlay’s nudge.</li>
+    <li><strong>Voice message:</strong> record up to 60 seconds, then Play or Re-record. It’s saved as a file on this Mac.</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Add a goal and give it a priority.</li>
+    <li>Add the people you’d rather talk to.</li>
+    <li>Record your message. If macOS blocks the microphone, the screen points you to System Settings → Privacy &amp; Security → Microphone.</li>
+  </ol>
+</section>
+<section class="screen" id="s-commitment">
+  <h3>Commitment</h3>
+  <p>Under “Always on” in the sidebar. Locks websites for 14 days, independent of focus sessions. Websites only, and one commitment at a time.</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li>Add domains, then “Start 14-Day Commitment”. A sheet asks “Lock these sites for 14 days?” with “Cancel” and “Start commitment”.</li>
+    <li>Once started: a “Locked” heading with a pill reading “Grace window” or “Active”, the domain list and a countdown.</li>
+    <li>“Cancel — last chance” for the first 60 seconds, then “No early exit until this ends.”</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Add the sites you know you’ll cave on.</li>
+    <li>Click Start 14-Day Commitment and confirm.</li>
+    <li>Cancel within 60 seconds if you change your mind. After that it runs the full 14 days.</li>
+  </ol>
+  <div class="callout"><p>The background helper keeps the timer, so quitting NowFocus doesn’t lift it. The timer is anchored to uptime and boot time, so moving the clock forward doesn’t shorten it. If the helper can’t be reached, the screen says Commitment can’t be started or checked right now. After 60 seconds the “Cancel” button may still be visible until the screen refreshes, but the helper refuses it.</p></div>
+</section>
+<section class="screen" id="s-bedtime">
+  <h3>Bedtime Wind-Down</h3>
+  <p>Under “Always on” in the sidebar. Runs a locked focus session every night with the profile you pick. Off by default.</p>
+  <h4>What’s on it</h4>
+  <ul>
+    <li>An “Enabled” toggle (available once you’ve chosen a profile) and a profile picker.</li>
+    <li>Three times: Wind-down (default 22:00), Sleep (23:00) and Wake (07:00).</li>
+    <li>“Sleep the display”, on by default. At sleep time NowFocus sleeps the display; it only actually locks if “Require password after sleep” is set to Immediately, and the screen warns you if it isn’t.</li>
+  </ul>
+  <h4>How to use it</h4>
+  <ol>
+    <li>Pick a profile, then turn on Enabled.</li>
+    <li>Set your three times.</li>
+    <li>Leave NowFocus open overnight.</li>
+  </ol>
+  <div class="callout"><p>It only runs while NowFocus is open, and it’s skipped if another session is already running. Turning it off mid-window doesn’t end tonight’s locked session.</p></div>
+</section>
+<section class="screen" id="s-general">
+  <h3>General</h3>
+  <p>A “Check for Updates…” button that doesn’t do anything yet. The screen says “Update server not configured yet.” NowFocus doesn’t update itself.</p>
+</section>
+</section>
+
+<section id="limits">
+  <h2>What it can’t do</h2>
+  <div class="callout">
+  <h3>A self-control tool, not a lock on your Mac</h3>
+  <ul>
+  <li>Website blocking edits your hosts file. It covers IPv4 only and only the www., m. and mobile. variants of each domain, Tor Browser resolves names itself so it isn’t covered, and we haven’t tested browsers that use their own encrypted DNS or iCloud Private Relay.</li>
+  <li>NowFocus can’t be quit during a session, but Force Quit isn’t blocked. Enforcement re-applies the next time the app opens.</li>
+  <li>The app, not the background helper, clears session site blocks when the timer ends. If NowFocus isn’t running at that moment, sites stay blocked until you open it again.</li>
+  <li>Bedtime and app blocking only work while NowFocus is open.</li>
+  <li>A blocked app can decline “Quit App”, and the overlay only appears when the app comes to the front.</li>
+  <li>There’s no auto-update yet, and cross-device sync isn’t available.</li>
+</ul>
+</div>
+</section>
+
+<section id="uninstall">
+  <h2>Uninstall</h2>
+  <p>There’s no uninstaller yet. Quit NowFocus first (you can’t while a session is running), then drag it to the Trash. <strong>Dragging it to the Trash alone leaves things behind</strong>, and if you do it during a session or a Commitment, blocked sites can stay blocked with nothing left to unblock them.</p>
+  <h4>What NowFocus leaves on your Mac</h4>
+  <ul>
+  <li>Blocks in <code>/etc/hosts</code>, between the lines that start with <code>### FOCUS</code> and end with <code>BLOCK START ###</code> and <code>BLOCK END ###</code>, plus a backup at <code>/etc/hosts.focus.backup</code>.</li>
+  <li><code>/Library/Application Support/NowFocus/commitment_state.json</code>.</li>
+  <li><code>~/Library/Application Support/NowFocus/</code>: your profiles, stats and voice message.</li>
+  <li>A NowFocus entry under System Settings → General → Login Items &amp; Extensions, if it lingers.</li>
+</ul>
+  <p>Editing the hosts file needs administrator rights. We haven’t tested this end to end on a clean Mac, so check the file yourself before relying on it.</p>
+</section>
+
+<section id="faq">
+  <h2>FAQ</h2>
+  <div class="faq">
+  <details>
+    <summary>Why does NowFocus ask me to approve something in Login Items?</summary>
+    <p>Website blocking edits your hosts file, which needs administrator rights. NowFocus registers a small background helper for that, and macOS asks you to approve background items in System Settings, under General, then Login Items &amp; Extensions. The popover says “Website blocking needs approval.” until you do.</p>
+  </details>
+  <details>
+    <summary>Does NowFocus work without the helper?</summary>
+    <p>Partly. App blocking, Strict and Locked sessions, Bedtime and Stats don’t use it. Website blocking and Commitment do.</p>
+  </details>
+  <details>
+    <summary>Is my data sent anywhere?</summary>
+    <p>No. Profiles, stats, goals and your voice message stay on your Mac, and the app doesn’t make network requests.</p>
+  </details>
+  <details>
+    <summary>Can I quit NowFocus during a session?</summary>
+    <p>No. Quit is refused while a session is running. Force Quit isn’t blocked, and NowFocus re-applies enforcement the next time it opens.</p>
+  </details>
+  <details>
+    <summary>Why are sites still blocked after my session ended?</summary>
+    <p>The app clears the block when the timer runs out. If NowFocus wasn’t running at that moment, sites stay blocked until you open it again.</p>
+  </details>
+  <details>
+    <summary>Will it block sites in every browser?</summary>
+    <p>It blocks names in your hosts file, which most browsers honour. Tor Browser isn’t covered, and we haven’t tested browsers that use their own encrypted DNS or iCloud Private Relay.</p>
+  </details>
+  <details>
+    <summary>Does NowFocus start when I log in?</summary>
+    <p>Not yet. Bedtime and app blocking only work while the app is open.</p>
+  </details>
+</div>
+  <div class="next-links">
+    <a class="btn btn-secondary" href="/download/android/">NowFocus for Android</a>
+    <a class="btn btn-secondary" href="/download/windows/">NowFocus for Windows</a>
+    <a class="btn btn-ghost" href="/privacy/">Privacy</a>
+  </div>
+</section>
+</article>
+  </div>
+</div>
+</main>
+
+<footer class="foot">
+  <span class="foot-brand">
+    <svg class="mark" width="20" height="20" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
+    © 2026 NowFocus
+  </span>
+  <nav class="foot-links" aria-label="Footer">
+    <a href="/download/">Download</a>
+    <a href="/download/android/">Android</a>
+    <a href="/download/macos/" aria-current="page">macOS</a>
+    <a href="/download/windows/">Windows</a>
+    <a href="/privacy/">Privacy</a>
+    <a href="/terms/">Terms</a>
+    <a href="mailto:safwat.rashwan@gmail.com">Contact</a>
+  </nav>
+</footer>
+</body>
+</html>
