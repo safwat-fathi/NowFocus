@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — NowFocus</title>
+<meta name="description" content="How NowFocus handles your data: everything stays on your device.">
+<meta name="theme-color" content="#f3f2f2">
+<link rel="canonical" href="https://nowfocus.online/privacy.html">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="nav" aria-label="Main">
+  <a class="nav-brand" href="index.html">
+    <svg class="mark" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
+    NowFocus
+  </a>
+  <a class="btn btn-secondary" href="index.html">Home</a>
+</nav>
+
+<main id="main">
+<div class="page">
+<article class="prose">
+  <h1>Privacy</h1>
+  <p class="updated">Last updated: 30 September 2026</p>
+
+  <p>NowFocus is built to work on your device, not on ours. Today the apps have no account, no ads, no trackers and no analytics, and we don’t sell or share your data, because we don’t receive it.</p>
+
+  <h2>What stays on your device</h2>
+  <p>The Android, macOS and Windows apps keep the following on the device they run on, and never send it to NowFocus:</p>
+  <ul>
+    <li>Your Focus Profiles: the apps and sites you chose to block.</li>
+    <li>Your sessions, history and stats, such as focused time and which apps you tried to open.</li>
+    <li>Commitment Shield items and Bedtime settings.</li>
+    <li>Things you add for yourself: the people you’d rather reach out to (a name and a phone number), your goals, and short voice notes.</li>
+  </ul>
+  <p>The apps don’t connect to any NowFocus server. On Android, if you have Google’s device backup turned on, Android may copy the app’s data to your own Google account backup and restore it if you reinstall or set up a new phone. Voice notes are excluded from that backup. The backup is between you and Google; we can’t see it. Uninstalling removes the data from the device, and on macOS and Windows it lives in the app’s own data folder on the computer.</p>
+
+  <h2>Android permissions, and why</h2>
+  <ul>
+    <li><strong>Accessibility service.</strong> Lets NowFocus see which app comes to the foreground, so it can block the apps you chose during focus sessions and Commitment Shield, and lock your screen at your Bedtime sleep time if you turn that on. If you turn on partial blocking, it also reads the YouTube and Facebook screens, only while a session or Commitment Shield with those options is running, to spot Shorts, Reels and recommendation lists. Nothing else on screen is read, and nothing is stored or leaves your device.</li>
+    <li><strong>VPN service (DNS only).</strong> Blocks sites by answering DNS lookups on your device. Only DNS lookups pass through it; the rest of your traffic does not. Lookups for sites you haven’t blocked are passed on to your network’s own DNS server, or to Cloudflare’s <code>1.1.1.1</code> if that server doesn’t answer, the same as if NowFocus weren’t there. We never receive them. Android allows one VPN at a time.</li>
+    <li><strong>Installed apps.</strong> So you can pick which apps to block. The list is used on your device only.</li>
+    <li><strong>Microphone.</strong> Only when you record a voice note to yourself. Recordings stay on the device and are excluded from Android’s backups.</li>
+    <li><strong>No phone or SMS permission.</strong> On the “This can wait.” screen, Call and Text just open your phone’s dialer or messaging app. NowFocus doesn’t read your call or message history.</li>
+    <li><strong>Do Not Disturb access.</strong> To quiet notifications during sessions and Bedtime.</li>
+    <li><strong>Start at boot.</strong> To restore an active session after a restart.</li>
+    <li><strong>Internet access.</strong> Used only for the DNS lookups described above.</li>
+  </ul>
+
+  <h2>macOS and Windows</h2>
+  <p>These apps enforce your rules locally and keep everything on the computer. They don’t send usage, stats or the sites you visit anywhere.</p>
+
+  <h2>Cross-device sync (planned)</h2>
+  <p>We are building optional sync so a session can span your devices. No released app uses it yet. When it does, it will need an account and will store your profiles, sessions and device list on our servers. We’ll update this page before it’s switched on, and blocking will keep working from each device’s own copy if the server is unreachable.</p>
+
+  <h2>This website</h2>
+  <p>This site is static. It sets no cookies, runs no analytics and loads nothing from third parties: even the font is served from this site. Like any web host, ours may keep standard server logs (such as IP address and time of request) for security and reliability.</p>
+
+  <h2>Children</h2>
+  <p>NowFocus is not directed at children under 13, and we don’t knowingly collect anything from them.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, we’ll update the date above and, for meaningful changes, say so in the app or on the download page.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about privacy: <a href="mailto:safwat.rashwan@gmail.com">safwat.rashwan@gmail.com</a>.</p>
+</article>
+</div>
+</main>
+
+<footer class="foot">
+  <span class="foot-brand">
+    <svg class="mark" width="20" height="20" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
+    © 2026 NowFocus
+  </span>
+  <nav class="foot-links" aria-label="Footer">
+    <a href="privacy.html" aria-current="page">Privacy</a>
+    <a href="terms.html">Terms</a>
+    <a href="mailto:safwat.rashwan@gmail.com">Contact</a>
+  </nav>
+</footer>
+</body>
+</html>
