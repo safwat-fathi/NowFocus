@@ -17,7 +17,7 @@ NowFocus is a deep-work app for Android, macOS and Windows. Start a session and 
 - Bedtime Wind-Down, weekly stats, and "reach out to someone instead" (up to five people, one-tap call/text on Android).
 
 ## Platform status
-- Android: early access v0.1, Android 8.0+. Not on Google Play yet. Most complete. Website blocking at DNS level through an on-device VPN (DNS only); app blocking through an Accessibility service. Microphone only when recording a voice note. No contacts, phone or SMS permission.
+- Android: early access v0.2, Android 8.0+. Not on Google Play yet. Most complete. Website blocking at DNS level through an on-device VPN (DNS only); app blocking through an Accessibility service. Microphone only when recording a voice note. No contacts, phone or SMS permission.
 - macOS: early build, macOS 14+, Apple silicon and Intel. Not yet released or notarized. Menu-bar app. Website blocking through the hosts file; full-screen overlay for apps.
 - Windows: in development, Windows 10/11 64-bit. No installer yet. Tray app plus background service; hosts-file blocking.
 - iOS: planned, no build, no date. Linux may follow.

@@ -2,7 +2,7 @@
 
 > NowFocus is a privacy-first focus app for Android, macOS and Windows. It blocks distracting apps and sites during a focus session and makes quitting early a decision, not a reflex. Everything runs on the device; there is no account.
 
-Status (2026-09-30): free, but not published to any store and no download links yet. Android has an early-access build (v0.1) and is furthest along; macOS is an early unreleased build; Windows is in development; iOS is planned. No cross-device sync yet. It is a self-control tool, not a lock: someone determined to uninstall it still can.
+Status (2026-09-30): free, but not published to any store and no download links yet. Android has an early-access build (v0.2) and is furthest along; macOS is an early unreleased build; Windows is in development; iOS is planned. No cross-device sync yet. It is a self-control tool, not a lock: someone determined to uninstall it still can.
 
 ## Pages
 
