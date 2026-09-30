@@ -5,9 +5,12 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.provider.Settings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 enum class BlockSource { SESSION, COMMITMENT_SHIELD }
 
@@ -80,6 +83,10 @@ object Enforcement {
     }
 
     fun start(context: Context) {
+        // Every start path (manual, recovery, Bedtime, boot) lands here, so this is the one place the
+        // session notification gets posted; it re-derives from the stored session.
+        val app = context.applicationContext
+        CoroutineScope(Dispatchers.Default).launch { SessionNotifier.sync(app) }
         // Without VPN consent only app blocking runs; the health row says so.
         if (isVpnPermitted(context)) context.startService(Intent(context, FocusVpnService::class.java))
     }

@@ -123,6 +123,8 @@ private const val UNLOCK_WAIT_MS = 30_000L
 private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val context = LocalContext.current
     var screen by remember { mutableStateOf<Screen>(if (startOnUnlock) Screen.Unlock else Screen.Home) }
+    // Commitment and Bedtime open from both Home and Rules; Back returns to whichever opened them.
+    var backTo by remember { mutableStateOf<Screen>(Screen.Home) }
     val policies by viewModel.policies.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
     val sessionLoaded by viewModel.sessionLoaded.collectAsStateWithLifecycle()
@@ -196,8 +198,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     now = now,
                     resumeKey = resumeCount,
                     onPrimaryCta = { screen = if (running) Screen.Active else Screen.Setup },
-                    onOpenCommitment = { screen = Screen.Commitment },
-                    onOpenBedtime = { screen = Screen.Bedtime },
+                    onOpenCommitment = { backTo = Screen.Home; screen = Screen.Commitment },
+                    onOpenBedtime = { backTo = Screen.Home; screen = Screen.Bedtime },
                 )
                 Screen.Setup -> SetupScreen(
                     policies = policies,
@@ -240,8 +242,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                         onAdd = { screen = Screen.EditPolicy(viewModel.addPolicy()) },
                         onDelete = viewModel::deletePolicy,
                         onBack = { screen = Screen.Home },
-                        onOpenCommitment = { screen = Screen.Commitment },
-                        onOpenBedtime = { screen = Screen.Bedtime },
+                        onOpenCommitment = { backTo = Screen.Policies; screen = Screen.Commitment },
+                        onOpenBedtime = { backTo = Screen.Policies; screen = Screen.Bedtime },
                         peopleCount = people.size,
                         onOpenPeople = { screen = Screen.People },
                         goalsCount = goals.size,
@@ -263,9 +265,9 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     bootCount = bootCount,
                     onCreate = viewModel::createCommitmentShield,
                     onCancel = { viewModel.cancelCommitmentShield() },
-                    onBack = { screen = Screen.Home },
+                    onBack = { screen = backTo },
                 )
-                Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, onSave = viewModel::saveBedtimeSettings, onBack = { screen = Screen.Home })
+                Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, onSave = viewModel::saveBedtimeSettings, onBack = { screen = backTo })
                 Screen.Devices -> DevicesScreen(resumeKey = resumeCount)
                 Screen.Onboarding -> OnboardingScreen(
                     resumeKey = resumeCount,
@@ -452,6 +454,13 @@ private fun SetupScreen(
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         pendingStart?.let { (id, mins, m) -> onStart(id, mins, m) }
         pendingStart = null
+    }
+    // For the ongoing session notification; denied just means no notification.
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     // STRICT's optional voice note (see VoiceNote): recorded to pending.m4a, which startSession adopts.

@@ -189,7 +189,7 @@ private fun OnboardingPermissions(resumeKey: Int) {
             val consentIntent = VpnService.prepare(context)
             if (consentIntent != null) vpnConsent.launch(consentIntent) else vpnResumeKey++
         }
-        PermissionRow("Notification access", "Lets Bedtime Wind-Down quiet things down", notifOk) {
+        PermissionRow("Do Not Disturb access", "Lets Bedtime Wind-Down quiet things down", notifOk) {
             context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         }
     }

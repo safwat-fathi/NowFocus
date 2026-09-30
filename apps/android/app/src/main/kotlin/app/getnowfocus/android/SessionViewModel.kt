@@ -136,6 +136,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             // is still live, since it doesn't know about other windows.
             repository.save(cancelled)
             historyDao.insertSession(cancelled.toHistoryRow())
+            SessionNotifier.sync(getApplication())
             // Ending a session inside the bedtime window hands off to the
             // nightly locked session immediately (no-ops outside the window).
             reconcileBedtimeSession(getApplication(), repository.bedtimeSettingsFlow.first())

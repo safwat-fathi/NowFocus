@@ -1,6 +1,7 @@
 package app.getnowfocus.android
 
 import android.content.Intent
+import android.net.VpnService
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -63,11 +64,21 @@ fun DevicesScreen(resumeKey: Int) {
             Row(Modifier.fillMaxWidth().border(1.dp, NowFocusColors.divider)) {
                 LayerCell("App blocking", appBlockingOk, Modifier.weight(1f))
                 LayerCell("Website filter", websiteFilterOk, Modifier.weight(1f))
-                LayerCell("Notifications", notifOk, Modifier.weight(1f))
+                LayerCell("Do Not Disturb", notifOk, Modifier.weight(1f))
             }
-            if (!allOk) {
+            // One button per missing layer, each going straight to that permission.
+            if (!appBlockingOk) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                GhostButton("Open Settings") { context.startActivity(Intent(Settings.ACTION_SETTINGS)) }
+                GhostButton("Enable app blocking") { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+            }
+            if (!websiteFilterOk) {
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                // prepare() returns the system VPN consent dialog's intent while consent is missing.
+                GhostButton("Enable website filter") { VpnService.prepare(context)?.let(context::startActivity) }
+            }
+            if (!notifOk) {
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                GhostButton("Enable Do Not Disturb access") { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
             }
             SectionRule()
         }
