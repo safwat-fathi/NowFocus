@@ -21,6 +21,18 @@ android {
         compose = true
     }
 
+    buildTypes {
+        // Release-like build for measuring: optimized, non-debuggable, signed with the debug key so
+        // it installs over the debug build and `adb shell` can still profile it (see src/perf).
+        // ponytail: not for distribution; a real release build type comes with real signing.
+        create("perf") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
