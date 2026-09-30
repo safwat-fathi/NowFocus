@@ -15,3 +15,7 @@ apps/windows/dist/
 apps/windows/src-tauri/gen/
 *.log
 scratch_log.txt
+
+# remotion promo
+video/node_modules/
+video/out/
