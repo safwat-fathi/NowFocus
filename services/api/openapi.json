@@ -1,0 +1,1034 @@
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create an account and register the calling device. 10 requests/minute per client on the auth routes.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSession"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Log in from a (new) device. Every login registers a device.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenPair"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Trade a refresh token for a new pair. The old refresh token stops working.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke the calling device.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/devices": {
+      "get": {
+        "operationId": "DevicesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceView"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/devices/{id}": {
+      "delete": {
+        "operationId": "DevicesController_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke a device: its tokens die immediately and its socket is closed.",
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/v1/sync/push": {
+      "post": {
+        "operationId": "SyncController_push",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Push local changes. Each change is applied or rejected independently; the batch itself only fails on a malformed envelope.",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/sync/pull": {
+      "get": {
+        "operationId": "SyncController_pull",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Return changes with seq greater than this. 0 = everything.",
+            "schema": {
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size, default 500.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 1000,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PullResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Everything that changed after `cursor`, in seq order (tombstones included).",
+        "tags": [
+          "sync"
+        ]
+      }
+    },
+    "/v1/always-blocked/items": {
+      "post": {
+        "operationId": "ShieldController_add",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddItemsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddItemsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Commit targets to the Commitment Shield. The server stamps lockedAt, graceExpiresAt (+60 s) and lockedUntil (+14 days); client-sent values are ignored. Re-adding an active target is a no-op.",
+        "tags": [
+          "shield"
+        ]
+      }
+    },
+    "/v1/always-blocked/items/{id}/cancel-grace": {
+      "post": {
+        "operationId": "ShieldController_cancelGrace",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncRecord"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Undo a mistaken add. 409 `grace_expired` once the 60-second window has passed.",
+        "tags": [
+          "shield"
+        ]
+      }
+    },
+    "/v1/always-blocked/items/{id}/recommit": {
+      "post": {
+        "operationId": "ShieldController_recommit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncRecord"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "After the lock has elapsed, start another 14-day lock. 409 `still_locked` before that.",
+        "tags": [
+          "shield"
+        ]
+      }
+    },
+    "/v1/always-blocked/items/{id}": {
+      "delete": {
+        "operationId": "ShieldController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove an item. 403 `locked` until lockedUntil has passed.",
+        "tags": [
+          "shield"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "NowFocus Sync API",
+    "description": "Cross-device sync for NowFocus. Local-first: apps keep enforcing offline and use push/pull to converge. Wire rules: ids are lowercase UUIDs, timestamps ISO 8601 UTC, JSON camelCase. Application rules carry an opaque per-platform nativeIdentifier the server never interprets.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer"
+          },
+          "message": {
+            "description": "A string, or a list of strings for request-validation failures (400).",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "code": {
+            "type": "string",
+            "description": "e.g. invalid_credentials, email_taken, unauthorized, item_not_found, locked, grace_expired, still_locked"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message"
+        ]
+      },
+      "DeviceInfoDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "macos",
+              "windows",
+              "android",
+              "ios"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "platform"
+        ]
+      },
+      "CredentialsDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 200
+          },
+          "device": {
+            "$ref": "#/components/schemas/DeviceInfoDto"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "device"
+        ]
+      },
+      "AuthUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ]
+      },
+      "AuthDevice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "macos",
+              "windows",
+              "android",
+              "ios"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "platform"
+        ]
+      },
+      "AuthSession": {
+        "type": "object",
+        "properties": {
+          "expiresIn": {
+            "type": "integer",
+            "description": "Access token lifetime in seconds."
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUser"
+          },
+          "device": {
+            "$ref": "#/components/schemas/AuthDevice"
+          },
+          "accessToken": {
+            "type": "string",
+            "description": "Short-lived JWT (15 min). Send as `Authorization: Bearer`."
+          },
+          "refreshToken": {
+            "type": "string",
+            "description": "Single-use: every refresh returns a new one. Store in the platform's secure storage."
+          }
+        },
+        "required": [
+          "expiresIn",
+          "user",
+          "device",
+          "accessToken",
+          "refreshToken"
+        ]
+      },
+      "RefreshDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "TokenPair": {
+        "type": "object",
+        "properties": {
+          "expiresIn": {
+            "type": "integer"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expiresIn",
+          "accessToken",
+          "refreshToken"
+        ]
+      },
+      "DeviceView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "macos",
+              "windows",
+              "android",
+              "ios"
+            ]
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revokedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current": {
+            "type": "boolean",
+            "description": "True for the device making this request."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "platform",
+          "createdAt",
+          "lastSeenAt",
+          "revokedAt",
+          "current"
+        ]
+      },
+      "PushChange": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "policy",
+              "session",
+              "bedtime_settings",
+              "user_settings"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "UUID for policy/session (any case; stored lowercase); `default` for the settings types."
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "ISO 8601 with timezone. Last-write-wins compares this; values >5 min in the future are clamped."
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Entity payload; validated only for the fields the server enforces, the rest is stored verbatim."
+          },
+          "deleted": {
+            "type": "boolean",
+            "description": "Only policies can be deleted (tombstone)."
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "updatedAt",
+          "data"
+        ]
+      },
+      "PushDto": {
+        "type": "object",
+        "properties": {
+          "changes": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PushChange"
+            }
+          }
+        },
+        "required": [
+          "changes"
+        ]
+      },
+      "SyncRecord": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "description": "Increments on every accepted write to this record."
+          },
+          "seq": {
+            "type": "integer",
+            "description": "Per-user monotonic change number; the pull cursor."
+          },
+          "type": {
+            "type": "string",
+            "description": "policy | session | bedtime_settings | user_settings | shield_item (server-written, read-only)"
+          },
+          "id": {
+            "type": "string",
+            "description": "UUID (lowercase), or `default` for the settings singletons."
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Entity payload. Unknown fields are preserved exactly as pushed.\nFor shield items it includes a derived `status`, correct only as of `serverTime`: no new `seq` is emitted when it\nchanges with time, so clients must recompute it from `graceExpiresAt` and `lockedUntil`."
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "originDeviceId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "The (clamped) client timestamp last-write-wins compares against."
+          }
+        },
+        "required": [
+          "revision",
+          "seq",
+          "type",
+          "id",
+          "data",
+          "deleted",
+          "originDeviceId",
+          "updatedAt"
+        ]
+      },
+      "PushResult": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "applied: written. stale: the server already has this or newer — adopt `record`. rejected: see `code`.",
+            "enum": [
+              "applied",
+              "stale",
+              "rejected"
+            ]
+          },
+          "record": {
+            "description": "The server's current record (applied and stale).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SyncRecord"
+              }
+            ]
+          },
+          "code": {
+            "type": "string",
+            "description": "unknown_type | read_only | invalid_change | invalid_id | invalid_data | not_deletable | policy_in_use | invalid_transition | immutable_field | end_shortened | session_locked | too_early"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "status"
+        ]
+      },
+      "PushResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "integer",
+            "description": "Highest seq after this push."
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PushResult"
+            }
+          },
+          "serverTime": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "cursor",
+          "results",
+          "serverTime"
+        ]
+      },
+      "PullResponse": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "integer",
+            "description": "Pass this back as `cursor` next time."
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncRecord"
+            }
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "serverTime": {
+            "type": "string",
+            "description": "Trusted server time — use it as the anti-tamper anchor for local clock checks."
+          }
+        },
+        "required": [
+          "cursor",
+          "changes",
+          "hasMore",
+          "serverTime"
+        ]
+      },
+      "ShieldItemDto": {
+        "type": "object",
+        "properties": {
+          "targetType": {
+            "type": "string",
+            "enum": [
+              "domain",
+              "application",
+              "category"
+            ]
+          },
+          "targetValue": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "all",
+              "macos",
+              "windows",
+              "android",
+              "ios"
+            ]
+          }
+        },
+        "required": [
+          "targetType",
+          "targetValue"
+        ]
+      },
+      "AddItemsDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShieldItemDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "AddItemsResponse": {
+        "type": "object",
+        "properties": {
+          "batchId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Shared by the items created in this call; null when every item was already committed."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncRecord"
+            }
+          }
+        },
+        "required": [
+          "batchId",
+          "items"
+        ]
+      }
+    }
+  }
+}
