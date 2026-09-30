@@ -69,4 +69,26 @@ class SessionEngineTest {
         assertFalse(SessionEngine.canCancel(EnforcementMode.LOCKED, unlockCompleted = false))
         assertFalse(SessionEngine.canCancel(EnforcementMode.LOCKED, unlockCompleted = true))
     }
+
+    @Test
+    fun `strict with a voice note also needs the note listened to`() {
+        assertFalse(SessionEngine.canCancel(EnforcementMode.STRICT, unlockCompleted = true, hasVoiceNote = true, listened = false))
+        assertTrue(SessionEngine.canCancel(EnforcementMode.STRICT, unlockCompleted = true, hasVoiceNote = true, listened = true))
+    }
+
+    @Test
+    fun `listening to the note never substitutes for the rest of the strict unlock`() {
+        assertFalse(SessionEngine.canCancel(EnforcementMode.STRICT, unlockCompleted = false, hasVoiceNote = true, listened = true))
+    }
+
+    @Test
+    fun `strict without a voice note falls back to the plain unlock, whatever listened says`() {
+        assertTrue(SessionEngine.canCancel(EnforcementMode.STRICT, unlockCompleted = true, hasVoiceNote = false, listened = false))
+    }
+
+    @Test
+    fun `a voice note changes nothing for normal or locked`() {
+        assertTrue(SessionEngine.canCancel(EnforcementMode.NORMAL, unlockCompleted = false, hasVoiceNote = true, listened = false))
+        assertFalse(SessionEngine.canCancel(EnforcementMode.LOCKED, unlockCompleted = true, hasVoiceNote = true, listened = true))
+    }
 }

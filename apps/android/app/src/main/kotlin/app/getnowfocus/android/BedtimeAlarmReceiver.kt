@@ -112,6 +112,7 @@ suspend fun reconcileBedtimeSession(context: Context, settings: BedtimeSettings)
         createdAt = now,
         domains = policy.domains.toSet(),
         packages = policy.apps.map { it.packageName }.toSet(),
+        partial = policy.partial,
         enforcementMode = EnforcementMode.LOCKED,
         sessionType = SessionType.BEDTIME_WINDDOWN,
     )

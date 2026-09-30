@@ -38,6 +38,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val bedtimeSettings: StateFlow<BedtimeSettings> =
         repository.bedtimeSettingsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, BedtimeSettings())
 
+    val people: StateFlow<List<Person>> =
+        repository.peopleFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     // Defaults true (skip onboarding) until the real, persisted value loads, so
     // an existing user is never bounced back into onboarding for one frame.
     val onboardingDone: StateFlow<Boolean> =
@@ -85,8 +88,13 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     fun startSession(policyId: String, durationMinutes: Int, mode: EnforcementMode = EnforcementMode.NORMAL) {
         val policy = policies.value.find { it.id == policyId } ?: return
         val now = System.currentTimeMillis()
+        val id = UUID.randomUUID().toString()
+        // Only STRICT uses a note. Purging on every start also clears the last
+        // session's note and any pending one a non-STRICT start left behind.
+        val voiceNotePath = if (mode == EnforcementMode.STRICT) VoiceNote.adoptPending(getApplication(), id) else null
+        VoiceNote.purgeExcept(getApplication(), keepId = id)
         val scheduled = FocusSession(
-            id = UUID.randomUUID().toString(),
+            id = id,
             policyId = policy.id,
             startAt = now,
             endAt = now + durationMinutes * 60_000L,
@@ -94,7 +102,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             createdAt = now,
             domains = policy.domains.toSet(),
             packages = policy.apps.map { it.packageName }.toSet(),
+            partial = policy.partial,
             enforcementMode = mode,
+            voiceNotePath = voiceNotePath,
         )
         viewModelScope.launch {
             repository.save(SessionEngine.evaluateState(scheduled, now))
@@ -105,13 +115,15 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     /**
      * The only path that ends a session early. Strict requires the Unlock
      * screen's type-sentence-then-wait flow to finish first
-     * ([unlockCompleted]); Locked never allows it at all — see
+     * ([unlockCompleted]), plus the session's voice note played through
+     * ([listened]) when it has one; Locked never allows it at all — see
      * [SessionEngine.canCancel]. Returns whether the cancel actually happened,
      * so the caller (e.g. the Unlock screen) knows whether to navigate away.
      */
-    fun cancelSession(unlockCompleted: Boolean = false): Boolean {
+    fun cancelSession(unlockCompleted: Boolean = false, listened: Boolean = false): Boolean {
         val current = _session.value ?: return false
-        if (!SessionEngine.canCancel(current.enforcementMode, unlockCompleted)) return false
+        val hasVoiceNote = VoiceNote.playableFile(current) != null
+        if (!SessionEngine.canCancel(current.enforcementMode, unlockCompleted, hasVoiceNote, listened)) return false
         val cancelled = current.copy(status = FocusSessionStatus.CANCELLED, cancelledAt = System.currentTimeMillis())
         viewModelScope.launch {
             // No direct Enforcement.stop() here: saving CANCELLED makes
@@ -187,6 +199,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 val updatedSession = current!!.copy(
                     domains = policy.domains.toSet(),
                     packages = policy.apps.map { it.packageName }.toSet(),
+                    partial = policy.partial,
                 )
                 repository.save(updatedSession)
             }
@@ -206,7 +219,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val oldPackages = old.apps.map { it.packageName }.toSet()
         val newPackages = new.apps.map { it.packageName }.toSet()
         if (!newPackages.containsAll(oldPackages)) return true
-        return false
+        return !new.partial.containsAll(old.partial)
     }
 
     fun deletePolicy(id: String) {
@@ -222,7 +235,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
      * cancelled (or the clock wound back), permanently defeating the real
      * one - see CommitmentShieldTest for the boot-relative reasoning.
      */
-    fun createCommitmentShield(domains: Set<String>, packages: Set<String>) {
+    fun createCommitmentShield(domains: Set<String>, packages: Set<String>, partial: Set<PartialRule> = emptySet()) {
         val current = commitmentShield.value
         val now = System.currentTimeMillis()
         val elapsedNow = android.os.SystemClock.elapsedRealtime()
@@ -231,7 +244,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         val shield = CommitmentShield(
             startAt = now, endAt = now + CommitmentShield.DURATION_MS,
             domains = domains, packages = packages, createdAt = now,
-            createdElapsedRealtime = elapsedNow, createdBootCount = bootNow,
+            createdElapsedRealtime = elapsedNow, createdBootCount = bootNow, partial = partial,
         )
         viewModelScope.launch {
             repository.saveCommitmentShield(shield)
@@ -263,6 +276,26 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     fun completeOnboarding() {
         viewModelScope.launch { repository.setOnboardingDone() }
+    }
+
+    /** Ignored past [Person.MAX], or if that number is already on the list. */
+    fun addPerson(name: String, phone: String, lastTalkedAt: Long?) {
+        viewModelScope.launch {
+            repository.updatePeople { list ->
+                if (list.size >= Person.MAX || list.any { it.phone == phone }) list
+                else list + Person(name = name, phone = phone, lastTalkedAt = lastTalkedAt)
+            }
+        }
+    }
+
+    fun removePerson(id: String) {
+        viewModelScope.launch { repository.updatePeople { list -> list.filterNot { it.id == id } } }
+    }
+
+    fun setLastTalked(id: String, lastTalkedAt: Long?) {
+        viewModelScope.launch {
+            repository.updatePeople { list -> list.map { if (it.id == id) it.copy(lastTalkedAt = lastTalkedAt) else it } }
+        }
     }
 }
 

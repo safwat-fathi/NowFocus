@@ -76,4 +76,28 @@ class ActiveRulesTest {
         assertTrue(rules.hasLiveWindow(now = 3000))
         assertEquals(999_999_999L, rules.nextExpiryAfter(now = 3000))
     }
+
+    @Test
+    fun `livePartial unions live windows and drops expired ones`() {
+        val rules = ActiveRules(
+            listOf(
+                RuleWindow(endAt = 2000, domains = emptySet(), packages = emptySet(), partial = setOf(PartialRule.YT_SHORTS)),
+                RuleWindow(endAt = 9000, domains = emptySet(), packages = emptySet(), partial = setOf(PartialRule.FB_REELS)),
+            ),
+        )
+        assertEquals(setOf(PartialRule.YT_SHORTS, PartialRule.FB_REELS), rules.livePartial(now = 1000))
+        assertEquals(setOf(PartialRule.FB_REELS), rules.livePartial(now = 3000))
+        assertTrue(rules.livePartial(now = 9000).isEmpty())
+    }
+
+    @Test
+    fun `the shield keeps its partial rules after the session window expires`() {
+        val rules = ActiveRules(
+            listOf(
+                RuleWindow(endAt = 2000, domains = emptySet(), packages = emptySet(), partial = setOf(PartialRule.YT_HOME)),
+                RuleWindow(endAt = 999_999_999, domains = emptySet(), packages = emptySet(), source = BlockSource.COMMITMENT_SHIELD, partial = setOf(PartialRule.FB_REELS)),
+            ),
+        )
+        assertEquals(setOf(PartialRule.FB_REELS), rules.livePartial(now = 3000))
+    }
 }

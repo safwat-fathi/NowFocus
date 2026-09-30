@@ -115,8 +115,33 @@ abstract class HistoryDatabase : RoomDatabase() {
     }
 }
 
+/** The local hour of day with the most blocked attempts, and the app tried most in that hour. */
+data class Urge(val hour: Int, val count: Int, val topPackage: String)
+
 /** Pure aggregation over history rows - no Room/Context involved, so it's plain-JVM testable. */
 object HistoryStats {
+
+    private fun BlockEventRow.localHour(zone: ZoneId): Int = Instant.ofEpochMilli(timestampMillis).atZone(zone).hour
+
+    /** Blocked attempts per local hour of day: always 24 entries, index = hour (0-23). */
+    fun urgeByHour(events: List<BlockEventRow>, zone: ZoneId): List<Int> {
+        val counts = IntArray(24)
+        events.forEach { counts[it.localHour(zone)]++ }
+        return counts.toList()
+    }
+
+    /**
+     * The busiest hour (ties go to the earlier hour), or null with no attempts.
+     * Attempts are only logged while a session or shield is running, so this
+     * partly mirrors when sessions run - ponytail: normalize by session minutes
+     * per hour if the raw peak proves misleading.
+     */
+    fun peakUrge(events: List<BlockEventRow>, zone: ZoneId): Urge? {
+        val peak = events.groupBy { it.localHour(zone) }.entries
+            .minWithOrNull(compareBy({ -it.value.size }, { it.key })) ?: return null
+        val topPackage = peak.value.groupingBy { it.packageName }.eachCount().maxByOrNull { it.value }!!.key
+        return Urge(hour = peak.key, count = peak.value.size, topPackage = topPackage)
+    }
 
     fun totalFocusedMillis(rows: List<SessionHistoryRow>, from: Long, to: Long): Long =
         rows.filter { it.startAt in from until to }.sumOf { it.focusedMillis }

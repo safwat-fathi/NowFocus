@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,16 +33,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 2 real steps, not the mockup's 3: Welcome, then Permissions. The mockup's
- * step 3 (a pairing code for a Mac/PC) doesn't apply here - cross-device
- * sync is Phase 6 in native_tech_stack_spec.md, not built yet.
+ * 3 steps: Welcome, People, Permissions. The mockup's pairing-code step (a
+ * Mac/PC) doesn't apply here - cross-device sync is Phase 6 in
+ * native_tech_stack_spec.md, not built yet. People is skippable.
  */
 @Composable
-fun OnboardingScreen(resumeKey: Int, onDone: () -> Unit) {
+fun OnboardingScreen(
+    resumeKey: Int,
+    people: List<Person>,
+    onAddPerson: (name: String, phone: String) -> Unit,
+    onRemovePerson: (id: String) -> Unit,
+    onSetLastTalked: (id: String, lastTalkedAt: Long?) -> Unit,
+    onDone: () -> Unit,
+) {
     var step by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize().padding(NowFocusSpace.s6)) {
         Row(Modifier.fillMaxWidth()) {
-            repeat(2) { i ->
+            repeat(3) { i ->
                 Spacer(Modifier.width(NowFocusSpace.s1))
                 androidx.compose.foundation.layout.Box(
                     Modifier.weight(1f).height(4.dp).background(if (i <= step) NowFocusColors.accent else NowFocusColors.neutral300),
@@ -48,16 +57,44 @@ fun OnboardingScreen(resumeKey: Int, onDone: () -> Unit) {
             }
         }
         Spacer(Modifier.height(NowFocusSpace.s6))
-        Column(Modifier.weight(1f)) {
+        // Scrolls: the People step grows with each person added.
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             when (step) {
                 0 -> OnboardingWelcome()
+                1 -> OnboardingPeople(people, onAddPerson, onRemovePerson, onSetLastTalked)
                 else -> OnboardingPermissions(resumeKey)
             }
         }
-        PrimaryButton(if (step == 0) "Let's set it up" else "Get started") {
-            if (step == 0) step = 1 else onDone()
+        PrimaryButton(
+            when {
+                step == 0 -> "Let's set it up"
+                step == 1 -> if (people.isEmpty()) "Skip for now" else "Continue"
+                else -> "Get started"
+            },
+        ) {
+            if (step < 2) step++ else onDone()
         }
     }
+}
+
+@Composable
+private fun OnboardingPeople(
+    people: List<Person>,
+    onAdd: (name: String, phone: String) -> Unit,
+    onRemove: (id: String) -> Unit,
+    onSetLastTalked: (id: String, lastTalkedAt: Long?) -> Unit,
+) {
+    Text("STEP 2 OF 3 · PEOPLE", style = kickerStyle())
+    Spacer(Modifier.height(NowFocusSpace.s2))
+    Text("Who matters to you?", style = headingStyle(28.sp))
+    Spacer(Modifier.height(NowFocusSpace.s2))
+    Text(
+        "When a blocked app opens, we'll point you to someone you haven't talked to in a while, with one tap to call or text. Nothing leaves this phone.",
+        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
+    )
+    Spacer(Modifier.height(NowFocusSpace.s4))
+    SectionRule(thick = true)
+    PeopleEditor(people, onAdd, onRemove, onSetLastTalked)
 }
 
 @Composable
@@ -99,7 +136,7 @@ private fun OnboardingPermissions(resumeKey: Int) {
     var vpnResumeKey by remember { mutableIntStateOf(0) }
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { vpnResumeKey++ }
 
-    Text("STEP 2 OF 2 · PERMISSIONS", style = kickerStyle())
+    Text("STEP 3 OF 3 · PERMISSIONS", style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text("A few permissions, so blocking actually holds.", style = headingStyle(28.sp))
     Spacer(Modifier.height(NowFocusSpace.s2))
@@ -115,7 +152,7 @@ private fun OnboardingPermissions(resumeKey: Int) {
         val vpnOk = Enforcement.isVpnPermitted(context)
         val notifOk = context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted ?: false
 
-        PermissionRow("App blocking", "Spots when a blocked app opens", accessibilityOk) {
+        PermissionRow("App blocking", "Spots when a blocked app opens. With partial blocking on, also reads the YouTube and Facebook screens during a session, on-device only", accessibilityOk) {
             context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
         if (!accessibilityOk) {

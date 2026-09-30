@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 import java.time.ZoneOffset
+import java.util.Locale
 
 /**
  * Bedtime windows frequently cross midnight (wind-down 22:00 -> wake 07:00
@@ -188,5 +189,19 @@ class BedtimeScheduleTest {
     fun `currentWindow is null at midday`() {
         val day = LocalDate.of(2026, 9, 21)
         assertNull(BedtimeSchedule.currentWindow(settings, now = at(day, 12), zone))
+    }
+
+    @Test
+    fun `formatClock 24-hour is zero-padded HH-mm`() {
+        assertEquals("00:00", formatClock(0, is24Hour = true, Locale.US))
+        assertEquals("22:05", formatClock(22 * 60 + 5, is24Hour = true, Locale.US))
+    }
+
+    @Test
+    fun `formatClock 12-hour shows AM-PM, not 22-00 PM`() {
+        assertEquals("12:00 AM", formatClock(0, is24Hour = false, Locale.US))
+        assertEquals("12:00 PM", formatClock(12 * 60, is24Hour = false, Locale.US))
+        assertEquals("10:00 PM", formatClock(22 * 60, is24Hour = false, Locale.US))
+        assertEquals("11:59 PM", formatClock(24 * 60 - 1, is24Hour = false, Locale.US))
     }
 }

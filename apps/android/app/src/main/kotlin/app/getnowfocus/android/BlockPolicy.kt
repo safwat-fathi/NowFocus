@@ -12,6 +12,7 @@ data class BlockPolicy(
     val name: String,
     val domains: List<String> = emptyList(),
     val apps: List<AppRule> = emptyList(),
+    val partial: Set<PartialRule> = emptySet(),
 ) {
     companion object {
         val DEFAULT = BlockPolicy(
@@ -31,9 +32,14 @@ data class BlockPolicy(
                     put("apps", JSONArray().apply {
                         p.apps.forEach { put(JSONObject().put("packageName", it.packageName).put("label", it.label)) }
                     })
+                    put("partial", JSONArray(p.partial.map { it.name }))
                 })
             }
         }.toString()
+
+        /** Unknown names (a rule from a newer build) are dropped rather than failing the whole policy list. */
+        fun partialFromNames(names: Iterable<String>): Set<PartialRule> =
+            names.mapNotNull { n -> PartialRule.entries.find { it.name == n } }.toSet()
 
         fun listFromJson(json: String): List<BlockPolicy> {
             val array = JSONArray(json)
@@ -49,6 +55,8 @@ data class BlockPolicy(
                         val a = apps.getJSONObject(it)
                         AppRule(a.getString("packageName"), a.getString("label"))
                     },
+                    // Absent in policies saved before partial blocking existed.
+                    partial = o.optJSONArray("partial")?.let { a -> partialFromNames((0 until a.length()).map { a.getString(it) }) } ?: emptySet(),
                 )
             }
         }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +45,8 @@ fun PolicyListScreen(
     onBack: () -> Unit,
     onOpenCommitment: () -> Unit,
     onOpenBedtime: () -> Unit,
+    peopleCount: Int,
+    onOpenPeople: () -> Unit,
 ) {
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
@@ -96,6 +99,20 @@ fun PolicyListScreen(
                     Text("Every night", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
                 }
                 TagPill(if (bedtime.enabled) "On" else "Off", accent = false)
+            }
+            SectionRule()
+
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onOpenPeople).padding(vertical = NowFocusSpace.s3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("People who matter", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(
+                        if (peopleCount == 0) "Not set up" else "$peopleCount shown on the block screen",
+                        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                    )
+                }
             }
             SectionRule()
         }
@@ -161,6 +178,9 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
             GhostButton("+ Add application…") { pickingApp = true }
+        }
+        item {
+            PartialRulesSection(policy.partial) { saveOrToast(policy.copy(partial = it)) }
             Spacer(Modifier.height(NowFocusSpace.s4))
         }
     }
@@ -171,6 +191,31 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
             onPick = { saveOrToast(policy.copy(apps = policy.apps + it)); pickingApp = false },
             onDismiss = { pickingApp = false },
         )
+    }
+}
+
+/** In-app partial blocking switches, shared by the profile editor and the Commitment Shield setup. */
+@Composable
+fun PartialRulesSection(selected: Set<PartialRule>, onChange: (Set<PartialRule>) -> Unit) {
+    val context = LocalContext.current
+    Text("PARTIAL BLOCKING", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+    SectionRule(thick = true)
+    if (selected.isNotEmpty() && !Enforcement.isAccessibilityEnabled(context)) {
+        Text(
+            "Turn on NowFocus in Accessibility settings, or these won't be enforced.",
+            style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
+            modifier = Modifier.padding(top = NowFocusSpace.s2),
+        )
+    }
+    PartialRule.entries.forEach { rule ->
+        Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(rule.label, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
+                Text(rule.detail, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+            }
+            Switch(checked = rule in selected, onCheckedChange = { on -> onChange(if (on) selected + rule else selected - rule) })
+        }
+        SectionRule()
     }
 }
 
@@ -197,17 +242,41 @@ fun AppPickerDialog(exclude: Set<String>, onPick: (AppRule) -> Unit, onDismiss: 
             .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }
     }
+    var query by remember { mutableStateOf("") }
+    val shown = remember(apps, query) { filterApps(apps, query) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select an app to block") },
         text = {
-            LazyColumn(Modifier.heightIn(max = 400.dp)) {
-                items(apps, key = { it.packageName }) { app ->
-                    Text(app.label, Modifier.fillMaxWidth().clickable { onPick(app) }.padding(vertical = 10.dp))
+            Column {
+                OutlinedTextField(
+                    value = query, onValueChange = { query = it },
+                    label = { Text("Search apps") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (shown.isEmpty()) {
+                    Text(
+                        "No apps match",
+                        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                        modifier = Modifier.padding(top = NowFocusSpace.s3),
+                    )
+                }
+                LazyColumn(Modifier.heightIn(max = 400.dp).padding(top = NowFocusSpace.s2)) {
+                    items(shown, key = { it.packageName }) { app ->
+                        Text(app.label, Modifier.fillMaxWidth().clickable { onPick(app) }.padding(vertical = 10.dp))
+                    }
                 }
             }
         },
         confirmButton = {},
         dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
     )
+}
+
+/** Case-insensitive match on label or package name; a blank query keeps everything. */
+internal fun filterApps(apps: List<AppRule>, query: String): List<AppRule> {
+    val q = query.trim()
+    if (q.isEmpty()) return apps
+    return apps.filter { it.label.contains(q, ignoreCase = true) || it.packageName.contains(q, ignoreCase = true) }
 }

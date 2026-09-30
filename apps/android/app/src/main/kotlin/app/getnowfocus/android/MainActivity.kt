@@ -1,10 +1,13 @@
 package app.getnowfocus.android
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.format.DateFormat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -28,10 +31,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -46,8 +55,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -58,6 +70,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -93,6 +106,7 @@ private sealed interface Screen {
     data object Bedtime : Screen
     data object Devices : Screen
     data object Onboarding : Screen
+    data object People : Screen
 }
 
 // Same presets as the macOS menu bar picker.
@@ -104,9 +118,6 @@ private val DURATIONS = listOf(
 private const val UNLOCK_SENTENCE = "I am choosing to end this focus session early."
 private const val UNLOCK_WAIT_MS = 30_000L
 
-private fun minutesToClock(minutesSinceMidnight: Int): String =
-    String.format("%02d:%02d", minutesSinceMidnight / 60, minutesSinceMidnight % 60)
-
 @Composable
 private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val context = LocalContext.current
@@ -117,6 +128,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val shield by viewModel.commitmentShield.collectAsStateWithLifecycle()
     val bedtime by viewModel.bedtimeSettings.collectAsStateWithLifecycle()
     val onboardingDone by viewModel.onboardingDone.collectAsStateWithLifecycle()
+    val people by viewModel.people.collectAsStateWithLifecycle()
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var elapsedNow by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
     // Boot count doesn't change during a session, so it's read once, not ticked.
@@ -209,7 +221,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     UnlockScreen(
                         session = active,
                         now = now,
-                        onCancel = { completed -> viewModel.cancelSession(completed) },
+                        onCancel = { completed, listened -> viewModel.cancelSession(completed, listened) },
                         onCancelled = { screen = Screen.Home },
                         onBack = { screen = Screen.Active },
                     )
@@ -227,6 +239,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                         onBack = { screen = Screen.Home },
                         onOpenCommitment = { screen = Screen.Commitment },
                         onOpenBedtime = { screen = Screen.Bedtime },
+                        peopleCount = people.size,
+                        onOpenPeople = { screen = Screen.People },
                     )
                 }
                 is Screen.EditPolicy -> {
@@ -242,13 +256,27 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     now = now,
                     elapsedNow = elapsedNow,
                     bootCount = bootCount,
-                    onCreate = { domains, packages -> viewModel.createCommitmentShield(domains, packages) },
+                    onCreate = viewModel::createCommitmentShield,
                     onCancel = { viewModel.cancelCommitmentShield() },
                     onBack = { screen = Screen.Home },
                 )
                 Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, onSave = viewModel::saveBedtimeSettings, onBack = { screen = Screen.Home })
                 Screen.Devices -> DevicesScreen(resumeKey = resumeCount)
-                Screen.Onboarding -> OnboardingScreen(resumeKey = resumeCount, onDone = { viewModel.completeOnboarding(); screen = Screen.Home })
+                Screen.Onboarding -> OnboardingScreen(
+                    resumeKey = resumeCount,
+                    people = people,
+                    onAddPerson = { name, phone -> viewModel.addPerson(name, phone, lastTalkedAt = null) },
+                    onRemovePerson = viewModel::removePerson,
+                    onSetLastTalked = viewModel::setLastTalked,
+                    onDone = { viewModel.completeOnboarding(); screen = Screen.Home },
+                )
+                Screen.People -> PeopleScreen(
+                    people = people,
+                    onAdd = { name, phone -> viewModel.addPerson(name, phone, lastTalkedAt = null) },
+                    onRemove = viewModel::removePerson,
+                    onSetLastTalked = viewModel::setLastTalked,
+                    onBack = { screen = Screen.Policies },
+                )
             }
         }
         if (tabsVisible) {
@@ -315,6 +343,7 @@ private fun HomeScreen(
     onOpenBedtime: () -> Unit,
 ) {
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d")) }
+    val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3), verticalAlignment = Alignment.Bottom) {
@@ -363,7 +392,7 @@ private fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("Bedtime Wind-Down", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
-                    TagPill("Tonight ${minutesToClock(bedtime.windDownMinute)}", accent = false)
+                    TagPill("Tonight ${formatClock(bedtime.windDownMinute, is24Hour)}", accent = false)
                 }
                 SectionRule()
             }
@@ -390,7 +419,40 @@ private fun SetupScreen(
         pendingStart = null
     }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+    // STRICT's optional voice note (see VoiceNote): recorded to pending.m4a, which startSession adopts.
+    var hasNote by remember { mutableStateOf(VoiceNote.pending(context).exists()) }
+    var recording by remember { mutableStateOf(false) }
+    var recordedSeconds by remember { mutableIntStateOf(0) }
+    var noteMessage by remember { mutableStateOf<String?>(null) }
+    val recorder = remember {
+        VoiceRecorder(context, VoiceNote.pending(context)) { usable ->
+            recording = false
+            hasNote = usable
+            noteMessage = if (usable) null else "That recording didn't work. Try again."
+        }
+    }
+    DisposableEffect(Unit) { onDispose { recorder.cancel() } }
+    LaunchedEffect(recording) {
+        recordedSeconds = 0
+        while (recording) {
+            delay(1000)
+            recordedSeconds++
+        }
+    }
+    fun startRecording() {
+        noteMessage = null
+        recording = recorder.start()
+        if (!recording) {
+            hasNote = false // a failed start leaves no file behind
+            noteMessage = "Couldn't start recording. Is another app using the mic?"
+        }
+    }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) startRecording() else noteMessage = "Mic access is off, so Strict will use the typed sentence and 30-second wait."
+    }
+
+    // Scrolls: the STRICT voice-note section makes this taller than a small screen.
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         Row(verticalAlignment = Alignment.CenterVertically) {
             GhostButton("‹ Back", onClick = onBack)
@@ -472,8 +534,42 @@ private fun SetupScreen(
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral800),
         )
 
+        if (mode == EnforcementMode.STRICT) {
+            Spacer(Modifier.height(NowFocusSpace.s4))
+            Text("YOUR VOICE NOTE", style = kickerStyle(NowFocusColors.neutral700))
+            Spacer(Modifier.height(NowFocusSpace.s1))
+            Text(
+                "Optional. Record 10 seconds to yourself; to leave early you'll have to hear it first. Skip it and Strict works as described above.",
+                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral800),
+            )
+            Spacer(Modifier.height(NowFocusSpace.s2))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (recording) {
+                    SecondaryButton("Stop · ${recordedSeconds}s") { recorder.stop() }
+                } else {
+                    SecondaryButton(if (hasNote) "Re-record" else "Record") {
+                        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording()
+                        else micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                    if (hasNote) {
+                        Spacer(Modifier.width(NowFocusSpace.s2))
+                        TagPill("Recorded", accent = false)
+                    }
+                }
+            }
+            noteMessage?.let {
+                Text(
+                    it,
+                    style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
+                    modifier = Modifier.padding(top = NowFocusSpace.s1),
+                )
+            }
+        }
+
         Spacer(Modifier.height(NowFocusSpace.s6))
         PrimaryButton("Start ${DURATIONS.first { it.second == minutes }.first}") {
+            // Finalize an in-progress note first so startSession adopts a complete file.
+            if (recording) recorder.stop()
             val consentIntent = VpnService.prepare(context)
             if (consentIntent == null) {
                 onStart(selected.id, minutes, mode)
@@ -519,7 +615,15 @@ private fun ActiveScreen(session: FocusSession, now: Long, onEndEarly: () -> Uni
 }
 
 @Composable
-private fun UnlockScreen(session: FocusSession, now: Long, onCancel: (Boolean) -> Boolean, onCancelled: () -> Unit, onBack: () -> Unit) {
+private fun UnlockScreen(
+    session: FocusSession,
+    now: Long,
+    // (unlockCompleted, listened). `listened` must reach SessionViewModel.cancelSession, or the
+    // button below enables but the ViewModel refuses, and a STRICT session with a note acts LOCKED.
+    onCancel: (Boolean, Boolean) -> Boolean,
+    onCancelled: () -> Unit,
+    onBack: () -> Unit,
+) {
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
@@ -531,7 +635,7 @@ private fun UnlockScreen(session: FocusSession, now: Long, onCancel: (Boolean) -
             EnforcementMode.NORMAL -> {
                 Text("End this session now?", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 16.sp))
                 Spacer(Modifier.height(NowFocusSpace.s4))
-                PrimaryButton("End session now") { if (onCancel(false)) onCancelled() }
+                PrimaryButton("End session now") { if (onCancel(false, false)) onCancelled() }
             }
             EnforcementMode.LOCKED -> {
                 Text("This one's locked, by you.", style = headingStyle(28.sp))
@@ -551,6 +655,15 @@ private fun UnlockScreen(session: FocusSession, now: Long, onCancel: (Boolean) -
                 val waitDone = waiting && waitRemainingMs == 0L
                 val matched = typed.trim() == UNLOCK_SENTENCE
 
+                // A note to hear before leaving, if this session has one. Same helper as
+                // SessionViewModel.cancelSession, so both agree on whether a note exists.
+                val note = remember(session.voiceNotePath) { VoiceNote.playableFile(session) }
+                var playing by remember { mutableStateOf(false) }
+                var listened by remember { mutableStateOf(false) }
+                val player = remember(note) { note?.let { VoiceNotePlayer(it) { playing = false; listened = true } } }
+                DisposableEffect(player) { onDispose { player?.release() } }
+                val canEnd = waitDone && (player == null || listened)
+
                 if (!waiting) {
                     Text(
                         "No judgement. Type this out, word for word, so it's a choice and not a reflex.",
@@ -564,13 +677,36 @@ private fun UnlockScreen(session: FocusSession, now: Long, onCancel: (Boolean) -
                     PrimaryButton("Start 30-second pause", enabled = matched) { waitEndAt = System.currentTimeMillis() + UNLOCK_WAIT_MS }
                 } else {
                     Text(
-                        "Take a breath. If you still want out when this hits zero, it's yours.",
+                        if (player == null) "Take a breath. If you still want out when this hits zero, it's yours."
+                        else "Take a breath, then hear what you told yourself. You can leave once you have.",
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
                     )
                     Spacer(Modifier.height(NowFocusSpace.s3))
                     Text("${waitRemainingMs / 1000 + if (waitRemainingMs % 1000 > 0) 1 else 0}", style = headingStyle(96.sp, color = NowFocusColors.accent))
                     Spacer(Modifier.height(NowFocusSpace.s4))
-                    PrimaryButton(if (waitDone) "End session now" else "Waiting…", enabled = waitDone) { if (onCancel(true)) onCancelled() }
+                    if (player != null) {
+                        SecondaryButton(
+                            when {
+                                playing -> "Playing…"
+                                listened -> "Play again"
+                                else -> "Play your note"
+                            },
+                        ) {
+                            if (!playing) {
+                                playing = true
+                                player.play()
+                            }
+                        }
+                        Spacer(Modifier.height(NowFocusSpace.s2))
+                    }
+                    PrimaryButton(
+                        when {
+                            canEnd -> "End session now"
+                            waitDone -> "Hear your note first"
+                            else -> "Waiting…"
+                        },
+                        enabled = canEnd,
+                    ) { if (onCancel(true, listened)) onCancelled() }
                 }
                 Spacer(Modifier.height(NowFocusSpace.s2))
                 SecondaryButton("Stay focused", onClick = onBack)
@@ -590,10 +726,14 @@ private fun StatsScreen() {
 
     var allSessions by remember { mutableStateOf<List<SessionHistoryRow>>(emptyList()) }
     var weekEvents by remember { mutableStateOf<List<BlockEventRow>>(emptyList()) }
+    var urgeEvents by remember { mutableStateOf<List<BlockEventRow>>(emptyList()) }
     LaunchedEffect(Unit) {
         val dao = HistoryDatabase.get(context).dao()
         allSessions = dao.sessionsBetween(0L, Long.MAX_VALUE)
         weekEvents = dao.blockEventsBetween(weekFrom, weekTo)
+        // A week is too thin to show a time-of-day pattern; 4 weeks isn't.
+        val now = System.currentTimeMillis()
+        urgeEvents = dao.blockEventsBetween(now - URGE_WINDOW_DAYS * 24 * 60 * 60 * 1000L, now + 1)
     }
 
     val weekMinutes = HistoryStats.weekBucketsMinutes(allSessions, today, zone)
@@ -605,7 +745,8 @@ private fun StatsScreen() {
     val maxMinutes = (weekMinutes.maxOrNull() ?: 0L).coerceAtLeast(1L)
     val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
 
-    Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+    // Scrolls: with the YOUR URGES section this is taller than a phone screen.
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
             Text("This week", style = headingStyle(28.sp), modifier = Modifier.weight(1f))
@@ -663,6 +804,40 @@ private fun StatsScreen() {
                 SectionRule()
             }
         }
+        Spacer(Modifier.height(NowFocusSpace.s4))
+
+        Text("YOUR URGES", style = kickerStyle(NowFocusColors.neutral700))
+        Spacer(Modifier.height(NowFocusSpace.s1))
+        val urge = HistoryStats.peakUrge(urgeEvents, zone)
+        if (urge == null) {
+            Text("Nothing to map yet.", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral700))
+        } else {
+            // "tried to open a blocked app", not "reached for your phone": attempts are only logged while a session or shield is on.
+            Text(
+                "You tried to open a blocked app ${if (urge.count == 1) "once" else "${urge.count} times"} between ${hourLabel(urge.hour)} and ${hourLabel(urge.hour + 1)}, usually ${appLabelFor(context, urge.topPackage)}. (last $URGE_WINDOW_DAYS days)",
+                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp),
+            )
+            Spacer(Modifier.height(NowFocusSpace.s3))
+            val byHour = HistoryStats.urgeByHour(urgeEvents, zone)
+            val maxByHour = (byHour.maxOrNull() ?: 0).coerceAtLeast(1)
+            Row(Modifier.fillMaxWidth().height(60.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+                byHour.forEachIndexed { hour, n ->
+                    Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(0.6f)
+                                .height((60 * (n.toFloat() / maxByHour)).dp.coerceAtLeast(1.dp))
+                                .background(if (hour == urge.hour) NowFocusColors.accent else NowFocusColors.text),
+                        )
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf(0, 6, 12, 18).forEach { h ->
+                    Text(hourLabel(h), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 11.sp, color = NowFocusColors.neutral700))
+                }
+            }
+        }
         Spacer(Modifier.height(NowFocusSpace.s3))
         Text(
             "Counted on your phone. We never see what you browse.",
@@ -679,6 +854,11 @@ private fun StatCell(label: String, value: String, modifier: Modifier = Modifier
         Text(value, style = headingStyle(24.sp))
     }
 }
+
+private const val URGE_WINDOW_DAYS = 28
+
+/** 0-24 -> "12 AM" ... "3 PM"; 24 wraps to midnight so an hour's closing edge reads right. */
+private fun hourLabel(hour: Int): String = LocalTime.of(hour % 24, 0).format(DateTimeFormatter.ofPattern("h a"))
 
 private fun appLabelFor(context: android.content.Context, packageName: String): String = try {
     val pm = context.packageManager
@@ -699,7 +879,7 @@ private fun CommitmentScreen(
     now: Long,
     elapsedNow: Long,
     bootCount: Int,
-    onCreate: (Set<String>, Set<String>) -> Unit,
+    onCreate: (Set<String>, Set<String>, Set<PartialRule>) -> Unit,
     onCancel: () -> Boolean,
     onBack: () -> Unit,
 ) {
@@ -720,16 +900,17 @@ private fun CommitmentScreen(
 }
 
 @Composable
-private fun CommitmentSetup(onCreate: (Set<String>, Set<String>) -> Unit) {
+private fun CommitmentSetup(onCreate: (Set<String>, Set<String>, Set<PartialRule>) -> Unit) {
     val context = LocalContext.current
     var newDomain by remember { mutableStateOf("") }
     var domains by remember { mutableStateOf(setOf<String>()) }
     var apps by remember { mutableStateOf(listOf<AppRule>()) }
+    var partial by remember { mutableStateOf(setOf<PartialRule>()) }
     var pickingApp by remember { mutableStateOf(false) }
     // Without this, a shield with sites but no VPN consent would silently
     // enforce nothing for 14 days - the same consent flow SetupScreen uses.
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        onCreate(domains, apps.map { it.packageName }.toSet())
+        onCreate(domains, apps.map { it.packageName }.toSet(), partial)
     }
 
     fun addDomain() {
@@ -768,10 +949,12 @@ private fun CommitmentSetup(onCreate: (Set<String>, Set<String>) -> Unit) {
     }
     GhostButton("+ Add application…") { pickingApp = true }
 
+    PartialRulesSection(partial) { partial = it }
+
     Spacer(Modifier.height(NowFocusSpace.s6))
-    PrimaryButton("Lock for 14 days", enabled = domains.isNotEmpty() || apps.isNotEmpty()) {
+    PrimaryButton("Lock for 14 days", enabled = domains.isNotEmpty() || apps.isNotEmpty() || partial.isNotEmpty()) {
         val consentIntent = if (domains.isNotEmpty()) VpnService.prepare(context) else null
-        if (consentIntent != null) vpnConsent.launch(consentIntent) else onCreate(domains, apps.map { it.packageName }.toSet())
+        if (consentIntent != null) vpnConsent.launch(consentIntent) else onCreate(domains, apps.map { it.packageName }.toSet(), partial)
     }
 
     if (pickingApp) {
@@ -854,7 +1037,7 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
         Text("Bedtime Wind-Down", style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
         Text(
-            "Each night from wind-down until wake, your chosen profile is blocked as a locked session you can't end early. Tap a time to shift it by 30 minutes.",
+            "Each night from wind-down until wake, your chosen profile is blocked as a locked session you can't end early. Tap a time to change it.",
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
         )
         Spacer(Modifier.height(NowFocusSpace.s4))
@@ -926,12 +1109,58 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
 
 @Composable
 private fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier, onChange: (Int) -> Unit) {
-    Column(
-        modifier.clickable { onChange((minutes + 30) % (24 * 60)) }.padding(vertical = NowFocusSpace.s2),
-    ) {
+    val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+    var editing by remember { mutableStateOf(false) }
+    val clock = formatClock(minutes, is24Hour)
+    Column(modifier.clickable { editing = true }.padding(vertical = NowFocusSpace.s2)) {
         Text(label, style = kickerStyle(NowFocusColors.neutral700))
-        Text(minutesToClock(minutes), style = headingStyle(24.sp))
+        // AM/PM rides small beside the digits so three tiles still fit one row on a narrow phone.
+        Text(
+            buildAnnotatedString {
+                append(clock.substringBeforeLast(' '))
+                if (!is24Hour) withStyle(SpanStyle(fontSize = 12.sp)) { append(" " + clock.substringAfterLast(' ')) }
+            },
+            style = headingStyle(24.sp), maxLines = 1,
+        )
     }
+    if (editing) {
+        TimePickerDialog(label, minutes, is24Hour, onConfirm = { onChange(it); editing = false }, onDismiss = { editing = false })
+    }
+}
+
+/** Dial by default (two taps: hour, minute); "Keyboard" swaps to typed entry. One save per edit, on Set. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(title: String, minutes: Int, is24Hour: Boolean, onConfirm: (Int) -> Unit, onDismiss: () -> Unit) {
+    val state = rememberTimePickerState(initialHour = minutes / 60, initialMinute = minutes % 60, is24Hour = is24Hour)
+    var typing by remember { mutableStateOf(false) }
+    val colors = TimePickerDefaults.colors(
+        clockDialColor = NowFocusColors.neutral200,
+        clockDialSelectedContentColor = NowFocusColors.bg,
+        clockDialUnselectedContentColor = NowFocusColors.text,
+        selectorColor = NowFocusColors.accent,
+        periodSelectorBorderColor = NowFocusColors.divider,
+        periodSelectorSelectedContainerColor = NowFocusColors.accent100,
+        periodSelectorUnselectedContainerColor = Color.Transparent,
+        periodSelectorSelectedContentColor = NowFocusColors.accent700,
+        periodSelectorUnselectedContentColor = NowFocusColors.text,
+        timeSelectorSelectedContainerColor = NowFocusColors.accent100,
+        timeSelectorUnselectedContainerColor = NowFocusColors.neutral200,
+        timeSelectorSelectedContentColor = NowFocusColors.accent700,
+        timeSelectorUnselectedContentColor = NowFocusColors.text,
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (typing) TimeInput(state, colors = colors) else TimePicker(state, colors = colors)
+                GhostButton(if (typing) "Dial" else "Keyboard") { typing = !typing }
+            }
+        },
+        confirmButton = { PrimaryButton("Set") { onConfirm(state.hour * 60 + state.minute) } },
+        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
+    )
 }
 
 /** Android counterpart of the macOS health dot + "needs approval" hint. */

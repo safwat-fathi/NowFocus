@@ -2,7 +2,10 @@ package app.getnowfocus.android
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Ships with 2 of the mockup's 4 toggles. Greyscale and "close the feeds"
@@ -108,3 +111,8 @@ object BedtimeSchedule {
 }
 
 enum class QuietDecision { SET_PRIORITY, RESTORE_ALL, NONE }
+
+/** "22:05" in 24-hour mode, "10:05 PM" otherwise. Follows the phone's clock setting via [is24Hour]. */
+internal fun formatClock(minutesSinceMidnight: Int, is24Hour: Boolean, locale: Locale = Locale.getDefault()): String =
+    LocalTime.of(minutesSinceMidnight / 60, minutesSinceMidnight % 60)
+        .format(DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm a", locale))

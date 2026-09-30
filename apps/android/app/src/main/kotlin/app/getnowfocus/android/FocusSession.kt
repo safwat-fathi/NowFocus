@@ -20,8 +20,12 @@ data class FocusSession(
     // editing or deleting the policy mid-session doesn't loosen the block.
     val domains: Set<String> = emptySet(),
     val packages: Set<String> = emptySet(),
+    val partial: Set<PartialRule> = emptySet(),
     val enforcementMode: EnforcementMode = EnforcementMode.NORMAL,
     val sessionType: SessionType = SessionType.FOCUS,
     // Real elapsed time on a cancelled session (stats need this, not the scheduled duration).
     val cancelledAt: Long? = null,
+    // STRICT only: a note to yourself that must be played through before the
+    // session can be ended early (see SessionEngine.canCancel and VoiceNote).
+    val voiceNotePath: String? = null,
 )

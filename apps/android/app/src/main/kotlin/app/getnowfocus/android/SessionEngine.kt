@@ -28,10 +28,20 @@ object SessionEngine {
      * LOCKED never allows it, regardless of [unlockCompleted] — there is no
      * unlock flow for Locked sessions, so a caller passing true here would be
      * a bug, not a legitimate unlock.
+     *
+     * A STRICT session that has a voice note ([hasVoiceNote]) also needs it
+     * played through ([listened]). Without a note (never recorded, mic denied,
+     * file gone) STRICT is exactly the plain unlock, so a missing file can't
+     * trap anyone.
      */
-    fun canCancel(mode: EnforcementMode, unlockCompleted: Boolean): Boolean = when (mode) {
+    fun canCancel(
+        mode: EnforcementMode,
+        unlockCompleted: Boolean,
+        hasVoiceNote: Boolean = false,
+        listened: Boolean = false,
+    ): Boolean = when (mode) {
         EnforcementMode.NORMAL -> true
-        EnforcementMode.STRICT -> unlockCompleted
+        EnforcementMode.STRICT -> unlockCompleted && (!hasVoiceNote || listened)
         EnforcementMode.LOCKED -> false
     }
 }

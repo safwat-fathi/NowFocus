@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_description">NowFocus uses this to see which app comes to the foreground, so it can block the apps you chose - during focus sessions and any Commitment Shield - and, if you turn it on, to lock your screen at your Bedtime sleep time. It does not read screen content and nothing leaves your device.</string>
+    <string name="accessibility_description">NowFocus uses this to see which app comes to the foreground, so it can block the apps you chose - during focus sessions and any Commitment Shield - and, if you turn it on, to lock your screen at your Bedtime sleep time. If you turn on partial blocking, it also reads the YouTube and Facebook screens - only while a session or Commitment Shield with those options is running - to spot Shorts, Reels and recommendation lists. Nothing else on screen is read, and nothing is stored or leaves your device.</string>
 </resources>

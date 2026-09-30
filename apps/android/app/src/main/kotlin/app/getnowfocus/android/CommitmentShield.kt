@@ -29,6 +29,7 @@ data class CommitmentShield(
     val createdAt: Long,
     val createdElapsedRealtime: Long,
     val createdBootCount: Int,
+    val partial: Set<PartialRule> = emptySet(),
 ) {
     /** The only cancel window this ever gets - after this, it runs the full 14 days. Refuses across a reboot rather than guess. */
     fun canCancel(nowElapsedRealtime: Long, currentBootCount: Int): Boolean =

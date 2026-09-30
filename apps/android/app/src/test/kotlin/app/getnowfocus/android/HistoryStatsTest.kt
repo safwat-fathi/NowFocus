@@ -132,6 +132,50 @@ class HistoryStatsTest {
         assertTrue(HistoryStats.topBlockedPackages(events, from = 0, to = 1000).isEmpty())
     }
 
+    private fun attempt(pkg: String, day: LocalDate, hour: Int, minute: Int = 0) =
+        BlockEventRow(packageName = pkg, timestampMillis = day.atTime(hour, minute).toInstant(zone).toEpochMilli())
+
+    @Test
+    fun `urgeByHour buckets attempts by local hour across all 24 hours`() {
+        val day = LocalDate.of(2026, 9, 21)
+        val events = listOf(attempt("a", day, 15), attempt("a", day.plusDays(1), 15, 59), attempt("b", day, 9))
+        val hours = HistoryStats.urgeByHour(events, zone)
+        assertEquals(24, hours.size)
+        assertEquals(2, hours[15])
+        assertEquals(1, hours[9])
+        assertEquals(3, hours.sum())
+    }
+
+    @Test
+    fun `urgeByHour uses the given zone, not UTC`() {
+        val event = attempt("a", LocalDate.of(2026, 9, 21), hour = 23, minute = 30) // 23:30 UTC
+        val hours = HistoryStats.urgeByHour(listOf(event), ZoneOffset.ofHours(2)) // = 01:30 next day
+        assertEquals(1, hours[1])
+        assertEquals(0, hours[23])
+    }
+
+    @Test
+    fun `peakUrge picks the busiest hour and the app most tried in it`() {
+        val day = LocalDate.of(2026, 9, 21)
+        val events = listOf(
+            attempt("insta", day, 15), attempt("insta", day, 15, 20), attempt("reddit", day, 15, 40),
+            attempt("reddit", day, 9), attempt("reddit", day, 9, 5),
+        )
+        assertEquals(Urge(hour = 15, count = 3, topPackage = "insta"), HistoryStats.peakUrge(events, zone))
+    }
+
+    @Test
+    fun `peakUrge breaks a tie toward the earlier hour`() {
+        val day = LocalDate.of(2026, 9, 21)
+        val events = listOf(attempt("a", day, 20), attempt("b", day, 8))
+        assertEquals(8, HistoryStats.peakUrge(events, zone)?.hour)
+    }
+
+    @Test
+    fun `peakUrge is null with no attempts`() {
+        assertEquals(null, HistoryStats.peakUrge(emptyList(), zone))
+    }
+
     @Test
     fun `first block event always logs`() {
         assertTrue(HistoryStats.shouldLogBlockEvent(now = 1000, lastLoggedAt = null))

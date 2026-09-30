@@ -6,6 +6,8 @@
     <!-- Bedtime Wind-Down: quiet notifications (grant is a Settings redirect,
          not a runtime dialog) and re-arming its alarms after a reboot. -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Only to record the optional STRICT-mode voice note; asked at the Record button, not at install. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Android 11+ package visibility: lets the policy editor list launcher apps. -->

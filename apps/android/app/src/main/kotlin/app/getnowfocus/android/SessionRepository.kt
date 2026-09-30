@@ -31,14 +31,17 @@ class SessionRepository(context: Context) {
         val CREATED_AT = longPreferencesKey("createdAt")
         val DOMAINS = stringSetPreferencesKey("domains")
         val PACKAGES = stringSetPreferencesKey("packages")
+        val PARTIAL = stringSetPreferencesKey("partial")
         val POLICIES = stringPreferencesKey("policies")
         val ENFORCEMENT_MODE = stringPreferencesKey("enforcementMode")
         val SESSION_TYPE = stringPreferencesKey("sessionType")
         val CANCELLED_AT = longPreferencesKey("cancelledAt")
+        val VOICE_NOTE_PATH = stringPreferencesKey("voiceNotePath")
         val SHIELD_START_AT = longPreferencesKey("shieldStartAt")
         val SHIELD_END_AT = longPreferencesKey("shieldEndAt")
         val SHIELD_DOMAINS = stringSetPreferencesKey("shieldDomains")
         val SHIELD_PACKAGES = stringSetPreferencesKey("shieldPackages")
+        val SHIELD_PARTIAL = stringSetPreferencesKey("shieldPartial")
         val SHIELD_CREATED_AT = longPreferencesKey("shieldCreatedAt")
         val SHIELD_CREATED_ELAPSED = longPreferencesKey("shieldCreatedElapsed")
         val SHIELD_CREATED_BOOT_COUNT = intPreferencesKey("shieldCreatedBootCount")
@@ -50,6 +53,7 @@ class SessionRepository(context: Context) {
         val BEDTIME_LOCK = booleanPreferencesKey("bedtimeLockAtSleep")
         val BEDTIME_POLICY_ID = stringPreferencesKey("bedtimePolicyId")
         val ONBOARDING_DONE = booleanPreferencesKey("onboardingDone")
+        val PEOPLE = stringPreferencesKey("people")
     }
 
     val sessionFlow: Flow<FocusSession?> = store.data.map { p ->
@@ -62,6 +66,7 @@ class SessionRepository(context: Context) {
             createdAt = p[Keys.CREATED_AT] ?: return@map null,
             domains = p[Keys.DOMAINS] ?: emptySet(),
             packages = p[Keys.PACKAGES] ?: emptySet(),
+            partial = BlockPolicy.partialFromNames(p[Keys.PARTIAL] ?: emptySet()),
             // Default, not return@map null: a session written before this field
             // existed must keep enforcing as NORMAL, not vanish from the flow.
             enforcementMode = p[Keys.ENFORCEMENT_MODE]?.let { EnforcementMode.valueOf(it) } ?: EnforcementMode.NORMAL,
@@ -69,6 +74,8 @@ class SessionRepository(context: Context) {
             // existed keeps enforcing as a FOCUS session.
             sessionType = p[Keys.SESSION_TYPE]?.let { SessionType.valueOf(it) } ?: SessionType.FOCUS,
             cancelledAt = p[Keys.CANCELLED_AT],
+            // Null for any session written before this field existed.
+            voiceNotePath = p[Keys.VOICE_NOTE_PATH],
         )
     }
 
@@ -86,6 +93,7 @@ class SessionRepository(context: Context) {
             createdAt = p[Keys.SHIELD_CREATED_AT] ?: return@map null,
             createdElapsedRealtime = p[Keys.SHIELD_CREATED_ELAPSED] ?: return@map null,
             createdBootCount = p[Keys.SHIELD_CREATED_BOOT_COUNT] ?: return@map null,
+            partial = BlockPolicy.partialFromNames(p[Keys.SHIELD_PARTIAL] ?: emptySet()),
         )
     }
 
@@ -115,6 +123,19 @@ class SessionRepository(context: Context) {
         }
     }
 
+    /** Empty until the user adds someone - the block screen then shows no card. */
+    val peopleFlow: Flow<List<Person>> = store.data.map { p ->
+        p[Keys.PEOPLE]?.let { Person.listFromJson(it) } ?: emptyList()
+    }
+
+    /** Read-modify-write inside one edit, like [updatePolicies]. */
+    suspend fun updatePeople(transform: (List<Person>) -> List<Person>) {
+        store.edit { p ->
+            val current = p[Keys.PEOPLE]?.let { Person.listFromJson(it) } ?: emptyList()
+            p[Keys.PEOPLE] = Person.listToJson(transform(current))
+        }
+    }
+
     val onboardingDoneFlow: Flow<Boolean> = store.data.map { p -> p[Keys.ONBOARDING_DONE] ?: false }
 
     suspend fun setOnboardingDone() {
@@ -131,9 +152,11 @@ class SessionRepository(context: Context) {
             p[Keys.CREATED_AT] = session.createdAt
             p[Keys.DOMAINS] = session.domains
             p[Keys.PACKAGES] = session.packages
+            p[Keys.PARTIAL] = session.partial.map { it.name }.toSet()
             p[Keys.ENFORCEMENT_MODE] = session.enforcementMode.name
             p[Keys.SESSION_TYPE] = session.sessionType.name
             if (session.cancelledAt != null) p[Keys.CANCELLED_AT] = session.cancelledAt else p.remove(Keys.CANCELLED_AT)
+            if (session.voiceNotePath != null) p[Keys.VOICE_NOTE_PATH] = session.voiceNotePath else p.remove(Keys.VOICE_NOTE_PATH)
         }
     }
 
@@ -157,6 +180,7 @@ class SessionRepository(context: Context) {
             p[Keys.SHIELD_END_AT] = shield.endAt
             p[Keys.SHIELD_DOMAINS] = shield.domains
             p[Keys.SHIELD_PACKAGES] = shield.packages
+            p[Keys.SHIELD_PARTIAL] = shield.partial.map { it.name }.toSet()
             p[Keys.SHIELD_CREATED_AT] = shield.createdAt
             p[Keys.SHIELD_CREATED_ELAPSED] = shield.createdElapsedRealtime
             p[Keys.SHIELD_CREATED_BOOT_COUNT] = shield.createdBootCount
@@ -170,6 +194,7 @@ class SessionRepository(context: Context) {
             p.remove(Keys.SHIELD_END_AT)
             p.remove(Keys.SHIELD_DOMAINS)
             p.remove(Keys.SHIELD_PACKAGES)
+            p.remove(Keys.SHIELD_PARTIAL)
             p.remove(Keys.SHIELD_CREATED_AT)
         }
     }

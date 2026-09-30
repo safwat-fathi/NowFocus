@@ -1,22 +1,40 @@
 package app.getnowfocus.android
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.format.DateUtils
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class BlockedActivity : ComponentActivity() {
 
@@ -25,9 +43,22 @@ class BlockedActivity : ComponentActivity() {
         const val EXTRA_SOURCE = "source"
     }
 
+    // Same "activity builds its own repository" pattern as FocusAccessibilityService.
+    private val repository by lazy { SessionRepository(this) }
+
+    // Reloaded on every resume, not just onCreate: a singleTask screen is reused
+    // for the next block, and returning from the dialer/SMS app after Call/Text
+    // must rotate to whoever is now the longest-ago.
+    private var person by mutableStateOf<Person?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         renderContent()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch { person = PeopleRotation.next(repository.peopleFlow.first()) }
     }
 
     // singleTask means a block screen left open (Home button, not Back) is
@@ -51,8 +82,30 @@ class BlockedActivity : ComponentActivity() {
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
-                    ShieldScreen(until = until, fromShield = fromShield, onReturn = { goHome() }, onNeedIt = { goUnlock() })
+                    ShieldScreen(
+                        until = until,
+                        fromShield = fromShield,
+                        person = person,
+                        onCall = { person?.let { reachOut(it, Intent(Intent.ACTION_DIAL, Uri.parse("tel:${Uri.encode(it.phone)}"))) } },
+                        onText = { person?.let { reachOut(it, Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(it.phone)}"))) } },
+                        onReturn = { goHome() },
+                        onNeedIt = { goUnlock() },
+                    )
                 }
+            }
+        }
+    }
+
+    // The write is awaited before leaving, and this screen stays open (no
+    // finish()): finishing right after would cancel lifecycleScope mid-write and
+    // lose the timestamp. No CALL_PHONE needed - ACTION_DIAL only opens the dialer.
+    private fun reachOut(p: Person, intent: Intent) {
+        lifecycleScope.launch {
+            repository.updatePeople { list -> list.map { if (it.id == p.id) it.copy(lastTalkedAt = System.currentTimeMillis()) else it } }
+            try {
+                startActivity(intent)
+            } catch (_: ActivityNotFoundException) {
+                // No dialer / SMS app installed: nothing to hand off to.
             }
         }
     }
@@ -75,7 +128,15 @@ class BlockedActivity : ComponentActivity() {
 }
 
 @Composable
-private fun ShieldScreen(until: String, fromShield: Boolean, onReturn: () -> Unit, onNeedIt: () -> Unit) {
+private fun ShieldScreen(
+    until: String,
+    fromShield: Boolean,
+    person: Person?,
+    onCall: () -> Unit,
+    onText: () -> Unit,
+    onReturn: () -> Unit,
+    onNeedIt: () -> Unit,
+) {
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
         Text(if (fromShield) "Always blocked by NowFocus" else "Shielded by NowFocus", style = kickerStyle(NowFocusColors.neutral400))
         Spacer(Modifier.height(NowFocusSpace.s8))
@@ -88,6 +149,10 @@ private fun ShieldScreen(until: String, fromShield: Boolean, onReturn: () -> Uni
             if (fromShield) "Locked by your Commitment Shield until $until." else "You're in a focus session until $until.",
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 17.sp, color = NowFocusColors.neutral300),
         )
+        if (person != null) {
+            Spacer(Modifier.height(NowFocusSpace.s8))
+            ReachOutCard(person, onCall, onText)
+        }
         Spacer(Modifier.weight(1f))
         PrimaryButton("Back to focus", onClick = onReturn)
         // The Commitment Shield has no exit at all - not even the friction of Unlock.
@@ -96,5 +161,33 @@ private fun ShieldScreen(until: String, fromShield: Boolean, onReturn: () -> Uni
             GhostButton("I really need it", onClick = onNeedIt)
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
+    }
+}
+
+/** The urge to connect is real - point it at someone real. */
+@Composable
+private fun ReachOutCard(person: Person, onCall: () -> Unit, onText: () -> Unit) {
+    val since = remember(person) { person.sinceLabel(System.currentTimeMillis()) }
+    Text("OR REACH OUT INSTEAD", style = kickerStyle(NowFocusColors.neutral400))
+    Spacer(Modifier.height(NowFocusSpace.s2))
+    Text(
+        if (since != null) "You haven't talked to ${person.name} in about $since." else "Reach out to ${person.name} instead.",
+        style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, color = NowFocusColors.bg),
+    )
+    Spacer(Modifier.height(NowFocusSpace.s3))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(NowFocusSpace.s2)) {
+        ReachButton("Call", Modifier.weight(1f), onCall)
+        ReachButton("Text", Modifier.weight(1f), onText)
+    }
+}
+
+// Not SecondaryButton (dark text) or PrimaryButton (red, competes with "Back to focus"): this screen is dark.
+@Composable
+private fun ReachButton(text: String, modifier: Modifier, onClick: () -> Unit) {
+    Box(
+        modifier.border(1.dp, NowFocusColors.neutral400).clickable(onClick = onClick).padding(vertical = NowFocusSpace.s3),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = NowFocusColors.bg))
     }
 }

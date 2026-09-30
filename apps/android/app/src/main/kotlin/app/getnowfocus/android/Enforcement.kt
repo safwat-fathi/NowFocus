@@ -12,7 +12,13 @@ import kotlinx.coroutines.flow.first
 enum class BlockSource { SESSION, COMMITMENT_SHIELD }
 
 /** One source's contribution: a manual session, or the Commitment Shield. Each expires on its own. */
-data class RuleWindow(val endAt: Long, val domains: Set<String>, val packages: Set<String>, val source: BlockSource = BlockSource.SESSION)
+data class RuleWindow(
+    val endAt: Long,
+    val domains: Set<String>,
+    val packages: Set<String>,
+    val source: BlockSource = BlockSource.SESSION,
+    val partial: Set<PartialRule> = emptySet(),
+)
 
 /**
  * What's blocked right now, as however many windows are currently active. A
@@ -25,6 +31,7 @@ data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
     private fun liveWindows(now: Long) = windows.filter { it.endAt > now }
     fun liveDomains(now: Long): Set<String> = liveWindows(now).flatMap { it.domains }.toSet()
     fun livePackages(now: Long): Set<String> = liveWindows(now).flatMap { it.packages }.toSet()
+    fun livePartial(now: Long): Set<PartialRule> = liveWindows(now).flatMap { it.partial }.toSet()
     fun nextExpiryAfter(now: Long): Long? = liveWindows(now).minOfOrNull { it.endAt }
     fun hasLiveWindow(now: Long): Boolean = liveWindows(now).isNotEmpty()
 
@@ -52,9 +59,9 @@ object Enforcement {
             val now = System.currentTimeMillis()
             val windows = buildList {
                 session?.takeIf { SessionEngine.isActive(SessionEngine.evaluateState(it, now), now) }
-                    ?.let { add(RuleWindow(it.endAt, it.domains, it.packages, BlockSource.SESSION)) }
+                    ?.let { add(RuleWindow(it.endAt, it.domains, it.packages, BlockSource.SESSION, it.partial)) }
                 shield?.takeIf { it.endAt > now }
-                    ?.let { add(RuleWindow(it.endAt, it.domains, it.packages, BlockSource.COMMITMENT_SHIELD)) }
+                    ?.let { add(RuleWindow(it.endAt, it.domains, it.packages, BlockSource.COMMITMENT_SHIELD, it.partial)) }
             }
             ActiveRules(windows)
         }
