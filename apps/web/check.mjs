@@ -99,6 +99,10 @@ for (const u of canon) if (!sm.has(u)) fail("sitemap.xml", `missing ${u}`);
 for (const u of sm) if (!canon.has(u)) fail("sitemap.xml", `lists a page that isn't indexable or doesn't exist: ${u}`);
 if (!/Sitemap: https:\/\/nowfocus\.online\/sitemap\.xml/.test(readFileSync(join(ROOT, "robots.txt"), "utf8"))) fail("robots.txt", "missing Sitemap line");
 
+// every nowfocus.online URL in llms.txt resolves to a page or file
+for (const m of readFileSync(join(ROOT, "llms.txt"), "utf8").matchAll(/\(https:\/\/nowfocus\.online(\/[^)#]*)\)/g))
+  if (!existsSync(join(ROOT, m[1].endsWith("/") ? m[1] + "index.html" : m[1]))) fail("llms.txt", `broken link ${m[1]}`);
+
 // nav and footer are identical on every page (apart from aria-current)
 const shared = (p, re) => p.html.match(re)?.[0].replace(/ aria-current="page"/g, "");
 for (const [label, re] of [["nav", /<nav class="nav"[\s\S]*?<\/nav>/], ["footer", /<footer class="foot">[\s\S]*?<\/footer>/]]) {

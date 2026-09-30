@@ -26,6 +26,10 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
+          for v in DEPLOY_KEY DEPLOY_HOST DEPLOY_KNOWN_HOSTS; do
+            [ -n "${!v}" ] || { echo "::error::secret $v is empty or not visible to this job"; exit 1; }
+          done
+          printf '%s' "$DEPLOY_HOST" | grep -Eq '^[A-Za-z0-9.-]+$' || { echo "::error::DEPLOY_HOST (length ${#DEPLOY_HOST}) is not a bare hostname or IP"; exit 1; }
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
