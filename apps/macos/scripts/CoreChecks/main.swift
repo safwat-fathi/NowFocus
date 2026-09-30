@@ -170,6 +170,19 @@ check(FeedRules.all.map { $0.id } == ["YT_SHORTS", "YT_HOME", "YT_RELATED", "FB_
 check(FeedRules.all.map { $0.label } == ["YouTube Shorts", "YouTube Home feed", "YouTube up next / related", "Facebook Reels", "Instagram Reels & Explore", "X \u{201C}For you\u{201D} feed"], "rule labels match Android")
 check(FeedRules.all.allSatisfy { !$0.detail.isEmpty }, "every rule explains itself")
 
+// MARK: Commitment Shield (port of Android's CommitmentShield)
+
+let shield = CommitmentShield(startAt: now, domains: ["x.com"], createdUptime: 1_000)
+check(shield.endAt == now.addingTimeInterval(14 * day), "shield lasts 14 days")
+check(shield.canCancel(now: now.addingTimeInterval(30), uptime: 1_030), "can cancel inside the 60s grace")
+check(!shield.canCancel(now: now.addingTimeInterval(61), uptime: 1_061), "cannot cancel after grace")
+check(!shield.canCancel(now: now.addingTimeInterval(30), uptime: 10), "cannot cancel after a reboot")
+check(!shield.isOver(now: now.addingTimeInterval(15 * day), uptime: 1_000 + 13 * day), "moving the date forward can't end it early")
+check(shield.isOver(now: now, uptime: 1_000 + 14 * day), "over once 14 days elapsed on the monotonic clock")
+check(shield.isOver(now: now.addingTimeInterval(14 * day), uptime: 5), "after a reboot, falls back to the wall clock")
+check(!shield.isOver(now: now.addingTimeInterval(13 * day), uptime: 5), "after a reboot, not over before 14 wall-clock days")
+check(shield.remaining(now: now, uptime: 1_000 + 13 * day) == day, "one day to go")
+
 // MARK: Existing self-checks
 
 HistoryStats.runSelfCheck()

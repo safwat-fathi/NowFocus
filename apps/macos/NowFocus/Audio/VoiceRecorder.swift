@@ -82,6 +82,10 @@ final class VoiceRecorder: NSObject {
         ]
 
         do {
+            #if os(iOS)
+            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            try AVAudioSession.sharedInstance().setActive(true)
+            #endif
             store.deletePending()
             audioRecorder = try AVAudioRecorder(url: store.pendingURL, settings: settings)
             audioRecorder?.delegate = self
@@ -132,6 +136,10 @@ final class VoiceRecorder: NSObject {
     func startPlayback() {
         guard store.hasPending else { return }
         do {
+            #if os(iOS)
+            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            try AVAudioSession.sharedInstance().setActive(true)
+            #endif
             audioPlayer = try AVAudioPlayer(contentsOf: store.pendingURL)
             audioPlayer?.delegate = self
             audioPlayer?.play()

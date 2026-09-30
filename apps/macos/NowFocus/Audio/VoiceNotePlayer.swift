@@ -21,6 +21,10 @@ final class VoiceNotePlayer: NSObject {
     func play() {
         guard !isPlaying else { return }
         do {
+            #if os(iOS)
+            try AVAudioSession.sharedInstance().setCategory(.playback)
+            try AVAudioSession.sharedInstance().setActive(true)
+            #endif
             let p = try AVAudioPlayer(contentsOf: url)
             p.delegate = self
             player = p

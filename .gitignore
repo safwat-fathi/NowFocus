@@ -1,6 +1,7 @@
 .DS_Store
 apps/macos/build/
 apps/macos/*.xcodeproj/
+apps/ios/*.xcodeproj/
 graphify-out/cache/
 apps/android/build/
 apps/android/app/build/

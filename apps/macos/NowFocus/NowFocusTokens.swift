@@ -44,6 +44,32 @@ enum NowFocusSpace {
     static let s8: CGFloat = 32
 }
 
+#if canImport(UIKit)
+import UIKit
+
+private extension UIColor {
+    convenience init(hex: String) {
+        var h = hex
+        if h.hasPrefix("#") { h.removeFirst() }
+        var v: UInt64 = 0
+        Scanner(string: h).scanHexInt64(&v)
+        self.init(
+            red: CGFloat((v >> 16) & 0xFF) / 255,
+            green: CGFloat((v >> 8) & 0xFF) / 255,
+            blue: CGFloat(v & 0xFF) / 255,
+            alpha: 1.0
+        )
+    }
+}
+
+private extension Color {
+    static func dynamic(light: String, dark: String) -> Color {
+        Color(uiColor: UIColor { traits in
+            UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light)
+        })
+    }
+}
+#else
 private extension NSColor {
     convenience init(hex: String) {
         var h = hex
@@ -69,6 +95,7 @@ private extension Color {
         }))
     }
 }
+#endif
 
 enum NowFocusFonts {
     /// 0 everywhere — the Modernist system's deliberate "no rounded corners" rule.
