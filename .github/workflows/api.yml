@@ -1,0 +1,48 @@
+name: API
+
+on:
+  push:
+    branches: [main]
+    paths: ["services/api/**", ".github/workflows/api.yml"]
+  pull_request:
+    paths: ["services/api/**", ".github/workflows/api.yml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nowfocus_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/nowfocus_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/api/package-lock.json
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:e2e
+
+      # The committed openapi.json is the contract the native clients generate their models from;
+      # it must match the code.
+      - name: OpenAPI contract is up to date
+        run: |
+          npm run openapi
+          git diff --exit-code openapi.json
