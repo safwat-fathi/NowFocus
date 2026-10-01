@@ -19,8 +19,10 @@ pnpm run start:dev
 
 - Run exactly **one** instance (pm2 fork mode): the WebSocket hub and rate limits are in memory.
 - Put the git sha in a `REVISION` file next to `dist/` when you deploy; `GET /healthz` returns it so you can confirm which build is live.
-- Behind nginx and Cloudflare, `TRUST_PROXY=1` is only correct if nginx takes the client IP from `CF-Connecting-IP` (`deploy/cloudflare-realip.sh` generates the `real_ip_header` + `set_real_ip_from` file, limited to Cloudflare's ranges) and sends `proxy_set_header X-Forwarded-For $remote_addr;` (overwrite, never `$proxy_add_x_forwarded_for`); `deploy/api.nowfocus.online.conf` is that vhost, `ecosystem.config.cjs` the pm2 app. Otherwise every client shares one 10/min auth bucket, or a client can spoof its IP.
+- Behind nginx and Cloudflare, `TRUST_PROXY=1` is only correct if nginx takes the client IP from `CF-Connecting-IP` (`deploy/cloudflare-realip.sh` generates the `real_ip_header` + `set_real_ip_from` file, limited to Cloudflare's ranges; skip it if nginx already has a `real_ip_header`) and sends `proxy_set_header X-Forwarded-For $remote_addr;` (overwrite, never `$proxy_add_x_forwarded_for`); `deploy/api.nowfocus.online.conf` is that vhost, `ecosystem.config.cjs` the pm2 app. Otherwise every client shares one 10/min auth bucket, or a client can spoof its IP.
 - The server pings each WebSocket every 30 s, so the proxy's `proxy_read_timeout` must be above that (75 s works) and Cloudflare's idle limit is never reached.
+
+Ops: [`deploy/RUNBOOK.md`](deploy/RUNBOOK.md) covers releases, rollback, encrypted off-box backups (`deploy/backup.sh`) and the restore drill.
 
 ## Test
 
