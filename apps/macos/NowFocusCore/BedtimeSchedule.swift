@@ -7,7 +7,7 @@ import Foundation
 /// foreground-app detection either — same reasoning Android's BedtimeSchedule
 /// used to drop its other 2. `lockAtSleep` survives because macOS *does* have
 /// a real, permission-free mechanism for it — see BedtimeScheduler.
-public struct BedtimeSettings: Codable {
+public struct BedtimeSettings: Codable, Equatable {
     public var enabled: Bool = false
     public var windDownMinute: Int = 22 * 60
     public var sleepMinute: Int = 23 * 60

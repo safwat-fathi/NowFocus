@@ -1,11 +1,9 @@
 import SwiftUI
 import NowFocusCore
 
-/// "This Mac" only — cross-device sync is Phase 6 (backend-dependent) per
-/// native_tech_stack_spec.md, and Android's own DevicesScreen made the same
-/// call ("Real, but phone-only... cross-device sync is Phase 6... not built
-/// yet"). The three layers are reported separately, per the spec's own
-/// Phase 3 requirement.
+/// "This Mac" health (the three enforcement layers, reported separately per the
+/// spec's Phase 3 requirement), then the optional account that syncs profiles
+/// and bedtime settings across devices (see AccountView).
 struct DevicesView: View {
     private enum LayerState {
         case checking, on, off, idle
@@ -25,37 +23,41 @@ struct DevicesView: View {
     @State private var hostsFilterState: LayerState = .checking
 
     var body: some View {
-        VStack(alignment: .leading, spacing: NowFocusSpace.s4) {
-            Text("Devices")
-                .font(NowFocusFonts.heading(28))
-                .foregroundColor(NowFocusColors.ink)
-
-            NowFocusRule(thick: true)
-
-            HStack {
-                Text("This Mac")
-                    .font(NowFocusFonts.body(17).weight(.semibold))
+        ScrollView {
+            VStack(alignment: .leading, spacing: NowFocusSpace.s4) {
+                Text("Devices")
+                    .font(NowFocusFonts.heading(28))
                     .foregroundColor(NowFocusColors.ink)
-                Spacer()
-                NowFocusTagPill(text: overallDegraded ? "Degraded" : "Active", accent: overallDegraded)
+
+                NowFocusRule(thick: true)
+
+                HStack {
+                    Text("This Mac")
+                        .font(NowFocusFonts.body(17).weight(.semibold))
+                        .foregroundColor(NowFocusColors.ink)
+                    Spacer()
+                    NowFocusTagPill(text: overallDegraded ? "Degraded" : "Active", accent: overallDegraded)
+                }
+
+                NowFocusRule(thick: true)
+
+                HStack(spacing: 0) {
+                    layerCell("Root daemon", state: daemonLayerState)
+                    NowFocusRule(vertical: true)
+                    layerCell("DNS filter", state: hostsFilterState)
+                    NowFocusRule(vertical: true)
+                    layerCell("App blocking", state: appBlockingOk ? .on : .off)
+                }
+
+                NowFocusRule(thick: true)
+
+                AccountView()
+                    .padding(.top, NowFocusSpace.s4)
             }
-
-            NowFocusRule(thick: true)
-
-            HStack(spacing: 0) {
-                layerCell("Root daemon", state: daemonLayerState)
-                NowFocusRule(vertical: true)
-                layerCell("DNS filter", state: hostsFilterState)
-                NowFocusRule(vertical: true)
-                layerCell("App blocking", state: appBlockingOk ? .on : .off)
-            }
-
-            NowFocusRule(thick: true)
-
-            Spacer(minLength: 0)
+            .padding(NowFocusSpace.s6)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .padding(NowFocusSpace.s6)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear(perform: refresh)
     }
 

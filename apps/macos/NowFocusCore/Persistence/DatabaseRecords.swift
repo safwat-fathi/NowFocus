@@ -31,7 +31,7 @@ public struct BlockPolicyRecord: Codable, FetchableRecord, PersistableRecord {
     public let revision: Int
     
     public init(policy: BlockPolicy) throws {
-        self.id = policy.id
+        self.id = policy.id.lowercased()
         self.name = policy.name
         self.mode = policy.mode
         self.domainsData = try JSONEncoder().encode(policy.domains)

@@ -183,6 +183,223 @@ check(shield.isOver(now: now.addingTimeInterval(14 * day), uptime: 5), "after a 
 check(!shield.isOver(now: now.addingTimeInterval(13 * day), uptime: 5), "after a reboot, not over before 14 wall-clock days")
 check(shield.remaining(now: now, uptime: 1_000 + 13 * day) == day, "one day to go")
 
+// MARK: Sync (services/api/WIRE_FORMAT.md): the Mac's mapper and the pure rules, ported from Android's SyncLogicTest/WireMapperTest
+
+func J(_ text: String) -> JSONObject { JSONKit.object(text)! }
+func rec(_ type: String, _ id: String, _ data: String, deleted: Bool = false, rev: Int = 1, at: Int64 = 1_000) -> ServerRecord {
+    ServerRecord(type: type, id: id, dataJson: data, deleted: deleted, revision: rev, updatedAt: at)
+}
+func policyJSON(id: String, name: String = "Work", domains: [String] = ["reddit.com"], extra: String = "") -> String {
+    let rules = domains.map { "{\"id\":\"r-\($0)\",\"domain\":\"\($0)\",\"includeSubdomains\":true,\"enabled\":true}" }.joined(separator: ",")
+    return "{\"id\":\"\(id)\",\"name\":\"\(name)\",\"mode\":\"blocklist\",\"domainRules\":[\(rules)],\"applicationRules\":[]\(extra)}"
+}
+func linked(_ policies: [BlockPolicy] = [], bedtime: BedtimeSettings = BedtimeSettings(), initialPullDone: Bool = true) -> SyncLocal {
+    var st = SyncState(); st.userId = "u1"; st.initialPullDone = initialPullDone
+    return SyncLocal(policies: policies, bedtime: bedtime, state: st)
+}
+func pol(_ id: String, _ name: String = "Work", domains: [String] = ["reddit.com"]) -> BlockPolicy {
+    BlockPolicy(id: id, name: name, domains: domains.map { DomainRule(domain: $0) })
+}
+let T: Int64 = 5_000
+
+// An Android-shaped record: other platform's app rule, partial names, quietNotifications-style extras, a disabled rule.
+let androidShaped = "{\"id\":\"p1\",\"name\":\"Deep Work\",\"mode\":\"blocklist\"," +
+    "\"domainRules\":[{\"id\":\"d1\",\"domain\":\"youtube.com\",\"includeSubdomains\":true,\"enabled\":true},{\"id\":\"d2\",\"domain\":\"x.com\",\"includeSubdomains\":false,\"enabled\":false}]," +
+    "\"applicationRules\":[{\"id\":\"a1\",\"platform\":\"android\",\"nativeIdentifier\":\"com.google.android.youtube\",\"displayName\":\"YouTube\",\"enabled\":true}," +
+    "{\"id\":\"a2\",\"platform\":\"macos\",\"nativeIdentifier\":\"com.tinyspeck.slackmacgap\",\"displayName\":\"Slack\",\"enabled\":true}]," +
+    "\"partial\":[\"YT_SHORTS\",\"FB_REELS\"],\"categories\":[\"social\"],\"notificationPolicy\":\"quiet\",\"feedRules\":{\"v\":2},\"futureField\":{\"a\":[1,2]}}"
+
+// toLocal: only what this Mac can express, and a hostile pulled domain never reaches the model.
+let importedPolicy = PolicyWire.toLocal(J(androidShaped))
+check(importedPolicy.id == "p1" && importedPolicy.name == "Deep Work", "id and name imported")
+check(importedPolicy.domains.map { $0.domain } == ["youtube.com", "x.com"], "both domains imported, including the disabled one")
+check(importedPolicy.domains[1].enabled == false && importedPolicy.domains[1].includeSubdomains == false, "enabled and includeSubdomains survive")
+check(importedPolicy.applications.map { $0.nativeIdentifier } == ["com.tinyspeck.slackmacgap"], "only macos app rules are imported")
+check(importedPolicy.categories == ["social"] && importedPolicy.notificationPolicy == .quiet, "categories and notificationPolicy are read")
+let hostile = PolicyWire.toLocal(J("{\"id\":\"p9\",\"name\":\"x\",\"domainRules\":[{\"domain\":\"evil.com\\n1.2.3.4 bank.com\"},{\"domain\":\"HTTP://Reddit.COM/r/all\"}]}"))
+check(hostile.domains.map { $0.domain } == ["reddit.com"], "a newline-bearing domain is dropped, a URL is normalized")
+
+// merge: the preserve-unknown rule. Edit on the Mac, everything it doesn't own survives.
+var edited = importedPolicy
+edited.name = "Focus"
+edited.domains.append(DomainRule(domain: "tiktok.com"))
+edited.domains.removeAll { $0.domain == "x.com" }              // the user removed the disabled rule
+edited.applications.removeAll()                                 // and the Slack rule
+let merged = PolicyWire.merge(edited, into: J(androidShaped))
+check(JSONKit.string(merged, "name") == "Focus", "name merged")
+check(JSONKit.array(merged, "partial").compactMap { $0 as? String } == ["YT_SHORTS", "FB_REELS"], "partial names carried over untouched")
+check(JSONKit.string(merged, "notificationPolicy") == "quiet" && JSONKit.array(merged, "categories").count == 1, "categories and notificationPolicy carried over")
+check((merged["futureField"] as? JSONObject) != nil && (merged["feedRules"] as? JSONObject) != nil, "unknown fields carried over")
+check(JSONKit.objects(merged, "applicationRules").map { JSONKit.string($0, "platform") ?? "" } == ["android"], "android's app rule kept; the Mac's own removed rule gone")
+check(JSONKit.objects(merged, "domainRules").map { JSONKit.string($0, "domain") ?? "" } == ["youtube.com", "tiktok.com"], "removed rule dropped even though it was disabled; new one appended")
+check(JSONKit.string(J(androidShaped), "name") == "Deep Work", "merge never mutates its input")
+let fresh = PolicyWire.merge(pol("new1", "Fresh"), into: nil)
+check(JSONKit.string(fresh, "mode") == "blocklist" && JSONKit.string(fresh, "id") == "new1" && fresh["partial"] == nil, "a new policy is built from scratch with no invented fields")
+check(PolicyWire.same(PolicyWire.toLocal(merged), edited), "what we push reads back as what we edited")
+check(PolicyWire.same(pol("ABC"), pol("abc")), "ids compare case-insensitively")
+check(PolicyWire.weakens(old: pol("p", domains: ["a.com", "b.com"]), new: pol("p", domains: ["a.com"])), "dropping a domain weakens")
+check(!PolicyWire.weakens(old: pol("p", domains: ["a.com"]), new: pol("p", domains: ["a.com", "b.com"])), "adding a domain does not")
+check(PolicyWire.weakens(old: pol("p", domains: ["a.com"]), new: BlockPolicy(id: "p", name: "Work", domains: [DomainRule(domain: "a.com", includeSubdomains: false)])), "turning subdomains off weakens")
+check(PolicyWire.weakens(old: pol("p", domains: ["a.com"]), new: BlockPolicy(id: "p", name: "Work", domains: [DomainRule(domain: "a.com", enabled: false)])), "disabling weakens")
+
+// allowlist and unknown modes: kept, never enforced.
+do {
+    let pulled = SyncLogic.applyPulled(linked(), records: [rec("policy", "al1", "{\"id\":\"al1\",\"name\":\"Only these\",\"mode\":\"allowlist\",\"domainRules\":[{\"domain\":\"docs.com\"}]}"),
+                                                         rec("policy", "fut", "{\"id\":\"fut\",\"name\":\"?\",\"mode\":\"quantum\"}")], cursor: 2, inUse: [], now: T)
+    check(pulled.local.policies.isEmpty, "allowlist and unknown-mode policies are not imported")
+    check(pulled.local.state.policies["al1"]?.imported == false && pulled.local.state.policies["al1"]?.rawJson != nil, "but the record is kept so it is never mistaken for a deletion")
+    check(SyncLogic.planPush(pulled.local, now: T).isEmpty, "and nothing is pushed for it")
+}
+
+// pull: first sync, server wins, cursor moves, other types are skipped.
+do {
+    let pulled = SyncLogic.applyPulled(linked([pol("p1", "Local name")]), records: [rec("policy", "P1", policyJSON(id: "p1", name: "Server name")), rec("session", "s1", "{}"), rec("shield_item", "i1", "{}")], cursor: 7, inUse: [], now: T)
+    check(pulled.local.policies.count == 1 && pulled.local.policies[0].name == "Server name", "no bookkeeping yet: the server wins")
+    check(pulled.local.state.cursor == 7, "cursor advances past records this build doesn't sync")
+    check(pulled.local.state.policies["p1"]?.dirtyAt == nil, "ids are matched case-insensitively and the result is clean")
+}
+
+// push: a new profile goes up once, and comes back clean.
+do {
+    let local = linked([pol("n1", "Brand new")])
+    let plan = SyncLogic.planPush(local, now: T)
+    check(plan.count == 1 && plan[0].type == "policy" && plan[0].id == "n1" && plan[0].updatedAt == T && !plan[0].deleted, "a never-uploaded profile is planned with now as updatedAt")
+    check(SyncLogic.planPush(linked([pol("n1")], initialPullDone: false), now: T).isEmpty, "nothing is uploaded before the first pull has finished")
+    var signedOut = linked([pol("n1")]); signedOut.state.userId = nil
+    check(SyncLogic.planPush(signedOut, now: T).isEmpty, "unlinked means nothing to push")
+    let res = [PushOutcome(type: "policy", id: "n1", status: "applied", record: rec("policy", "n1", plan[0].dataJson!, rev: 1, at: T), code: nil)]
+    let done = SyncLogic.applyPushResults(local, sent: plan, results: res, inUse: [], now: T)
+    check(SyncLogic.planPush(done.local, now: T + 1).isEmpty, "after the server accepts it nothing is dirty")
+    check(done.local.state.policies["n1"]?.dirtyAt == nil && done.local.state.policies["n1"]?.revision == 1, "meta settled with the server's revision")
+}
+
+// stamping at write time: only a linked device keeps bookkeeping, and edits move dirtyAt.
+do {
+    let base = SyncMeta(rawJson: policyJSON(id: "p1"), revision: 3)
+    let p = PolicyWire.toLocal(J(policyJSON(id: "p1")))
+    if case .set(let m) = SyncLogic.stampSaved(meta: base, old: p, new: pol("p1", "Renamed"), now: T) { check(m.dirtyAt == T, "a real edit stamps dirtyAt") } else { check(false, "edit must stamp") }
+    if case .keep = SyncLogic.stampSaved(meta: base, old: p, new: p, now: T) {} else { check(false, "a no-op save is not an edit") }
+    if case .set(let m) = SyncLogic.stampSaved(meta: SyncMeta(rawJson: base.rawJson, revision: 3, dirtyAt: 100), old: pol("p1", "Renamed"), new: p, now: T) { check(m.dirtyAt == nil, "editing back to the server's version is clean again") } else { check(false, "revert must stamp") }
+    if case .remove = SyncLogic.stampDeleted(meta: nil, now: T) {} else { check(false, "deleting something the server never saw needs no tombstone") }
+    guard case .set(let tomb) = SyncLogic.stampDeleted(meta: base, now: T) else { fatalError("tombstone expected") }
+    check(tomb.deleted && tomb.dirtyAt == T, "deleting a known profile records a tombstone")
+    var local = linked(); local.state.policies["p1"] = tomb
+    let plan = SyncLogic.planPush(local, now: T + 1)
+    check(plan.count == 1 && plan[0].deleted && plan[0].dataJson == nil && plan[0].updatedAt == T, "the tombstone is pushed with the delete time")
+    let ack = SyncLogic.applyPushResults(local, sent: plan, results: [PushOutcome(type: "policy", id: "p1", status: "applied", record: rec("policy", "p1", "{}", deleted: true, rev: 4, at: T), code: nil)], inUse: [], now: T)
+    check(ack.local.state.policies["p1"] == nil, "an acknowledged delete forgets the record")
+}
+
+// last-write-wins between a dirty local edit and a pulled record.
+do {
+    var local = linked([pol("p1", "Edited here")])
+    local.state.policies["p1"] = SyncMeta(rawJson: policyJSON(id: "p1", name: "Old"), revision: 1, dirtyAt: 3_000)
+    let older = SyncLogic.applyPulled(local, records: [rec("policy", "p1", policyJSON(id: "p1", name: "Elsewhere"), rev: 2, at: 2_000)], cursor: 1, inUse: [], now: T)
+    check(older.local.policies[0].name == "Edited here", "a newer local edit beats an older server change")
+    check(SyncLogic.planPush(older.local, now: T).first?.updatedAt == 3_000, "and keeps its own timestamp for the push")
+    let newer = SyncLogic.applyPulled(local, records: [rec("policy", "p1", policyJSON(id: "p1", name: "Elsewhere"), rev: 2, at: 4_000)], cursor: 1, inUse: [], now: T)
+    check(newer.local.policies[0].name == "Elsewhere", "a newer server change beats an older local edit")
+}
+
+// stale push answers adopt the server copy; rejections are remembered until the user edits again.
+do {
+    let local = linked([pol("n1", "Mine")])
+    let plan = SyncLogic.planPush(local, now: T)
+    let stale = SyncLogic.applyPushResults(local, sent: plan, results: [PushOutcome(type: "policy", id: "n1", status: "stale", record: rec("policy", "n1", policyJSON(id: "n1", name: "Server won"), rev: 5, at: 9_000), code: nil)], inUse: [], now: T)
+    check(stale.local.policies[0].name == "Server won", "stale: the server's newer copy is adopted")
+    let rej = SyncLogic.applyPushResults(local, sent: plan, results: [PushOutcome(type: "policy", id: "n1", status: "rejected", record: nil, code: "invalid_data")], inUse: [], now: T)
+    check(rej.rejected == 1, "rejected is counted")
+    // A rejected never-uploaded profile has no meta row to hang the fingerprint on yet, so it is retried; a known one is not.
+    var known = linked([pol("k1", "Changed")]); known.state.policies["k1"] = SyncMeta(rawJson: policyJSON(id: "k1", name: "Was"), revision: 1, dirtyAt: 10)
+    let kp = SyncLogic.planPush(known, now: T)
+    let kr = SyncLogic.applyPushResults(known, sent: kp, results: [PushOutcome(type: "policy", id: "k1", status: "rejected", record: nil, code: "invalid_data")], inUse: [], now: T)
+    check(SyncLogic.planPush(kr.local, now: T).isEmpty && SyncLogic.rejectedCount(kr.local.state) == 1, "a rejected payload is not resent until it changes")
+    var again = kr.local; again.policies = [pol("k1", "Changed again")]
+    check(SyncLogic.planPush(again, now: T).count == 1, "a new edit is sent again")
+}
+
+// SAFETY: pulled data never deletes or weakens a profile a running session is using. Bedtime merely pointing at a profile is not "in use".
+do {
+    var local = linked([pol("p1", "Strict profile", domains: ["a.com", "b.com"])])
+    local.state.policies["p1"] = SyncMeta(rawJson: policyJSON(id: "p1", name: "Strict profile", domains: ["a.com", "b.com"]), revision: 1)
+    let del = SyncLogic.applyPulled(local, records: [rec("policy", "p1", "{}", deleted: true, rev: 2, at: 8_000)], cursor: 1, inUse: ["p1"], now: T)
+    check(del.local.policies.count == 1, "a remote delete never removes a profile a running session is using")
+    let up = SyncLogic.planPush(del.local, now: T)
+    check(up.count == 1 && !up[0].deleted && up[0].updatedAt > 8_000, "it is pushed back as the newer change so it wins on the server")
+    let free = SyncLogic.applyPulled(local, records: [rec("policy", "p1", "{}", deleted: true, rev: 2, at: 8_000)], cursor: 1, inUse: [], now: T)
+    check(free.local.policies.isEmpty && free.local.state.policies["p1"] == nil, "an unreferenced profile is deleted by a remote delete")
+    let weaker = SyncLogic.applyPulled(local, records: [rec("policy", "p1", policyJSON(id: "p1", name: "Strict profile", domains: ["a.com"]), rev: 2, at: 8_000)], cursor: 1, inUse: ["p1"], now: T)
+    check(weaker.local.policies[0].domains.count == 2, "a remote edit that weakens a referenced profile is not applied")
+    check(SyncLogic.planPush(weaker.local, now: T).count == 1, "and our copy is pushed back")
+    let stronger = SyncLogic.applyPulled(local, records: [rec("policy", "p1", policyJSON(id: "p1", name: "Strict profile", domains: ["a.com", "b.com", "c.com"]), rev: 2, at: 8_000)], cursor: 1, inUse: ["p1"], now: T)
+    check(stronger.local.policies[0].domains.count == 3, "a remote edit that only adds blocks is applied")
+    var bedOnly = local; bedOnly.bedtime.policyId = "p1"
+    let bedDel = SyncLogic.applyPulled(bedOnly, records: [rec("policy", "p1", "{}", deleted: true, rev: 2, at: 8_000)], cursor: 1, inUse: [], now: T)
+    check(bedDel.local.policies.isEmpty, "a profile only bedtime points at (no session) IS deleted by a remote delete")
+    let bedWeak = SyncLogic.applyPulled(bedOnly, records: [rec("policy", "p1", policyJSON(id: "p1", name: "Strict profile", domains: ["a.com"]), rev: 2, at: 8_000)], cursor: 1, inUse: [], now: T)
+    check(bedWeak.local.policies[0].domains.count == 1 && SyncLogic.planPush(bedWeak.local, now: T).filter { $0.type == "policy" }.isEmpty, "and a remote edit that removes a site applies and the profile is not pushed back")
+    let toAllow = SyncLogic.applyPulled(local, records: [rec("policy", "p1", "{\"id\":\"p1\",\"name\":\"x\",\"mode\":\"allowlist\"}", rev: 2, at: 8_000)], cursor: 1, inUse: ["p1"], now: T)
+    check(toAllow.local.policies.count == 1, "a referenced profile that turns into an allowlist elsewhere keeps being enforced as it was")
+}
+
+// first sign-in merge: server wins singletons, union profiles, drop an untouched starter only when the account has profiles.
+do {
+    let seed = BlockPolicy.makeSeed()
+    check(seed.isUntouchedSeed, "the starter profile is recognised")
+    var edited = seed; edited.domains.removeLast()
+    check(!edited.isUntouchedSeed, "an edited starter is a real profile")
+    let hasServer = SyncLogic.applyPulled(linked([seed, pol("mine", "Mine")], initialPullDone: false), records: [rec("policy", "srv", policyJSON(id: "srv", name: "From phone"))], cursor: 1, inUse: [], now: T)
+    let done = SyncLogic.finishInitialPull(hasServer.local, referenced: [])
+    check(done.policies.map { $0.name }.sorted() == ["From phone", "Mine"], "starter dropped, own profile kept, account's profile added")
+    check(done.state.initialPullDone, "initial pull marked done")
+    check(SyncLogic.planPush(done, now: T).map { $0.id } == ["mine"], "only the profile the account lacks goes up")
+    let empty = SyncLogic.finishInitialPull(linked([seed], initialPullDone: false), referenced: [])
+    check(empty.policies.count == 1, "with nothing on the server the starter stays")
+    let pinned = SyncLogic.finishInitialPull(hasServer.local, referenced: [seed.id.lowercased()])
+    check(pinned.policies.contains { $0.isUntouchedSeed }, "a starter that bedtime or a session points at is never dropped")
+    let tombOnly = SyncLogic.applyPulled(linked([seed], initialPullDone: false), records: [rec("policy", "gone", "{}", deleted: true)], cursor: 1, inUse: [], now: T)
+    check(SyncLogic.finishInitialPull(tombOnly.local, referenced: []).policies.count == 1, "a server that only holds tombstones doesn't cost the starter either")
+}
+
+// bedtime: server wins when we have no bookkeeping; a newer local edit wins; Android's extras survive our edit.
+do {
+    var custom = BedtimeSettings(); custom.sleepMinute = 1_400; custom.policyId = "ABC"
+    let serverBed = "{\"enabled\":true,\"windDownMinute\":1260,\"sleepMinute\":1320,\"wakeMinute\":400,\"lockAtSleep\":false,\"policyId\":\"P1\",\"quietNotifications\":true}"
+    let first = SyncLogic.applyPulled(linked([], bedtime: custom), records: [rec("bedtime_settings", "default", serverBed)], cursor: 1, inUse: [], now: T)
+    check(first.bedtimeChanged && first.local.bedtime.sleepMinute == 1_320 && first.local.bedtime.policyId == "p1" && !first.local.bedtime.lockAtSleep, "server wins the singleton on first sync (ids lowercased)")
+    var mine = first.local.bedtime; mine.wakeMinute = 450
+    let stamped = SyncLogic.stampBedtime(meta: first.local.state.bedtime, old: first.local.bedtime, new: mine, now: 6_000)
+    check(stamped?.dirtyAt == 6_000, "a bedtime edit stamps dirtyAt")
+    var local = first.local; local.bedtime = mine; local.state.bedtime = stamped
+    let plan = SyncLogic.planPush(local, now: T)
+    let sent = J(plan[0].dataJson!)
+    check(plan.count == 1 && plan[0].type == "bedtime_settings" && plan[0].id == "default" && JSONKit.int(sent, "wakeMinute") == 450, "the edit is pushed")
+    check(JSONKit.bool(sent, "quietNotifications") == true, "quietNotifications (Android's) is preserved")
+    let kept = SyncLogic.applyPulled(local, records: [rec("bedtime_settings", "default", serverBed, rev: 2, at: 2_000)], cursor: 2, inUse: [], now: T)
+    check(kept.local.bedtime.wakeMinute == 450 && !kept.bedtimeChanged, "a newer local bedtime edit beats an older server record")
+    check(SyncLogic.planPush(linked([], bedtime: BedtimeSettings()), now: T).isEmpty, "default bedtime that never reached the server is not worth uploading")
+    let bad = SyncLogic.applyPulled(linked(), records: [rec("bedtime_settings", "default", "{\"sleepMinute\":99999,\"wakeMinute\":-5}")], cursor: 1, inUse: [], now: T)
+    check(bad.local.bedtime.sleepMinute == BedtimeSettings().sleepMinute && bad.local.bedtime.wakeMinute == BedtimeSettings().wakeMinute, "out-of-range minutes are ignored, not trusted")
+}
+
+// linking: same account resumes, a different one starts clean; sign-out keeps nothing but tokens (state is the caller's).
+do {
+    var st = SyncState(); st.userId = "u1"; st.cursor = 9
+    check(SyncLogic.link(st, userId: "u1").cursor == 9, "same account resumes")
+    check(SyncLogic.link(st, userId: "u2").cursor == 0 && SyncLogic.link(st, userId: "u2").userId == "u2", "a different account starts clean")
+    check(SyncLogic.unlink().userId == nil, "unlink forgets the account")
+}
+
+// JSON helpers: booleans are not numbers and numbers are not booleans.
+do {
+    let o = J("{\"b\":true,\"n\":1,\"s\":\"x\",\"z\":null}")
+    check(JSONKit.bool(o, "b") == true && JSONKit.int(o, "b") == nil, "a boolean is not an int")
+    check(JSONKit.int(o, "n") == 1 && JSONKit.bool(o, "n") == nil, "1 is not true")
+    check(JSONKit.string(o, "z") == nil && JSONKit.string(o, "s") == "x", "null reads as absent")
+    check(SyncTime.ms(fromISO: "2026-10-01T09:30:00.000Z") == 1_790_847_000_000 && SyncTime.iso(fromMs: 1_790_847_000_000) == "2026-10-01T09:30:00.000Z", "ISO-8601 round trip")
+    check(SyncTime.ms(fromISO: "2026-10-01T09:30:00Z") == 1_790_847_000_000, "ISO-8601 without fraction")
+}
+
 // MARK: Menu bar countdown text (replaces SwiftUI's Text(timerInterval:), which broke MenuBarExtra)
 
 check(Countdown.text(remaining: 0) == "0:00", "zero")

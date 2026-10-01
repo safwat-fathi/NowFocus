@@ -87,6 +87,7 @@ struct MenuBarView: View {
             noteRecorder.checkPermission()
             VoiceNoteStore.shared.removeLegacyGlobalNote()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .nowFocusSyncApplied)) { _ in loadPolicies() }
     }
 
     private var header: some View {
@@ -396,6 +397,7 @@ struct MenuBarView: View {
     private func loadPolicies() {
         do {
             policies = try DatabaseManager.shared.fetchAllPolicies()
+            if let id = selectedPolicyId, !policies.contains(where: { $0.id == id }) { selectedPolicyId = nil }
             if selectedPolicyId == nil, let first = policies.first {
                 selectedPolicyId = first.id
             }

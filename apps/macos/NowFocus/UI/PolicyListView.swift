@@ -19,6 +19,7 @@ struct PolicyListView: View {
                 .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
         }
         .onAppear { loadPolicies() }
+        .onReceive(NotificationCenter.default.publisher(for: .nowFocusSyncApplied)) { _ in loadPolicies() }
     }
 
     private var list: some View {
@@ -135,6 +136,8 @@ struct PolicyListView: View {
     private func loadPolicies() {
         do {
             policies = try DatabaseManager.shared.fetchAllPolicies()
+            // The selected profile may have been deleted on another device.
+            if let id = selectedPolicyId, !policies.contains(where: { $0.id == id }) { selectedPolicyId = nil }
             if selectedPolicyId == nil, let first = policies.first {
                 selectedPolicyId = first.id
             }

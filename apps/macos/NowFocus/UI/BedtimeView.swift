@@ -76,6 +76,11 @@ struct BedtimeView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onAppear(perform: loadPolicies)
+        // This view keeps a copy of the settings; if sync replaced them, the next toggle would save the stale copy back.
+        .onReceive(NotificationCenter.default.publisher(for: .nowFocusSyncApplied)) { _ in
+            settings = BedtimeSettingsStore.shared.settings
+            loadPolicies()
+        }
     }
 
     private func timeRow(_ label: String, binding: Binding<Date>) -> some View {

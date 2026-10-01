@@ -11,7 +11,7 @@ public struct DomainRule: Codable, Identifiable {
     public let includeSubdomains: Bool
     public var enabled: Bool
     
-    public init(id: String = UUID().uuidString,
+    public init(id: String = UUID().uuidString.lowercased(),
                 domain: String,
                 includeSubdomains: Bool = true,
                 enabled: Bool = true) {
@@ -29,7 +29,7 @@ public struct ApplicationRule: Codable, Identifiable {
     public let displayName: String
     public var enabled: Bool
     
-    public init(id: String = UUID().uuidString,
+    public init(id: String = UUID().uuidString.lowercased(),
                 platform: String = "macos",
                 nativeIdentifier: String,
                 displayName: String,
@@ -64,7 +64,7 @@ public struct BlockPolicy: Codable, Identifiable {
     public var updatedAt: Date
     public let revision: Int
     
-    public init(id: String = UUID().uuidString,
+    public init(id: String = UUID().uuidString.lowercased(),
                 name: String,
                 mode: PolicyMode = .blocklist,
                 source: SessionSource = .user,
@@ -90,5 +90,21 @@ public struct BlockPolicy: Codable, Identifiable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.revision = revision
+    }
+}
+
+extension BlockPolicy {
+    /// The starter profile a fresh install gets. One definition, so the first-sign-in merge can tell an untouched
+    /// starter from a profile the user made (and drop it when the account already has its own).
+    public static let seedName = "Deep Work"
+    public static let seedDomains = ["youtube.com", "twitter.com", "x.com", "reddit.com", "instagram.com", "tiktok.com", "facebook.com"]
+
+    public static func makeSeed() -> BlockPolicy {
+        BlockPolicy(name: seedName, domains: seedDomains.map { DomainRule(domain: $0, includeSubdomains: true) })
+    }
+
+    public var isUntouchedSeed: Bool {
+        name == Self.seedName && applications.isEmpty && mode == .blocklist
+            && domains.allSatisfy { $0.enabled && $0.includeSubdomains } && Set(domains.map(\.domain)) == Set(Self.seedDomains)
     }
 }

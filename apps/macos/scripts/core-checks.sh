@@ -8,6 +8,7 @@ OUT="${TMPDIR:-/tmp}/nowfocus-core-checks"
 swiftc -D DEBUG -Onone \
   NowFocusCore/FocusSession.swift NowFocusCore/SessionEngine.swift NowFocusCore/SessionEvent.swift \
   NowFocusCore/HistoryStats.swift NowFocusCore/BedtimeSchedule.swift \
-  NowFocusCore/People.swift NowFocusCore/Goals.swift NowFocusCore/VoiceNoteStore.swift NowFocusCore/FeedRules.swift NowFocusCore/CommitmentShield.swift NowFocusCore/BlockPolicy.swift NowFocusCore/Countdown.swift \
+  NowFocusCore/People.swift NowFocusCore/Goals.swift NowFocusCore/VoiceNoteStore.swift NowFocusCore/FeedRules.swift NowFocusCore/CommitmentShield.swift NowFocusCore/BlockPolicy.swift NowFocusCore/DomainValidation.swift \
+  NowFocusCore/Countdown.swift NowFocusCore/Sync/SyncModels.swift NowFocusCore/Sync/WireMapper.swift NowFocusCore/Sync/SyncLogic.swift \
   scripts/CoreChecks/main.swift -o "$OUT"
 "$OUT"

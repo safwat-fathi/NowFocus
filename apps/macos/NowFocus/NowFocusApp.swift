@@ -88,6 +88,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         BedtimeScheduler.shared.start()
 
+        // Optional account sync. Starts nothing, and sends nothing, unless a sign-in is already stored.
+        AppSync.start()
+
         // On first launch, bring the main window forward automatically so the
         // onboarding wizard is visible without requiring the user to find the
         // menu bar icon first.

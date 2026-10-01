@@ -6,21 +6,28 @@ public class DatabaseManager {
     
     public var dbQueue: DatabaseQueue!
     
-    private init() {
+    private convenience init() {
         do {
             let appSupportURL = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            let databaseURL = appSupportURL.appendingPathComponent("NowFocus.sqlite")
-            
+            self.init(databasePath: appSupportURL.appendingPathComponent("NowFocus.sqlite").path)
+        } catch {
+            fatalError("Failed to locate the database: \(error)")
+        }
+    }
+
+    /// A database at an explicit path. The app uses `shared`; the live sync check uses a scratch file, so it never touches real data.
+    init(databasePath: String) {
+        do {
             var configuration = Configuration()
             #if DEBUG
             configuration.prepareDatabase { db in
                 db.trace { print($0) }
             }
             #endif
-            
-            dbQueue = try DatabaseQueue(path: databaseURL.path, configuration: configuration)
+
+            dbQueue = try DatabaseQueue(path: databasePath, configuration: configuration)
             try migrator.migrate(dbQueue)
-            
+
         } catch {
             fatalError("Failed to initialize database: \(error)")
         }
@@ -102,6 +109,30 @@ public class DatabaseManager {
             }
         }
 
+        // Sync (services/api/WIRE_FORMAT.md): the server's ids are lowercase UUIDs, ours were uppercase, so a profile id
+        // must be one spelling everywhere. The bookkeeping tables stay empty until the user signs in.
+        migrator.registerMigration("v5") { db in
+            try db.execute(sql: "UPDATE blockPolicy SET id = lower(id)")
+            try db.execute(sql: "UPDATE focusSession SET policyId = lower(policyId)")
+            try db.create(table: "syncState") { t in
+                t.column("id", .integer).primaryKey()   // one row, id = 1
+                t.column("userId", .text)
+                t.column("cursor", .integer).notNull().defaults(to: 0)
+                t.column("initialPullDone", .boolean).notNull().defaults(to: false)
+            }
+            try db.create(table: "syncRecord") { t in
+                t.column("type", .text).notNull()
+                t.column("id", .text).notNull()
+                t.column("rawJson", .text)
+                t.column("revision", .integer).notNull().defaults(to: 0)
+                t.column("dirtyAt", .integer)
+                t.column("deleted", .boolean).notNull().defaults(to: false)
+                t.column("imported", .boolean).notNull().defaults(to: true)
+                t.column("rejected", .text)
+                t.primaryKey(["type", "id"])
+            }
+        }
+
         return migrator
     }
     
@@ -124,12 +155,23 @@ public class DatabaseManager {
     
     public func savePolicy(_ policy: BlockPolicy) throws {
         let record = try BlockPolicyRecord(policy: policy)
+        var stamped = false
         try dbQueue.write { db in
+            // Once the device is linked to an account, the bookkeeping is written in the same transaction as the data.
+            if try SyncTables.userId(db) != nil {
+                let old = try BlockPolicyRecord.fetchOne(db, key: record.id)?.toPolicy()
+                if case .set(let meta) = SyncLogic.stampSaved(meta: try SyncTables.meta(db, SyncLogic.policyType, record.id), old: old, new: policy, now: SyncTables.nowMs()) {
+                    try SyncTables.setMeta(db, SyncLogic.policyType, record.id, meta)
+                    stamped = true
+                }
+            }
             try record.save(db)
         }
+        if stamped { SyncSignals.localChanged() }
     }
     
     public func fetchPolicy(id: String) throws -> BlockPolicy? {
+        let id = id.lowercased()
         return try dbQueue.read { db in
             guard let record = try BlockPolicyRecord.fetchOne(db, key: id) else {
                 return nil
@@ -178,6 +220,8 @@ public class DatabaseManager {
     }
     
     public func deletePolicy(id: String) throws {
+        let id = id.lowercased()
+        var stamped = false
         try dbQueue.write { db in
             // Cancel any active/scheduled session bound to this policy in the same
             // transaction, so deleting a profile can never leave an orphaned session
@@ -193,7 +237,17 @@ public class DatabaseManager {
                 try session.save(db)
             }
             _ = try BlockPolicyRecord.deleteOne(db, key: id)
+
+            // Linked: remember the deletion (a tombstone) until the server has been told. Unlinked: nothing to do.
+            if try SyncTables.userId(db) != nil {
+                switch SyncLogic.stampDeleted(meta: try SyncTables.meta(db, SyncLogic.policyType, id), now: SyncTables.nowMs()) {
+                case .set(let meta): try SyncTables.setMeta(db, SyncLogic.policyType, id, meta); stamped = true
+                case .remove: try SyncTables.setMeta(db, SyncLogic.policyType, id, nil)
+                case .keep: break
+                }
+            }
         }
+        if stamped { SyncSignals.localChanged() }
     }
     
     // MARK: - Goals
@@ -266,18 +320,7 @@ public class DatabaseManager {
             let existing = try fetchAllPolicies()
             guard existing.isEmpty else { return }
             
-            let defaultPolicy = BlockPolicy(
-                name: "Deep Work",
-                domains: [
-                    DomainRule(domain: "youtube.com", includeSubdomains: true),
-                    DomainRule(domain: "twitter.com", includeSubdomains: true),
-                    DomainRule(domain: "x.com", includeSubdomains: true),
-                    DomainRule(domain: "reddit.com", includeSubdomains: true),
-                    DomainRule(domain: "instagram.com", includeSubdomains: true),
-                    DomainRule(domain: "tiktok.com", includeSubdomains: true),
-                    DomainRule(domain: "facebook.com", includeSubdomains: true)
-                ]
-            )
+            let defaultPolicy = BlockPolicy.makeSeed()
             try savePolicy(defaultPolicy)
             print("Seeded default 'Deep Work' policy.")
         } catch {
