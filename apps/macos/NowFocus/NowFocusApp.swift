@@ -29,8 +29,10 @@ private struct MenuBarIcon: View {
         let status = SessionController.status
         HStack(spacing: 4) {
             Image(status.isActive ? "MenuBarActiveTemplate" : "MenuBarIdleTemplate")
-            if status.isActive, let endAt = status.endAt {
-                Text(timerInterval: Date.now...max(endAt, Date.now), countsDown: true)
+            if status.isActive, status.endAt != nil {
+                // Not `Text(timerInterval:)`: inside a MenuBarExtra label it pinned the main thread at ~100% CPU
+                // with memory climbing whenever a session was running. `remainingText` ticks from SessionStatus.
+                Text(status.remainingText)
                     .monospacedDigit()
             }
         }

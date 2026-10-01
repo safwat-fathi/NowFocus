@@ -12,6 +12,26 @@ final class SessionStatus {
     var isActive: Bool = false
     /// When the running session ends, for the menu bar countdown.
     var endAt: Date?
+    /// Advanced once a second while a session runs; `remainingText` reads it, so the menu bar label updates.
+    private(set) var now = Date()
+    @ObservationIgnored private var ticker: Timer?
+
+    /// "24:35" until the session ends. Driven by our own tick: SwiftUI's self-updating `Text(timerInterval:)` inside
+    /// the MenuBarExtra label pinned the main thread at ~100% CPU (memory climbing) as soon as a session started.
+    var remainingText: String { Countdown.text(remaining: (endAt ?? now).timeIntervalSince(now)) }
+
+    func startTicking() {
+        guard ticker == nil else { return }
+        now = Date()
+        ticker = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.now = Date() }
+        }
+    }
+
+    func stopTicking() {
+        ticker?.invalidate()
+        ticker = nil
+    }
 }
 
 /// Single place that starts/stops enforcement (daemon + app blocker) so they
@@ -35,6 +55,7 @@ enum SessionController {
         )
         status.isActive = true
         status.endAt = endAt
+        status.startTicking()
     }
 
     @MainActor
@@ -43,6 +64,7 @@ enum SessionController {
         AppBlocker.shared.updatePolicy(sessionId: nil, isSessionActive: false, blockedApps: [])
         status.isActive = false
         status.endAt = nil
+        status.stopTicking()
     }
 
     /// Marks `session` completed (ran its course) or cancelled (stopped

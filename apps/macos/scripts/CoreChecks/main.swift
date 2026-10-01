@@ -183,6 +183,18 @@ check(shield.isOver(now: now.addingTimeInterval(14 * day), uptime: 5), "after a 
 check(!shield.isOver(now: now.addingTimeInterval(13 * day), uptime: 5), "after a reboot, not over before 14 wall-clock days")
 check(shield.remaining(now: now, uptime: 1_000 + 13 * day) == day, "one day to go")
 
+// MARK: Menu bar countdown text (replaces SwiftUI's Text(timerInterval:), which broke MenuBarExtra)
+
+check(Countdown.text(remaining: 0) == "0:00", "zero")
+check(Countdown.text(remaining: 59) == "0:59", "seconds only")
+check(Countdown.text(remaining: 61) == "1:01", "a minute and a second")
+check(Countdown.text(remaining: 24 * 60 + 35) == "24:35", "minutes and seconds")
+check(Countdown.text(remaining: 3599) == "59:59", "just under an hour")
+check(Countdown.text(remaining: 3600) == "1:00:00", "an hour")
+check(Countdown.text(remaining: 3725) == "1:02:05", "hours, minutes, seconds")
+check(Countdown.text(remaining: -5) == "0:00", "never negative")
+check(Countdown.text(remaining: 59.2) == "1:00", "a fractional second rounds up, so it never shows 0:00 while time remains")
+
 // MARK: Existing self-checks
 
 HistoryStats.runSelfCheck()
