@@ -8,7 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.text.format.DateFormat
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -70,7 +70,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {   // FragmentActivity: BiometricPrompt needs it for the Account fingerprint lock
 
     companion object {
         const val EXTRA_ROUTE = "route"
@@ -101,6 +101,7 @@ private sealed interface Screen {
     data object Commitment : Screen
     data object Bedtime : Screen
     data object Devices : Screen
+    data object Account : Screen
     data object Onboarding : Screen
     data object People : Screen
     data object Goals : Screen
@@ -129,6 +130,12 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val onboardingDone by viewModel.onboardingDone.collectAsStateWithLifecycle()
     val people by viewModel.people.collectAsStateWithLifecycle()
     val goals by viewModel.goals.collectAsStateWithLifecycle()
+    val syncStatus by viewModel.sync.status.collectAsStateWithLifecycle()
+    // Fingerprint lock on Account only. `accountLock` is null until loaded (renders nothing, never open);
+    // `accountUnlocked` lives in memory and is cleared on ON_STOP below, so leaving the app re-locks it.
+    val accountLock by viewModel.accountLock.collectAsStateWithLifecycle()
+    var accountUnlocked by remember { mutableStateOf(false) }
+    var lockMessage by remember { mutableStateOf<String?>(null) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var elapsedNow by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
     // Boot count doesn't change during a session, so it's read once, not ticked.
@@ -137,6 +144,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     }
     // Bumped on resume so the health row re-reads permissions granted in Settings.
     var resumeCount by remember { mutableIntStateOf(0) }
+    // Re-read on resume so removing the fingerprint in Settings opens the screen (fail open) straight away.
+    val lockAvailable = remember(resumeCount) { fingerprintAvailable(context) }
 
     // Drives the displayed countdown only; endAt in persisted storage is the source of truth.
     LaunchedEffect(Unit) {
@@ -150,9 +159,15 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) viewModel.sync.setForeground(true)
+            if (event == Lifecycle.Event.ON_STOP) {
+                viewModel.sync.setForeground(false)
+                accountUnlocked = false
+            }
             if (event == Lifecycle.Event.ON_RESUME) {
                 resumeCount++
                 viewModel.refreshNow()
+                viewModel.sync.syncNow()   // a no-op (no network) unless signed in
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -264,7 +279,28 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     onBack = { screen = backTo },
                 )
                 Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, onSave = viewModel::saveBedtimeSettings, onBack = { screen = backTo })
-                Screen.Devices -> DevicesScreen(resumeKey = resumeCount)
+                Screen.Devices -> DevicesScreen(resumeKey = resumeCount, account = syncStatus, onOpenAccount = { screen = Screen.Account })
+                Screen.Account -> when {
+                    accountLock == null -> Unit
+                    accountLocked(accountLock == true, lockAvailable, syncStatus.signedIn, accountUnlocked) ->
+                        LockedAccount(
+                            message = lockMessage,
+                            onUnlock = {
+                                lockMessage = null
+                                (context as FragmentActivity).askFingerprint(onError = { lockMessage = it }) { accountUnlocked = true }
+                            },
+                            onBack = { screen = Screen.Devices },
+                        )
+                    else -> AccountScreen(
+                        viewModel.sync, lockOffered = lockAvailable, lockOn = accountLock == true,
+                        // Turning it on needs a scan first, so a lock that can't be opened is never saved.
+                        onLock = { on ->
+                            if (on) (context as FragmentActivity).askFingerprint { viewModel.setAccountLock(true); accountUnlocked = true }
+                            else viewModel.setAccountLock(false)
+                        },
+                        onBack = { screen = Screen.Devices },
+                    )
+                }
                 Screen.Onboarding -> OnboardingScreen(
                     resumeKey = resumeCount,
                     goals = goals,
@@ -306,7 +342,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
 @Composable
 private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onDevices: () -> Unit, onStats: () -> Unit, selected: Screen) {
     val rulesSelected = selected is Screen.Policies || selected is Screen.EditPolicy
-    val devicesSelected = selected is Screen.Devices
+    val devicesSelected = selected is Screen.Devices || selected is Screen.Account
     val statsSelected = selected is Screen.Stats
     SectionRule(thick = true)
     Row(Modifier.fillMaxWidth().background(NowFocusColors.bg)) {

@@ -1,6 +1,8 @@
 package app.getnowfocus.android
 
 import android.content.Context
+import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -10,6 +12,9 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import app.getnowfocus.android.sync.Local
+import app.getnowfocus.android.sync.SyncLogic
+import app.getnowfocus.android.sync.SyncState
 
 private val Context.sessionDataStore by preferencesDataStore(name = "focus_session")
 
@@ -53,8 +58,11 @@ class SessionRepository(context: Context) {
         val BEDTIME_LOCK = booleanPreferencesKey("bedtimeLockAtSleep")
         val BEDTIME_POLICY_ID = stringPreferencesKey("bedtimePolicyId")
         val ONBOARDING_DONE = booleanPreferencesKey("onboardingDone")
+        val ACCOUNT_LOCK = booleanPreferencesKey("accountLock")
         val PEOPLE = stringPreferencesKey("people")
         val GOALS = stringPreferencesKey("goals")
+        // Sync bookkeeping (see sync/SyncLogic). Same DataStore as the data it describes so one edit covers both.
+        val SYNC_STATE = stringPreferencesKey("syncState")
     }
 
     val sessionFlow: Flow<FocusSession?> = store.data.map { p ->
@@ -99,9 +107,11 @@ class SessionRepository(context: Context) {
     }
 
     /** Defaults (see BedtimeSettings) until the user has ever saved their own. */
-    val bedtimeSettingsFlow: Flow<BedtimeSettings> = store.data.map { p ->
+    val bedtimeSettingsFlow: Flow<BedtimeSettings> = store.data.map { p -> readBedtime(p) }
+
+    private fun readBedtime(p: Preferences): BedtimeSettings {
         val defaults = BedtimeSettings()
-        BedtimeSettings(
+        return BedtimeSettings(
             windDownMinute = p[Keys.BEDTIME_WINDDOWN_MIN] ?: defaults.windDownMinute,
             sleepMinute = p[Keys.BEDTIME_SLEEP_MIN] ?: defaults.sleepMinute,
             wakeMinute = p[Keys.BEDTIME_WAKE_MIN] ?: defaults.wakeMinute,
@@ -112,15 +122,21 @@ class SessionRepository(context: Context) {
         )
     }
 
+    private fun writeBedtime(p: MutablePreferences, settings: BedtimeSettings) {
+        p[Keys.BEDTIME_WINDDOWN_MIN] = settings.windDownMinute
+        p[Keys.BEDTIME_SLEEP_MIN] = settings.sleepMinute
+        p[Keys.BEDTIME_WAKE_MIN] = settings.wakeMinute
+        p[Keys.BEDTIME_ENABLED] = settings.enabled
+        p[Keys.BEDTIME_QUIET] = settings.quietNotifications
+        p[Keys.BEDTIME_LOCK] = settings.lockAtSleep
+        if (settings.policyId != null) p[Keys.BEDTIME_POLICY_ID] = settings.policyId else p.remove(Keys.BEDTIME_POLICY_ID)
+    }
+
     suspend fun saveBedtimeSettings(settings: BedtimeSettings) {
         store.edit { p ->
-            p[Keys.BEDTIME_WINDDOWN_MIN] = settings.windDownMinute
-            p[Keys.BEDTIME_SLEEP_MIN] = settings.sleepMinute
-            p[Keys.BEDTIME_WAKE_MIN] = settings.wakeMinute
-            p[Keys.BEDTIME_ENABLED] = settings.enabled
-            p[Keys.BEDTIME_QUIET] = settings.quietNotifications
-            p[Keys.BEDTIME_LOCK] = settings.lockAtSleep
-            if (settings.policyId != null) p[Keys.BEDTIME_POLICY_ID] = settings.policyId else p.remove(Keys.BEDTIME_POLICY_ID)
+            val old = readBedtime(p)
+            writeBedtime(p, settings)
+            stampSync(p) { SyncLogic.stampBedtime(it, old, settings, System.currentTimeMillis()) }
         }
     }
 
@@ -155,6 +171,13 @@ class SessionRepository(context: Context) {
         store.edit { p -> p[Keys.ONBOARDING_DONE] = true }
     }
 
+    /** Device-local fingerprint lock on the Account screen. Not part of syncState; never synced. */
+    val accountLockFlow: Flow<Boolean> = store.data.map { p -> p[Keys.ACCOUNT_LOCK] ?: false }
+
+    suspend fun setAccountLock(on: Boolean) {
+        store.edit { p -> p[Keys.ACCOUNT_LOCK] = on }
+    }
+
     suspend fun save(session: FocusSession) {
         store.edit { p ->
             p[Keys.ID] = session.id
@@ -176,9 +199,41 @@ class SessionRepository(context: Context) {
     /** Read-modify-write inside one edit, so rapid edits can't overwrite each other. */
     suspend fun updatePolicies(transform: (List<BlockPolicy>) -> List<BlockPolicy>) {
         store.edit { p ->
-            val current = p[Keys.POLICIES]?.let { BlockPolicy.listFromJson(it) } ?: emptyList()
-            p[Keys.POLICIES] = BlockPolicy.listToJson(transform(current))
+            val current = readPolicies(p)
+            val next = transform(current)
+            p[Keys.POLICIES] = BlockPolicy.listToJson(next)
+            // The only place a profile is created, edited or deleted: record it for sync in this same edit.
+            stampSync(p) { SyncLogic.stampPolicies(it, current, next, System.currentTimeMillis()) }
         }
+    }
+
+    private fun readPolicies(p: Preferences): List<BlockPolicy> = p[Keys.POLICIES]?.let { BlockPolicy.listFromJson(it) } ?: emptyList()
+
+    /** No-op until the device has been linked to an account, so a device that never syncs pays nothing. */
+    private fun stampSync(p: MutablePreferences, f: (SyncState) -> SyncState) {
+        val text = p[Keys.SYNC_STATE] ?: return
+        val state = SyncState.decode(text)
+        if (state.userId == null) return
+        val next = f(state)
+        if (next != state) p[Keys.SYNC_STATE] = next.encode()
+    }
+
+    /**
+     * Reads policies, bedtime and sync bookkeeping, lets [block] decide, and writes back whatever changed, all in
+     * one DataStore edit. Writes made here are NOT stamped as user edits: this is how server data is applied.
+     */
+    suspend fun <R> syncTransaction(block: (Local) -> Pair<Local, R>): R {
+        var result: R? = null
+        store.edit { p ->
+            val before = Local(readPolicies(p), readBedtime(p), SyncState.decode(p[Keys.SYNC_STATE]))
+            val (after, r) = block(before)
+            if (after.policies != before.policies) p[Keys.POLICIES] = BlockPolicy.listToJson(after.policies)
+            if (after.bedtime != before.bedtime) writeBedtime(p, after.bedtime)
+            if (after.state != before.state) p[Keys.SYNC_STATE] = after.state.encode()
+            result = r
+        }
+        @Suppress("UNCHECKED_CAST")
+        return result as R
     }
 
     suspend fun seedDefaultPolicyIfNeeded() {

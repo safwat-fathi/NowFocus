@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ cloud backup and device-to-device transfer. Same rule: the sync sign-in never leaves this phone. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/sync_auth.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/sync_auth.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>

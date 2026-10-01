@@ -24,15 +24,15 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.getnowfocus.android.sync.SyncStatus
 
 /**
- * Real, but phone-only: one health card built from the exact checks
- * HealthRow already does, reformatted into the mockup's card style. No
- * Mac/PC cards or pairing - cross-device sync is Phase 6 in
- * native_tech_stack_spec.md, not built yet.
+ * This phone's health card (the exact checks HealthRow does, in the mockup's
+ * card style) plus the optional account: signing in syncs profiles and
+ * bedtime settings (see sync/ and services/api/WIRE_FORMAT.md).
  */
 @Composable
-fun DevicesScreen(resumeKey: Int) {
+fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit) {
     val context = LocalContext.current
     // resumeKey comes from App() (bumped on ON_RESUME) - a local one here
     // would never change, since permissions are granted in Settings, away
@@ -48,10 +48,21 @@ fun DevicesScreen(resumeKey: Int) {
             Text("Devices", style = headingStyle(28.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
             SectionRule(thick = true)
             Spacer(Modifier.height(NowFocusSpace.s4))
-            Text(
-                "This phone only, for now. Linking other devices isn't available yet.",
-                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
-            )
+            if (account.signedIn) {
+                Text(
+                    "Signed in as ${account.email}. Profiles and bedtime settings sync with your other devices.",
+                    style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                )
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                SecondaryButton("Account and devices", onClick = onOpenAccount)
+            } else {
+                Text(
+                    "This phone works on its own. Sign in, optionally, to sync profiles and bedtime settings across your devices.",
+                    style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                )
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                SecondaryButton("Sign in or create account", onClick = onOpenAccount)
+            }
             Spacer(Modifier.height(NowFocusSpace.s6))
 
             SectionRule(thick = true)

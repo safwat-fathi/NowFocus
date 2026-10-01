@@ -7,9 +7,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import app.getnowfocus.android.sync.DataStoreAuthStore
+import app.getnowfocus.android.sync.RepositorySyncStore
+import app.getnowfocus.android.sync.SyncApi
+import app.getnowfocus.android.sync.SyncController
+import app.getnowfocus.android.sync.SyncEngine
+import app.getnowfocus.android.sync.SyncSocket
 import java.util.UUID
 
 class SessionViewModel(application: Application) : AndroidViewModel(application) {
@@ -49,7 +57,33 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val onboardingDone: StateFlow<Boolean> =
         repository.onboardingDoneFlow.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    /** Null until the saved value loads: unlike onboardingDone, a lock must not default open for a frame. */
+    val accountLock: StateFlow<Boolean?> =
+        repository.accountLockFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setAccountLock(on: Boolean) {
+        viewModelScope.launch { repository.setAccountLock(on) }
+    }
+
+    /**
+     * Optional account sync (profiles + bedtime). Makes no network calls until the user signs in; local
+     * enforcement never depends on it. See sync/ and services/api/WIRE_FORMAT.md.
+     */
+    val sync: SyncController = run {
+        val userAgent = "NowFocus-Android/${BuildConfig.VERSION_NAME}"
+        val auth = DataStoreAuthStore(application)
+        val api = SyncApi(BuildConfig.SYNC_BASE_URL, userAgent, auth)
+        val store = RepositorySyncStore(application, repository)
+        SyncController(
+            scope = viewModelScope, engine = SyncEngine(store, api), api = api, auth = auth, store = store,
+            socket = SyncSocket(BuildConfig.SYNC_BASE_URL, userAgent),
+            localChanges = combine(repository.policiesFlow, repository.bedtimeSettingsFlow) { p, b -> p to b }.distinctUntilChanged(),
+            deviceName = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".trim().take(100),
+        )
+    }
+
     init {
+        sync.start()
         viewModelScope.launch { repository.seedDefaultPolicyIfNeeded() }
         viewModelScope.launch {
             repository.sessionFlow.collect { stored ->
