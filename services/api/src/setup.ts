@@ -6,5 +6,7 @@ import { WsAdapter } from '@nestjs/platform-ws';
 export function configureApp(app: INestApplication) {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useWebSocketAdapter(new WsAdapter(app));
-  (app as NestExpressApplication).useBodyParser('json', { limit: '1mb' });
+  const express = app as NestExpressApplication;
+  express.set('trust proxy', 1); // behind nginx: rate limits key on the real client IP (X-Forwarded-For)
+  express.useBodyParser('json', { limit: '1mb' });
 }
