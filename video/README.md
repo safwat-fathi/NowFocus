@@ -16,26 +16,28 @@ Welcome to your Remotion project!
 **Install Dependencies**
 
 ```console
-npm i
+pnpm install
 ```
 
 **Start Preview**
 
 ```console
-npm run dev
+pnpm dev
 ```
 
 **Render video**
 
 ```console
-npx remotion render
+pnpm exec remotion render
 ```
 
 **Upgrade Remotion**
 
 ```console
-npx remotion upgrade
+pnpm run upgrade
 ```
+
+(`pnpm upgrade` alone is pnpm's own command, so run the package script with `pnpm run`.)
 
 ## Docs
 

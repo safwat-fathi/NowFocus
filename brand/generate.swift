@@ -542,7 +542,7 @@ func generateWindowsAssets() {
     let iconsDir = repoRoot + "/apps/windows/src-tauri/icons"
     let trayDir = iconsDir + "/tray"
 
-    // 1024 master for `npm run tauri icon` — full-bleed, thin stroke (Tauri/
+    // 1024 master for `pnpm tauri icon` — full-bleed, thin stroke (Tauri/
     // the OS applies per-surface shaping, no baked rounding/shadow here).
     let masterSize = 1024
     let masterCtx = makeContext(width: masterSize, height: masterSize, opaque: true)

@@ -11,8 +11,8 @@ The apps stay local-first: they enforce from their own state and use this API on
 ```sh
 cp .env.example .env            # set JWT_SECRET (>= 32 chars) and DATABASE_URL
 createdb nowfocus
-npm ci && npm run migrate       # builds, then applies migrations
-npm run start:dev
+pnpm install && pnpm run migrate   # builds, then applies migrations
+pnpm run start:dev
 ```
 
 ## Deploy notes
@@ -27,9 +27,9 @@ npm run start:dev
 Needs a local Postgres with an empty database named `nowfocus_test` (`createdb nowfocus_test`); override with `DATABASE_URL`. The e2e run **drops and recreates the `public` schema** of that database and refuses any name not ending in `_test`.
 
 ```sh
-npm test            # unit (pure rules)
-npm run test:e2e    # HTTP + WebSocket against real Postgres
-npm run openapi     # regenerate openapi.json (CI fails if it is stale)
+pnpm test            # unit (pure rules)
+pnpm run test:e2e    # HTTP + WebSocket against real Postgres
+pnpm run openapi     # regenerate openapi.json (CI fails if it is stale)
 ```
 
 ## Protocol in one screen

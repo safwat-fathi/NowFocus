@@ -1,4 +1,4 @@
-// `npm run migrate` — applies pending migrations to $DATABASE_URL (run before starting a new release).
+// `pnpm run migrate` — applies pending migrations to $DATABASE_URL (run before starting a new release).
 import { DataSource } from 'typeorm';
 import { dataSourceOptions } from './db/data-source.js';
 

@@ -57,7 +57,7 @@ Android, macOS and Windows are three single-device, local-first apps. None has a
 
 **Deviations from the plan above**
 - NestJS **12** (not 11) with **Vitest 4**, TypeScript 6 and ESM (`.js` import suffixes) — the current Nest CLI's defaults; no design impact. TypeORM stays on 0.3.x.
-- `services/api/.npmrc` sets `legacy-peer-deps=true`: `npm install` crashes inside npm 10.9's arborist on this tree without it. It also hides peer-range conflicts, so re-check peers when upgrading Nest addons (all currently declare Nest 12).
+- _(Superseded 2026-10-01: the repo now uses pnpm; `.npmrc` and `package-lock.json` are gone, and pnpm only warns on peer-range mismatches.)_ `services/api/.npmrc` set `legacy-peer-deps=true`: `npm install` crashes inside npm 10.9's arborist on this tree without it. It also hides peer-range conflicts, so re-check peers when upgrading Nest addons (all currently declare Nest 12).
 - The acceptance scenario is covered across `test/{auth,sync,shield,realtime}.e2e-spec.ts` (55 e2e) plus pure-rule unit specs (27), not one monolithic test.
 - Added after review: **policy edit protection** (below), shield target case rules, `source` defaulting, connect-time cursor message.
 

@@ -1,4 +1,4 @@
-// `npm run openapi` -> writes openapi.json. Nest's preview mode scans routes without connecting to Postgres.
+// `pnpm run openapi` -> writes openapi.json. Nest's preview mode scans routes without connecting to Postgres.
 import { writeFileSync } from 'node:fs';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';

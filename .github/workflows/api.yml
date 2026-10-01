@@ -28,21 +28,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # pnpm version comes from "packageManager" in package.json; install pnpm before setup-node so it can cache.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: services/api/package.json
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: services/api/package-lock.json
+          cache: pnpm
+          cache-dependency-path: services/api/pnpm-lock.yaml
 
-      - run: npm ci
-      - run: npx tsc --noEmit
-      - run: npm run lint
-      - run: npm test
-      - run: npm run test:e2e
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm run lint
+      - run: pnpm test
+      - run: pnpm run test:e2e
 
       # The committed openapi.json is the contract the native clients generate their models from;
       # it must match the code.
       - name: OpenAPI contract is up to date
         run: |
-          npm run openapi
+          pnpm run openapi
           git diff --exit-code openapi.json
