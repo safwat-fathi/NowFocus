@@ -116,3 +116,10 @@ enum class QuietDecision { SET_PRIORITY, RESTORE_ALL, NONE }
 internal fun formatClock(minutesSinceMidnight: Int, is24Hour: Boolean, locale: Locale = Locale.getDefault()): String =
     LocalTime.of(minutesSinceMidnight / 60, minutesSinceMidnight % 60)
         .format(DateTimeFormatter.ofPattern(if (is24Hour) "HH:mm" else "h:mm a", locale))
+
+/** Minutes since midnight from typed entry: 24h takes 0–23, 12h takes 1–12 plus [pm]. Null when out of range. */
+internal fun parseClock(hour: Int, minute: Int, pm: Boolean, is24Hour: Boolean): Int? {
+    if (minute !in 0..59) return null
+    val h24 = if (is24Hour) hour.takeIf { it in 0..23 } else hour.takeIf { it in 1..12 }?.let { it % 12 + if (pm) 12 else 0 }
+    return h24?.let { it * 60 + minute }
+}

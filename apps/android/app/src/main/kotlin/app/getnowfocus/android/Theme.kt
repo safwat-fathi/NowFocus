@@ -2,28 +2,41 @@ package app.getnowfocus.android
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,20 +108,76 @@ fun headingStyle(size: androidx.compose.ui.unit.TextUnit, color: Color = NowFocu
     color = color,
 )
 
-/** Wraps Material3 (still used for text fields/dialogs) with Modernist colors, no elevation, zero corners. */
+/** Wraps Material3 (only AlertDialog is left) with Modernist colors, no elevation, zero corners. */
 @Composable
 fun NowFocusTheme(content: @Composable () -> Unit) {
+    val square = RoundedCornerShape(0.dp)
     MaterialTheme(
         colorScheme = MaterialTheme.colorScheme.copy(
             background = NowFocusColors.bg,
             surface = NowFocusColors.surface,
+            surfaceContainerHigh = NowFocusColors.bg,
             onBackground = NowFocusColors.text,
             onSurface = NowFocusColors.text,
             primary = NowFocusColors.accent,
             onPrimary = NowFocusColors.bg,
+            error = NowFocusColors.accent700,
             outline = NowFocusColors.divider,
         ),
+        shapes = Shapes(square, square, square, square, square),
         content = content,
+    )
+}
+
+/**
+ * Design-system input (windows `.input`, iOS `nfField`): square, 1px rule border that turns accent on focus
+ * and accent700 on error. The label rides above the box instead of floating.
+ */
+@Composable
+fun NowFocusTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+    placeholder: String? = null,
+    isError: Boolean = false,
+    singleLine: Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.text)
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier,
+        textStyle = style,
+        cursorBrush = SolidColor(NowFocusColors.accent),
+        singleLine = singleLine,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        visualTransformation = visualTransformation,
+        interactionSource = interaction,
+        // Inside decorationBox so the label merges into the field's semantics (TalkBack names the field).
+        decorationBox = { inner ->
+            Column {
+                if (label != null) {
+                    Text(label.uppercase(), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(bottom = NowFocusSpace.s1))
+                }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(NowFocusColors.surface)
+                        .border(1.dp, if (isError) NowFocusColors.accent700 else if (focused) NowFocusColors.accent else NowFocusColors.divider)
+                        .padding(NowFocusSpace.s3),
+                ) {
+                    if (value.isEmpty() && placeholder != null) Text(placeholder, style = style.copy(color = NowFocusColors.neutral600))
+                    inner()
+                }
+            }
+        },
     )
 }
 
@@ -181,12 +250,12 @@ fun ToggleRow(label: String, sub: String, on: Boolean, onToggle: () -> Unit, mod
     Row(
         modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .toggleable(value = on, role = Role.Switch, onValueChange = { onToggle() })
             .padding(vertical = NowFocusSpace.s3),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.weight(1f)) {
-            androidx.compose.foundation.layout.Column {
+            Column {
                 Text(label, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = NowFocusColors.text))
                 Text(sub, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
             }

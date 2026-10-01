@@ -31,16 +31,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TimeInput
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimePickerDefaults
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +56,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -719,7 +715,7 @@ private fun UnlockScreen(
                     Spacer(Modifier.height(NowFocusSpace.s3))
                     Text("“$UNLOCK_SENTENCE”", style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp))
                     Spacer(Modifier.height(NowFocusSpace.s3))
-                    OutlinedTextField(value = typed, onValueChange = { typed = it }, modifier = Modifier.fillMaxWidth())
+                    NowFocusTextField(value = typed, onValueChange = { typed = it }, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(NowFocusSpace.s4))
                     PrimaryButton("Start 30-second pause", enabled = matched) { waitEndAt = System.currentTimeMillis() + UNLOCK_WAIT_MS }
                 } else {
@@ -990,9 +986,9 @@ private fun CommitmentSetup(onCreate: (Set<String>, Set<String>, Set<PartialRule
         RuleRow(d, "+ subdomains") { domains = domains - d }
     }
     Row(Modifier.padding(top = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
+        NowFocusTextField(
             value = newDomain, onValueChange = { newDomain = it },
-            label = { Text("e.g. reddit.com") }, singleLine = true, modifier = Modifier.weight(1f),
+            placeholder = "e.g. reddit.com", singleLine = true, modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(NowFocusSpace.s2))
         SecondaryButton("Add", onClick = ::addDomain)
@@ -1199,37 +1195,26 @@ private fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier,
     }
 }
 
-/** Dial by default (two taps: hour, minute); "Keyboard" swaps to typed entry. One save per edit, on Set. */
-@OptIn(ExperimentalMaterial3Api::class)
+/** Typed hour/minute in the design-system fields (no Material clock dial). One save per edit, on Set. */
 @Composable
 private fun TimePickerDialog(title: String, minutes: Int, is24Hour: Boolean, onConfirm: (Int) -> Unit, onDismiss: () -> Unit) {
-    val state = rememberTimePickerState(initialHour = minutes / 60, initialMinute = minutes % 60, is24Hour = is24Hour)
-    var typing by remember { mutableStateOf(false) }
-    val colors = TimePickerDefaults.colors(
-        clockDialColor = NowFocusColors.neutral200,
-        clockDialSelectedContentColor = NowFocusColors.bg,
-        clockDialUnselectedContentColor = NowFocusColors.text,
-        selectorColor = NowFocusColors.accent,
-        periodSelectorBorderColor = NowFocusColors.divider,
-        periodSelectorSelectedContainerColor = NowFocusColors.accent100,
-        periodSelectorUnselectedContainerColor = Color.Transparent,
-        periodSelectorSelectedContentColor = NowFocusColors.accent700,
-        periodSelectorUnselectedContentColor = NowFocusColors.text,
-        timeSelectorSelectedContainerColor = NowFocusColors.accent100,
-        timeSelectorUnselectedContainerColor = NowFocusColors.neutral200,
-        timeSelectorSelectedContentColor = NowFocusColors.accent700,
-        timeSelectorUnselectedContentColor = NowFocusColors.text,
-    )
+    var hour by remember { mutableStateOf((if (is24Hour) minutes / 60 else (minutes / 60 + 11) % 12 + 1).toString()) }
+    var minute by remember { mutableStateOf("%02d".format(minutes % 60)) }
+    var pm by remember { mutableStateOf(minutes >= 12 * 60) }
+    val result = parseClock(hour.toIntOrNull() ?: -1, minute.toIntOrNull() ?: -1, pm, is24Hour)
+    val digits = KeyboardOptions(keyboardType = KeyboardType.Number)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = { Text(title, style = headingStyle(20.sp)) },
         text = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                if (typing) TimeInput(state, colors = colors) else TimePicker(state, colors = colors)
-                GhostButton(if (typing) "Dial" else "Keyboard") { typing = !typing }
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(NowFocusSpace.s2)) {
+                NowFocusTextField(hour, { hour = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = "Hour", singleLine = true, keyboardOptions = digits)
+                Text(":", style = headingStyle(24.sp), modifier = Modifier.padding(bottom = NowFocusSpace.s3))
+                NowFocusTextField(minute, { minute = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = "Minute", singleLine = true, keyboardOptions = digits)
+                if (!is24Hour) SegmentedControl(listOf("AM" to false, "PM" to true), pm, { pm = it }, Modifier.weight(1.2f))
             }
         },
-        confirmButton = { PrimaryButton("Set") { onConfirm(state.hour * 60 + state.minute) } },
+        confirmButton = { PrimaryButton("Set", enabled = result != null) { result?.let(onConfirm) } },
         dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
     )
 }

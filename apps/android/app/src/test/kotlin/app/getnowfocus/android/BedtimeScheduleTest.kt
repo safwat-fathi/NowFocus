@@ -204,4 +204,23 @@ class BedtimeScheduleTest {
         assertEquals("10:00 PM", formatClock(22 * 60, is24Hour = false, Locale.US))
         assertEquals("11:59 PM", formatClock(24 * 60 - 1, is24Hour = false, Locale.US))
     }
+
+    @Test
+    fun `parseClock maps 12-hour entry with AM-PM, including 12 AM and 12 PM`() {
+        assertEquals(0, parseClock(12, 0, pm = false, is24Hour = false))
+        assertEquals(12 * 60, parseClock(12, 0, pm = true, is24Hour = false))
+        assertEquals(13 * 60, parseClock(1, 0, pm = true, is24Hour = false))
+        assertEquals(22 * 60 + 5, parseClock(10, 5, pm = true, is24Hour = false))
+    }
+
+    @Test
+    fun `parseClock accepts 24-hour entry and rejects out-of-range values`() {
+        assertEquals(23 * 60 + 59, parseClock(23, 59, pm = false, is24Hour = true))
+        assertEquals(0, parseClock(0, 0, pm = false, is24Hour = true))
+        assertNull(parseClock(0, 0, pm = false, is24Hour = false))
+        assertNull(parseClock(13, 0, pm = false, is24Hour = false))
+        assertNull(parseClock(24, 0, pm = false, is24Hour = true))
+        assertNull(parseClock(10, 60, pm = false, is24Hour = true))
+        assertNull(parseClock(-1, 0, pm = false, is24Hour = true))
+    }
 }

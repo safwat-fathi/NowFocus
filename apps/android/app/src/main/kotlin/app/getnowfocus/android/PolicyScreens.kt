@@ -16,8 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -158,10 +156,10 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
             GhostButton("‹ Rules", onClick = onBack)
-            OutlinedTextField(
+            NowFocusTextField(
                 value = name,
                 onValueChange = { name = it; saveOrToast(policy.copy(name = it)) },
-                label = { Text("Profile name") },
+                label = "Profile name",
                 modifier = Modifier.fillMaxWidth().padding(top = NowFocusSpace.s2),
             )
             Text("BLOCKED WEBSITES", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
@@ -172,10 +170,10 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
         }
         item {
             Row(Modifier.padding(top = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
+                NowFocusTextField(
                     value = newDomain,
                     onValueChange = { newDomain = it },
-                    label = { Text("Add a site, e.g. youtube.com") },
+                    placeholder = "Add a site, e.g. youtube.com",
                     singleLine = true,
                     isError = newDomain.isNotBlank() && DomainValidation.normalize(newDomain) == null,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -224,13 +222,7 @@ fun PartialRulesSection(selected: Set<PartialRule>, onChange: (Set<PartialRule>)
         )
     }
     PartialRule.entries.forEach { rule ->
-        Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(rule.label, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
-                Text(rule.detail, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
-            }
-            Switch(checked = rule in selected, onCheckedChange = { on -> onChange(if (on) selected + rule else selected - rule) })
-        }
+        ToggleRow(rule.label, rule.detail, rule in selected, onToggle = { onChange(if (rule in selected) selected - rule else selected + rule) })
         SectionRule()
     }
 }
@@ -262,12 +254,12 @@ fun AppPickerDialog(exclude: Set<String>, onPick: (AppRule) -> Unit, onDismiss: 
     val shown = remember(apps, query) { filterApps(apps, query) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select an app to block") },
+        title = { Text("Select an app to block", style = headingStyle(20.sp)) },
         text = {
             Column {
-                OutlinedTextField(
+                NowFocusTextField(
                     value = query, onValueChange = { query = it },
-                    label = { Text("Search apps") }, singleLine = true,
+                    placeholder = "Search apps", singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
                 )
