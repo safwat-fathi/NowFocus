@@ -4,7 +4,7 @@ Normative guide for people writing a client adapter (Android, macOS, iOS, Window
 
 Production base URL: **`https://api.nowfocus.online`** (one build constant per client, overridable in debug builds for a local server). Design background: [`docs/superpowers/specs/2026-09-29-sync-api-design.md`](../../docs/superpowers/specs/2026-09-29-sync-api-design.md).
 
-**Slice status.** Slice 1 syncs `policy` and `bedtime_settings`. `session` (slice 2) and `shield_item` (slice 3) are specified here so the model doesn't change later, but no adapter implements them yet. `user_settings` exists on the server and no client has any settings to put in it.
+**Slice status.** Slice 1 syncs `policy` and `bedtime_settings`. The Android adapter implements it (`apps/android/app/src/main/kotlin/app/getnowfocus/android/sync/`, unreleased), and so does macOS (`apps/macos/NowFocusCore/Sync/`, unreleased; the engine compiles into iOS too, which has no account UI yet); Windows doesn't yet. `session` (slice 2) and `shield_item` (slice 3) are specified here so the model doesn't change later, but no adapter implements them yet. `user_settings` exists on the server and no client has any settings to put in it.
 
 ## 1. Conventions
 
