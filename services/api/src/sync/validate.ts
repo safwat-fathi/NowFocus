@@ -1,3 +1,5 @@
+import { PLATFORMS } from '../db/entities.js';
+import { normalizeHostname } from './hostname.js';
 import { SESSION_MODES, SESSION_SOURCES, SESSION_STATUSES, SESSION_TYPES, type SessionData } from './session-rules.js';
 
 export const WRITABLE_TYPES = ['policy', 'session', 'bedtime_settings', 'user_settings'] as const;
@@ -66,6 +68,20 @@ const TYPE_RULES: Record<WritableType, (data: Record<string, any>, id: string) =
     if (typeof d.name !== 'string' || d.name.length < 1 || d.name.length > 200) return 'name must be a 1-200 character string';
     if (d.mode !== undefined && d.mode !== 'blocklist' && d.mode !== 'allowlist') return 'mode must be blocklist or allowlist';
     if (!arrayWithin(d.domainRules, 5000) || !arrayWithin(d.applicationRules, 2000)) return 'domainRules/applicationRules must be arrays within size limits';
+    // Trust boundary: a root daemon writes these into the hosts file. Store the normalized form so every device agrees.
+    if (d.domainRules !== undefined) {
+      const rules: Record<string, any>[] = [];
+      for (const [i, r] of (d.domainRules as unknown[]).entries()) {
+        const host = isObject(r) && typeof r.domain === 'string' ? normalizeHostname(r.domain) : null;
+        if (!isObject(r) || host === null) return `domainRules[${i}].domain is not a valid hostname`;
+        rules.push({ ...r, domain: host });
+      }
+      d.domainRules = rules;
+    }
+    for (const [i, r] of ((d.applicationRules ?? []) as unknown[]).entries()) {
+      const ok = isObject(r) && (PLATFORMS as readonly string[]).includes(r.platform) && typeof r.nativeIdentifier === 'string' && r.nativeIdentifier.length >= 1 && r.nativeIdentifier.length <= 512;
+      if (!ok) return `applicationRules[${i}] needs a platform (${PLATFORMS.join(', ')}) and a 1-512 character nativeIdentifier`;
+    }
     d.id = id;
     return null;
   },

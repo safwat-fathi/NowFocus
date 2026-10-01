@@ -7,15 +7,36 @@ const OPEN = 1;
 // ponytail: in-memory, single instance. Behind a load balancer, fan out via Redis pub/sub instead.
 @Injectable()
 export class Hub {
-  private sockets = new Map<string, { userId: string; ws: WebSocket }>(); // deviceId -> live socket
+  private sockets = new Map<string, { userId: string; ws: WebSocket; alive: boolean }>(); // deviceId -> live socket
 
   add(userId: string, deviceId: string, ws: WebSocket) {
     this.sockets.get(deviceId)?.ws.terminate(); // a reconnect replaces the stale socket
-    this.sockets.set(deviceId, { userId, ws });
+    this.sockets.set(deviceId, { userId, ws, alive: true });
   }
 
   remove(ws: WebSocket) {
     for (const [deviceId, s] of this.sockets) if (s.ws === ws) this.sockets.delete(deviceId);
+  }
+
+  /** Call from the socket's `pong` handler. */
+  markAlive(ws: WebSocket) {
+    for (const s of this.sockets.values()) if (s.ws === ws) s.alive = true;
+  }
+
+  /**
+   * Keepalive, run on a timer. Drops sockets that never answered the previous ping (dead peers would
+   * otherwise pile up), then pings the rest — which also keeps idle sockets open through nginx and Cloudflare.
+   */
+  sweep() {
+    for (const [deviceId, s] of this.sockets) {
+      if (!s.alive || s.ws.readyState !== OPEN) {
+        this.sockets.delete(deviceId);
+        s.ws.terminate();
+        continue;
+      }
+      s.alive = false;
+      s.ws.ping();
+    }
   }
 
   /** Tell the user's other devices something changed. */

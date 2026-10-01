@@ -2,6 +2,8 @@
 
 NestJS service that keeps a user's Android, macOS and Windows apps in sync. Design: [`docs/superpowers/specs/2026-09-29-sync-api-design.md`](../../docs/superpowers/specs/2026-09-29-sync-api-design.md). Contract: [`openapi.json`](openapi.json) (also served at `/docs` when running).
 
+**Writing a client adapter? Read [`WIRE_FORMAT.md`](WIRE_FORMAT.md) first.**
+
 The apps stay local-first: they enforce from their own state and use this API only to converge. Nothing here is required for an active session to keep blocking.
 
 ## Run
@@ -12,6 +14,13 @@ createdb nowfocus
 npm ci && npm run migrate       # builds, then applies migrations
 npm run start:dev
 ```
+
+## Deploy notes
+
+- Run exactly **one** instance (pm2 fork mode): the WebSocket hub and rate limits are in memory.
+- Put the git sha in a `REVISION` file next to `dist/` when you deploy; `GET /healthz` returns it so you can confirm which build is live.
+- Behind nginx and Cloudflare, `TRUST_PROXY=1` is only correct if nginx takes the client IP from `CF-Connecting-IP` (`deploy/cloudflare-realip.sh` generates the `real_ip_header` + `set_real_ip_from` file, limited to Cloudflare's ranges) and sends `proxy_set_header X-Forwarded-For $remote_addr;` (overwrite, never `$proxy_add_x_forwarded_for`); `deploy/api.nowfocus.online.conf` is that vhost, `ecosystem.config.cjs` the pm2 app. Otherwise every client shares one 10/min auth bucket, or a client can spoof its IP.
+- The server pings each WebSocket every 30 s, so the proxy's `proxy_read_timeout` must be above that (75 s works) and Cloudflare's idle limit is never reached.
 
 ## Test
 
@@ -26,6 +35,7 @@ npm run openapi     # regenerate openapi.json (CI fails if it is stale)
 ## Protocol in one screen
 
 - `POST /v1/auth/register|login` → per-device tokens; `POST /v1/auth/refresh` rotates; `DELETE /v1/devices/:id` revokes instantly.
+- `GET /v1/me`; `POST /v1/me/delete {password}` deletes the account and everything synced (403 `wrong_password` if the password is wrong). `GET /healthz` is the ops probe (not in the contract).
 - `GET /v1/sync/pull?cursor=N` returns changes with `seq > N` (tombstones included) plus `serverTime`.
 - `POST /v1/sync/push` applies each change independently: `applied` | `stale` (adopt the returned record) | `rejected` (with a `code`).
 - Commitment Shield is server-authoritative: `POST /v1/always-blocked/items` (server stamps a 60 s grace and a 14-day lock), `…/cancel-grace`, `…/recommit`, `DELETE` (403 while locked). Shield items arrive to other devices through `pull` as type `shield_item`.

@@ -106,6 +106,24 @@ export class AuthService {
     this.revoked.next(deviceId);
   }
 
+  async me(userId: string) {
+    const u = await this.users.findOneByOrFail({ id: userId });
+    return { id: u.id, email: u.email, createdAt: u.createdAt };
+  }
+
+  /**
+   * Permanently deletes the account and everything synced under it (FK cascade). Local data on the user's
+   * devices is untouched — clients keep enforcing from it. Every live socket is told and closed.
+   */
+  async deleteAccount(userId: string, password: string) {
+    const user = await this.users.findOneByOrFail({ id: userId });
+    // 403, not 401: a 401 makes clients try a token refresh, which can't fix a wrong password.
+    if (!(await verifyPassword(password, user.passwordHash))) throw fail(403, 'wrong_password', 'Password is incorrect');
+    const live = await this.devices.find({ where: { userId, revokedAt: IsNull() }, select: { id: true } });
+    await this.users.delete({ id: userId });
+    for (const d of live) this.revoked.next(d.id);
+  }
+
   async listDevices(userId: string, currentDeviceId: string) {
     const rows = await this.devices.find({ where: { userId }, order: { createdAt: 'ASC' } });
     return rows.map((d) => ({ id: d.id, name: d.name, platform: d.platform, createdAt: d.createdAt, lastSeenAt: d.lastSeenAt, revokedAt: d.revokedAt, current: d.id === currentDeviceId }));

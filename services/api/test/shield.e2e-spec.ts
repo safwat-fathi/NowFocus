@@ -74,7 +74,7 @@ describe('commitment shield (server-authoritative)', () => {
       { targetType: 'application', targetValue: `  ${pkg} `, displayName: 'Genshin', platform: 'android' },
       { targetType: 'application', targetValue: pkg.toLowerCase(), platform: 'android' }, // a different app, not a duplicate
       { targetType: 'category', targetValue: 'preset:Adult_Content' },
-      { targetType: 'domain', targetValue: ' Bad-Site.COM ' },
+      { targetType: 'domain', targetValue: ' https://www.Bad-Site.COM/path ' },
     ]);
     const values = res.body.items.map((i: any) => i.data.targetValue);
     expect(values).toEqual([pkg, pkg.toLowerCase(), 'preset:Adult_Content', 'bad-site.com']);
@@ -154,6 +154,10 @@ describe('commitment shield (server-authoritative)', () => {
     expect((await add(a, [{ targetType: 'planet', targetValue: 'x' }])).status).toBe(400);
     expect((await add(a, [{ targetType: 'domain', targetValue: '' }])).status).toBe(400);
     expect((await add(a, [{ ...site(), platform: 'palm-os' }])).status).toBe(400);
+    const bad = await add(a, [site('good.com'), { targetType: 'domain', targetValue: 'evil.com\n1.2.3.4 bank.com' }]);
+    expect(bad.status).toBe(400);
+    expect(bad.body.code).toBe('invalid_domain');
+    expect((await pull(a)).body.changes).toHaveLength(0); // all-or-nothing: the valid item was not committed
     expect((await add(a, Array.from({ length: 51 }, (_, i) => site(`s${i}.com`)))).status).toBe(400);
     expect((await t.http.post('/v1/always-blocked/items').send({ items: [site()] })).status).toBe(401);
   });

@@ -10,7 +10,8 @@ async function bootstrap() {
   const config = loadConfig(); // fail fast on missing env
   const app = await NestFactory.create(AppModule);
   configureApp(app);
+  app.enableShutdownHooks(); // here, not in configureApp: every e2e app would add process signal listeners
   SwaggerModule.setup('docs', app, () => buildDocument(app), { jsonDocumentUrl: 'openapi.json' });
-  await app.listen(config.port);
+  await app.listen(config.port, config.host);
 }
 await bootstrap();

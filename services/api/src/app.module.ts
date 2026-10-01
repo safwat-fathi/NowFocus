@@ -7,6 +7,7 @@ import { SyncModule } from './sync/sync.module.js';
 import { Config } from './config.js';
 import { CoreModule } from './core.module.js';
 import { dataSourceOptions } from './db/data-source.js';
+import { MetaController } from './meta.controller.js';
 
 @Module({
   imports: [
@@ -17,5 +18,6 @@ import { dataSourceOptions } from './db/data-source.js';
     ShieldModule,
     RealtimeModule,
   ],
+  controllers: [MetaController],
 })
 export class AppModule {}

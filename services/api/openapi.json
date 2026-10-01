@@ -235,6 +235,82 @@
         ]
       }
     },
+    "/v1/me": {
+      "get": {
+        "operationId": "AccountController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "account"
+        ]
+      }
+    },
+    "/v1/me/delete": {
+      "post": {
+        "operationId": "AccountController_delete",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "default": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Permanently delete the account, all its devices and everything synced. Needs the password again.\nA POST (not DELETE) because some mobile HTTP clients can't send a body with DELETE.\nThrottled like the auth routes: this endpoint verifies a password.",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/v1/sync/push": {
       "post": {
         "operationId": "SyncController_push",
@@ -559,7 +635,7 @@
           },
           "code": {
             "type": "string",
-            "description": "e.g. invalid_credentials, email_taken, unauthorized, item_not_found, locked, grace_expired, still_locked"
+            "description": "e.g. invalid_credentials, email_taken, unauthorized, wrong_password, invalid_domain, item_not_found, locked, grace_expired, still_locked"
           }
         },
         "required": [
@@ -763,6 +839,38 @@
           "lastSeenAt",
           "revokedAt",
           "current"
+        ]
+      },
+      "MeView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "createdAt"
+        ]
+      },
+      "DeleteAccountDto": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "password"
         ]
       },
       "PushChange": {

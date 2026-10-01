@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { AuthContext } from '../auth/auth.service.js';
 import { fail } from '../errors.js';
+import { normalizeHostname } from '../sync/hostname.js';
 import { present, RecordsService, type RecordRow, type Tx } from '../sync/records.service.js';
 import type { AddItemsDto } from './shield.dto.js';
 import { GRACE_MS, LOCK_MS } from './status.js';
@@ -24,8 +25,10 @@ export class ShieldService {
       const items: RecordRow[] = [];
       let created = 0;
       for (const it of dto.items) {
-        // Domains are case-insensitive; app identifiers (Android packages, iOS tokens) and category keys are not.
-        const targetValue = it.targetType === 'domain' ? it.targetValue.trim().toLowerCase() : it.targetValue.trim();
+        // Domains are normalized like policy domains (the same string reaches a root daemon); app identifiers
+        // (Android packages, iOS tokens) and category keys are case-sensitive and kept as given.
+        const targetValue = it.targetType === 'domain' ? normalizeHostname(it.targetValue) : it.targetValue.trim();
+        if (targetValue === null) throw fail(400, 'invalid_domain', `"${it.targetValue}" is not a valid domain`);
         const platform = it.platform ?? 'all';
         const existing = live.find((r) => r.data.targetType === it.targetType && r.data.targetValue === targetValue && r.data.platform === platform);
         if (existing) { items.push(existing); continue; } // already committed: don't restart or extend its lock

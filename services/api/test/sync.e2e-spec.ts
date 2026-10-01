@@ -47,6 +47,24 @@ describe('sync push/pull', () => {
     expect(got.body).toMatchObject({ cursor: 1, hasMore: false });
   });
 
+  it('stores domains in their normalized form so every device sees the same string', async () => {
+    const p = policy(undefined, { domainRules: [{ id: randomUUID(), domain: 'https://WWW.Example.com/x?y=1', includeSubdomains: true, enabled: true }] });
+    expect((await push(a, [change('policy', p.id, p)])).body.results[0].status).toBe('applied');
+    expect((await pull(b)).body.changes[0].data.domainRules[0].domain).toBe('example.com');
+  });
+
+  it('rejects only the change with an unsafe domain or a malformed app rule, not the batch', async () => {
+    const rule = (domain: string) => ({ id: randomUUID(), domain, includeSubdomains: true, enabled: true });
+    const injected = policy(undefined, { domainRules: [rule('evil.com\n1.2.3.4 bank.com')] });
+    const noDot = policy(undefined, { domainRules: [rule('localhost')] });
+    const noRuleObject = policy(undefined, { domainRules: ['youtube.com'] });
+    const badApp = policy(undefined, { applicationRules: [{ id: randomUUID(), platform: 'palm-os', nativeIdentifier: 'x', enabled: true }] });
+    const good = policy();
+    const res = await push(a, [injected, noDot, noRuleObject, badApp, good].map((p) => change('policy', p.id, p)));
+    expect(res.body.results.map((r: any) => r.code ?? r.status)).toEqual(['invalid_data', 'invalid_data', 'invalid_data', 'invalid_data', 'applied']);
+    expect((await pull(b)).body.changes).toHaveLength(1);
+  });
+
   it('pull is incremental and pages with hasMore', async () => {
     const ps = [policy(), policy(), policy()];
     await push(a, ps.map((p) => change('policy', p.id, p)));

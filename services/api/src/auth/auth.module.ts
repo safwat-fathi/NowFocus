@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Config } from '../config.js';
 import { Device, User } from '../db/entities.js';
+import { AccountController } from './account.controller.js';
 import { AuthController, DevicesController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
 import { AuthService } from './auth.service.js';
@@ -15,7 +16,7 @@ import { AuthService } from './auth.service.js';
     JwtModule.registerAsync({ inject: [Config], useFactory: (c: Config) => ({ secret: c.jwtSecret }) }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }]), // auth routes only (guard is applied per-controller)
   ],
-  controllers: [AuthController, DevicesController],
+  controllers: [AuthController, DevicesController, AccountController],
   providers: [AuthService, AuthGuard],
   exports: [AuthService, AuthGuard],
 })

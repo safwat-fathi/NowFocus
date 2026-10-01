@@ -16,3 +16,7 @@ export class CredentialsDto {
 export class RefreshDto {
   @IsString() @MaxLength(200) refreshToken!: string;
 }
+
+export class DeleteAccountDto {
+  @IsString() @MaxLength(200) password!: string;
+}
