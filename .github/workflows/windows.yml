@@ -73,3 +73,51 @@ jobs:
       # installer hooks (which register the service). Proves the whole thing
       # links and packages; not a signed release artifact.
       - run: pnpm exec tauri build --debug
+
+  # A release installer for hands-on testing, built on demand (Actions > Windows > Run workflow). Unsigned, so
+  # Windows SmartScreen warns on first run: More info > Run anyway. The installer registers the NowFocus
+  # service (needs admin once) and installs for all users.
+  installer:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/windows
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/windows
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/windows/package.json
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apps/windows/pnpm-lock.yaml
+
+      # The merged tauri.windows.conf.json declares now-focus-service as an externalBin sidecar, so it must exist
+      # (with the target-triple suffix) before the app is built.
+      - name: Build & stage the privileged service as a sidecar
+        shell: pwsh
+        run: |
+          cargo build -p now-focus-service --release
+          New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null
+          Copy-Item target/release/now-focus-service.exe src-tauri/binaries/now-focus-service-x86_64-pc-windows-msvc.exe
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tauri build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NowFocus-windows-x64-setup
+          path: apps/windows/target/release/bundle/nsis/*.exe
+          if-no-files-found: error
