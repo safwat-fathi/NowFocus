@@ -135,6 +135,27 @@ export interface Bedtime {
   policyId: string | null;
 }
 
+export interface SyncStatus {
+  signedIn: boolean;
+  email: string | null;
+  syncing: boolean;
+  lastSyncedAt: string | null;
+  /** Human-readable, e.g. "Offline. Will retry." null when all is well. */
+  problem: string | null;
+  /** Changes the server refused (they stay on this PC; editing them again retries). */
+  rejected: number;
+  /** Whether this PC joins sessions started on the account's other devices. */
+  joinRemote: boolean;
+}
+
+export interface DeviceInfo {
+  id: string;
+  name: string;
+  platform: string;
+  current: boolean;
+  revoked: boolean;
+}
+
 export interface AppState {
   profiles: Profile[];
   session: Session | null;
@@ -148,6 +169,7 @@ export interface AppState {
   cheatDay: CheatDay | null;
   /** Day starts (RFC3339) a cheat day can still be planned for. */
   cheatOptions: string[];
+  sync: SyncStatus;
 }
 
 export type ScreenId =

@@ -172,6 +172,22 @@ pub struct CheatDayDto {
     pub upcoming: bool,
 }
 
+/// What the Devices screen shows about the optional account. Signed out, the app makes no network calls.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncStatusDto {
+    pub signed_in: bool,
+    pub email: Option<String>,
+    pub syncing: bool,
+    pub last_synced_at: Option<String>,
+    /// Human-readable, e.g. "Offline. Will retry." None when all is well.
+    pub problem: Option<String>,
+    /// Changes the server refused (they stay on this PC; editing them again retries).
+    pub rejected: usize,
+    /// Whether this PC joins sessions started on the account's other devices.
+    pub join_remote: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppStateDto {
@@ -189,4 +205,5 @@ pub struct AppStateDto {
     pub cheat_day: Option<CheatDayDto>,
     /// Day starts (RFC3339) a cheat day can still be planned for.
     pub cheat_options: Vec<String>,
+    pub sync: SyncStatusDto,
 }

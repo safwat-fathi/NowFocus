@@ -1,6 +1,7 @@
 #[cfg(windows)]
 mod app_blocker;
 mod commands;
+mod credentials;
 mod dto;
 mod enforcer;
 #[cfg(windows)]
@@ -10,6 +11,7 @@ mod service_client;
 #[cfg(windows)]
 mod service_registration;
 mod state;
+mod sync_glue;
 
 use std::sync::{Mutex, OnceLock};
 use std::thread;
@@ -82,6 +84,8 @@ pub fn run() {
             let app_state = AppState::open(&db_path, make_enforcer())
                 .map_err(|e| format!("failed to open NowFocus database at {db_path:?}: {e}"))?;
             app.manage::<SharedState>(Mutex::new(app_state));
+            // Optional account sync. Does nothing, and makes no network call, until the user signs in.
+            app.manage(sync_glue::start(app.handle().clone()));
 
             let _ = TRAY_APP.set(app.handle().clone());
 
@@ -135,6 +139,13 @@ pub fn run() {
             commands::cancel_cheat_day,
             commands::save_schedule,
             commands::delete_schedule,
+            commands::sync_sign_in,
+            commands::sync_sign_out,
+            commands::sync_now,
+            commands::sync_delete_account,
+            commands::sync_devices,
+            commands::sync_revoke_device,
+            commands::sync_set_join_remote,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the NowFocus app");

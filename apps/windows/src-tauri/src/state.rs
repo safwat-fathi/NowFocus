@@ -17,8 +17,8 @@ use now_focus_ipc::CommitmentStatusWire;
 
 use crate::dto::{
     AppStateDto, ApplicationRuleDto, BedtimeDto, CheatDayDto, CommitmentDto, DomainRuleDto,
-    FeedRuleDto, ProfileDto, ScheduleDto, SessionDto, ShieldDto, StatsDto, TargetCountDto,
-    UnlockStateDto,
+    FeedRuleDto, ProfileDto, ScheduleDto, SessionDto, ShieldDto, StatsDto, SyncStatusDto,
+    TargetCountDto, UnlockStateDto,
 };
 use crate::enforcer::Enforcer;
 
@@ -80,6 +80,8 @@ pub struct AppState {
     passes_used: (Option<String>, usize),
     /// The blocked app the Shield is showing, so a pass can name it.
     shield_native: Option<String>,
+    /// What the sync loop last reported, for the Devices screen. Set by `sync_glue`.
+    sync_status: SyncStatusDto,
 }
 
 impl AppState {
@@ -117,6 +119,7 @@ impl AppState {
             passes: Vec::new(),
             passes_used: (None, 0),
             shield_native: None,
+            sync_status: SyncStatusDto::default(),
         }
     }
 
@@ -256,6 +259,7 @@ impl AppState {
             schedules,
             cheat_day: cheat.as_ref().map(|c| cheat_to_dto(c, now)),
             cheat_options,
+            sync: self.sync_status.clone(),
         })
     }
 
@@ -889,7 +893,11 @@ impl AppState {
             lock_at_sleep,
             policy_id,
         };
-        self.db.set_bedtime(&settings).map_err(|e| e.to_string())
+        self.db.set_bedtime(&settings).map_err(|e| e.to_string())?;
+        // The time of a user edit: sync's last-write-wins uses it.
+        self.db
+            .kv_set(KV_BEDTIME_UPDATED, &Utc::now().to_rfc3339())
+            .map_err(|e| e.to_string())
     }
 
     /// Runs on the 30s tick. Starts a `LOCKED` bedtime session for the chosen
@@ -951,6 +959,202 @@ impl AppState {
             self.last_sleep_lock_at = Some(now);
         }
         decision.lock_now
+    }
+}
+
+const KV_SYNC_STATE: &str = "sync_state";
+const KV_BEDTIME_UPDATED: &str = "bedtime_updated_at";
+const KV_JOIN_REMOTE: &str = "join_remote";
+
+/// What the sync crate needs from the app (see `sync_glue`). Kept together so the boundary is easy to see:
+/// everything here either reads local data or applies something another device decided.
+impl AppState {
+    pub fn set_sync_status(&mut self, status: SyncStatusDto) {
+        self.sync_status = status;
+    }
+
+    pub fn join_remote(&self) -> bool {
+        self.db
+            .kv_get(KV_JOIN_REMOTE)
+            .ok()
+            .flatten()
+            .map(|v| v != "off")
+            .unwrap_or(true)
+    }
+
+    pub fn set_join_remote(&mut self, on: bool) -> Result<(), String> {
+        self.db
+            .kv_set(KV_JOIN_REMOTE, if on { "on" } else { "off" })
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn device_name(&self) -> String {
+        std::env::var("COMPUTERNAME")
+            .ok()
+            .filter(|n| !n.trim().is_empty())
+            .unwrap_or_else(|| "Windows PC".to_string())
+    }
+
+    pub fn kv_get(&self, key: &str) -> Result<Option<String>, String> {
+        self.db.kv_get(key).map_err(|e| e.to_string())
+    }
+
+    pub fn kv_set(&mut self, key: &str, value: &str) -> Result<(), String> {
+        self.db.kv_set(key, value).map_err(|e| e.to_string())
+    }
+
+    pub fn sync_read_local(&self) -> Result<now_focus_sync::model::Local, String> {
+        Ok(now_focus_sync::model::Local {
+            profiles: self.db.list_profiles().map_err(|e| e.to_string())?,
+            bedtime: self.db.get_bedtime().map_err(|e| e.to_string())?,
+            bedtime_updated_at: self
+                .db
+                .kv_get(KV_BEDTIME_UPDATED)
+                .ok()
+                .flatten()
+                .and_then(|t| DateTime::parse_from_rfc3339(&t).ok())
+                .map(|t| t.with_timezone(&Utc)),
+            state: self
+                .db
+                .kv_get(KV_SYNC_STATE)
+                .ok()
+                .flatten()
+                .and_then(|t| serde_json::from_str(&t).ok())
+                .unwrap_or_default(),
+        })
+    }
+
+    /// Writes only what `after` changed from `before`: server data is applied here, not stamped as a user edit.
+    pub fn sync_write_local(
+        &mut self,
+        before: &now_focus_sync::model::Local,
+        after: &now_focus_sync::model::Local,
+    ) -> Result<(), String> {
+        let json = |p: &Profile| serde_json::to_string(p).unwrap_or_default();
+        for p in &after.profiles {
+            let unchanged = before
+                .profiles
+                .iter()
+                .find(|b| b.policy.id == p.policy.id)
+                .is_some_and(|b| json(b) == json(p));
+            if !unchanged {
+                self.db.save_profile(p).map_err(|e| e.to_string())?;
+            }
+        }
+        for b in &before.profiles {
+            if !after.profiles.iter().any(|p| p.policy.id == b.policy.id) {
+                self.db
+                    .delete_profile(&b.policy.id)
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+        if before.bedtime != after.bedtime {
+            self.db
+                .set_bedtime(&after.bedtime)
+                .map_err(|e| e.to_string())?;
+        }
+        if before.bedtime_updated_at != after.bedtime_updated_at {
+            match after.bedtime_updated_at {
+                Some(t) => self.db.kv_set(KV_BEDTIME_UPDATED, &t.to_rfc3339()),
+                None => self.db.kv_delete(KV_BEDTIME_UPDATED),
+            }
+            .map_err(|e| e.to_string())?;
+        }
+        if before.state != after.state {
+            let text = serde_json::to_string(&after.state).map_err(|e| e.to_string())?;
+            self.db
+                .kv_set(KV_SYNC_STATE, &text)
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
+    /// The newest local session, status evaluated against the clock.
+    pub fn sync_local_session(&mut self) -> Result<Option<FocusSession>, String> {
+        self.recover()
+    }
+
+    pub fn sync_profile(&self, id: &str) -> Result<Option<Profile>, String> {
+        self.db.get_profile(id).map_err(|e| e.to_string())
+    }
+
+    /// Profiles something still points at (bedtime's, the current session's): sync never drops these.
+    pub fn sync_referenced_ids(&mut self) -> std::collections::HashSet<String> {
+        let mut ids = std::collections::HashSet::new();
+        if let Ok(b) = self.db.get_bedtime() {
+            ids.extend(b.policy_id.map(|p| p.to_lowercase()));
+        }
+        if let Ok(Some(s)) = self.recover() {
+            if session_engine::is_active(&s, Utc::now()) {
+                ids.insert(s.policy_id.to_lowercase());
+            }
+        }
+        ids
+    }
+
+    /// Starts enforcing a session another device started. `false` when it can't be: the profile isn't here, it
+    /// is an allowlist (Windows can't enforce those), or a session is already running.
+    pub fn sync_join(
+        &mut self,
+        remote: &now_focus_sync::session::RemoteSession,
+    ) -> Result<bool, String> {
+        let now = Utc::now();
+        let Some(profile) = self
+            .db
+            .get_profile(&remote.policy_id)
+            .map_err(|e| e.to_string())?
+        else {
+            return Ok(false);
+        };
+        if profile.policy.mode == now_focus_core::PolicyMode::Allowlist {
+            return Ok(false);
+        }
+        if self
+            .recover()?
+            .is_some_and(|s| session_engine::is_active(&s, now))
+        {
+            return Ok(false);
+        }
+        let mut session = FocusSession::new(
+            &profile.policy.id,
+            remote.start_at,
+            remote.end_at,
+            &self.device_id,
+        );
+        session.id = remote.id.clone();
+        session.enforcement_mode = remote.mode;
+        session.origin = SessionOrigin::Remote;
+        let paused = self.cheat_active(now);
+        if !paused {
+            self.enforcer.apply(&profile.policy)?;
+        }
+        self.session_enforced = !paused;
+        self.db.save_session(&session).map_err(|e| e.to_string())?;
+        self.db
+            .record_event(&session.id, "SESSION_STARTED", None)
+            .map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+
+    /// The session was cancelled on another device. That device already did whatever its mode asks (Strict's
+    /// typing and wait, Locked is refused by the server), so no unlock flow here.
+    pub fn sync_end_local(&mut self, id: &str) -> Result<(), String> {
+        match self.recover()? {
+            Some(s) if s.id == id && session_engine::is_active(&s, Utc::now()) => {
+                self.finish_session(s, "SESSION_CANCELLED")
+            }
+            _ => Ok(()),
+        }
+    }
+
+    pub fn sync_extend_local(&mut self, id: &str, end: DateTime<Utc>) -> Result<(), String> {
+        if let Some(mut s) = self.recover()? {
+            if s.id == id && end > s.end_at {
+                s.end_at = end;
+                self.db.save_session(&s).map_err(|e| e.to_string())?;
+            }
+        }
+        Ok(())
     }
 }
 

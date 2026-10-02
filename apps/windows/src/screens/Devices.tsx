@@ -1,20 +1,16 @@
 import { api } from "../lib/api";
 import type { AppState } from "../types";
-import { PlusIcon } from "../components/Icons";
+import { Account } from "./Account";
 
-export function Devices({ state }: { state: AppState }) {
+export function Devices({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
   return (
     <div className="screen">
       <div className="screen-header">
         <span className="screen-title">Devices</span>
-        <button className="btn btn-secondary" disabled title="No pairing backend yet" style={{ minHeight: 40, gap: 6 }}>
-          <PlusIcon />
-          Link a device
-        </button>
       </div>
       <p className="screen-lede">
-        This PC only, for now — there's no cross-device sync yet, so nothing is shown here that isn't actually
-        true of this machine.
+        This PC, and the account that links it to your other devices. Signed out, NowFocus never contacts a server and
+        nothing leaves this PC.
       </p>
 
       <div className="device-cards">
@@ -46,14 +42,9 @@ export function Devices({ state }: { state: AppState }) {
           )}
         </div>
 
-        <div className="device-card device-card--placeholder">
-          <div className="device-card__head">
-            <span className="device-card__dot" style={{ background: "var(--color-neutral-400)" }} />
-            <span className="device-card__name">Link a phone or laptop</span>
-          </div>
-          <div className="device-card__meta">Not available yet — no pairing/sync backend exists in this build</div>
-        </div>
       </div>
+
+      <Account state={state} onState={onState} />
 
       {import.meta.env.DEV && <DevPanel />}
     </div>

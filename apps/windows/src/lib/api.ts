@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
-import type { AppState, Schedule } from "../types";
+import type { AppState, DeviceInfo, Schedule } from "../types";
 
 // One wrapper per #[tauri::command] in src-tauri/src/commands.rs. Every
 // mutating call returns the fresh AppState — same "recompute everything
@@ -38,6 +38,13 @@ export const api = {
     invoke<AppState>("simulate_block", { targetKind, targetName }),
   dismissShield: () => invoke<AppState>("dismiss_shield"),
 
+  syncSignIn: (email: string, password: string, create: boolean) => invoke<AppState>("sync_sign_in", { email, password, create }),
+  syncSignOut: () => invoke<AppState>("sync_sign_out"),
+  syncNow: () => invoke<AppState>("sync_now"),
+  syncDeleteAccount: (password: string) => invoke<AppState>("sync_delete_account", { password }),
+  syncDevices: () => invoke<DeviceInfo[]>("sync_devices"),
+  syncRevokeDevice: (id: string) => invoke<void>("sync_revoke_device", { id }),
+  syncSetJoinRemote: (on: boolean) => invoke<AppState>("sync_set_join_remote", { on }),
   usePass: () => invoke<AppState>("use_pass"),
   scheduleCheatDay: (dayStart: string) => invoke<AppState>("schedule_cheat_day", { dayStart }),
   cancelCheatDay: () => invoke<AppState>("cancel_cheat_day"),

@@ -1,0 +1,17 @@
+[package]
+name = "now-focus-sync"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+# Optional account sync (services/api, services/api/WIRE_FORMAT.md). Platform-neutral on purpose, like core:
+# the rules are pure functions over `Local`, the network is behind `ApiPort`, the app behind `Host`, so all of
+# it builds and tests on any host OS.
+
+[dependencies]
+now-focus-core = { path = "../core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+ureq = { version = "2", features = ["json"] }

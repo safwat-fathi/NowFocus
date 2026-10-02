@@ -2,8 +2,13 @@ use std::sync::Mutex;
 
 use tauri::State;
 
+use std::sync::Arc;
+
+use now_focus_sync::api::DeviceInfo;
+
 use crate::dto::{AppStateDto, ScheduleDto};
 use crate::state::AppState;
+use crate::sync_glue::SyncController;
 
 pub type SharedState = Mutex<AppState>;
 
@@ -19,6 +24,12 @@ fn snapshot(state: &State<SharedState>) -> Result<AppStateDto, String> {
     Ok(dto)
 }
 
+/// Like [`snapshot`], for a command that changed something the other devices should hear about.
+fn changed(state: &State<SharedState>) -> Result<AppStateDto, String> {
+    crate::sync_glue::nudge();
+    snapshot(state)
+}
+
 #[tauri::command]
 pub fn get_state(state: State<SharedState>) -> Result<AppStateDto, String> {
     snapshot(&state)
@@ -30,7 +41,7 @@ pub fn create_profile(state: State<SharedState>, name: String) -> Result<AppStat
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .create_profile(name)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -43,7 +54,7 @@ pub fn rename_profile(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .rename_profile(&profile_id, name)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -56,7 +67,7 @@ pub fn add_domain(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .add_domain(&profile_id, &domain)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -69,7 +80,7 @@ pub fn remove_domain(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .remove_domain(&profile_id, &rule_id)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -83,7 +94,7 @@ pub fn add_application(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .add_application(&profile_id, native_identifier, display_name)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -96,7 +107,7 @@ pub fn remove_application(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .remove_application(&profile_id, &rule_id)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -109,7 +120,7 @@ pub fn toggle_feed(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .toggle_feed(&profile_id, &feed_key)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -123,7 +134,7 @@ pub fn start_session(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .start_session(&profile_id, duration_minutes, &mode)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -132,7 +143,7 @@ pub fn end_session_normal(state: State<SharedState>) -> Result<AppStateDto, Stri
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .end_session_normal()?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -147,7 +158,7 @@ pub fn begin_unlock(
     // Reached from the shield overlay too, whose windows can't show the main
     // window from JS, and the main window may be hidden in the tray.
     crate::show_main_window(&app);
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -156,7 +167,7 @@ pub fn cancel_unlock(state: State<SharedState>) -> Result<AppStateDto, String> {
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .cancel_unlock();
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -165,7 +176,7 @@ pub fn update_unlock_text(state: State<SharedState>, typed: String) -> Result<Ap
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .update_unlock_text(typed)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -174,7 +185,7 @@ pub fn start_unlock_wait(state: State<SharedState>) -> Result<AppStateDto, Strin
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .start_unlock_wait()?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -183,7 +194,7 @@ pub fn confirm_unlock(state: State<SharedState>) -> Result<AppStateDto, String> 
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .confirm_unlock()?;
-    snapshot(&state)
+    changed(&state)
 }
 
 /// Dev-only: see `AppState::simulate_block`. Exists so the Shield screen can
@@ -198,7 +209,7 @@ pub fn simulate_block(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .simulate_block(target_kind, target_name)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -207,7 +218,7 @@ pub fn dismiss_shield(state: State<SharedState>) -> Result<AppStateDto, String> 
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .dismiss_shield();
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -219,7 +230,7 @@ pub fn start_commitment(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .start_commitment(domains)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 /// May return `Err` with the service's refusal message when past the 60s grace.
@@ -229,7 +240,7 @@ pub fn clear_commitment(state: State<SharedState>) -> Result<AppStateDto, String
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .clear_commitment()?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -253,7 +264,7 @@ pub fn set_bedtime(
             lock_at_sleep,
             policy_id,
         )?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -262,7 +273,7 @@ pub fn use_pass(state: State<SharedState>) -> Result<AppStateDto, String> {
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .use_pass()?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -274,7 +285,7 @@ pub fn schedule_cheat_day(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .schedule_cheat_day(&day_start)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -283,7 +294,7 @@ pub fn cancel_cheat_day(state: State<SharedState>) -> Result<AppStateDto, String
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .cancel_cheat_day()?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -295,7 +306,7 @@ pub fn save_schedule(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .save_schedule(schedule)?;
-    snapshot(&state)
+    changed(&state)
 }
 
 #[tauri::command]
@@ -304,5 +315,87 @@ pub fn delete_schedule(state: State<SharedState>, id: String) -> Result<AppState
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .delete_schedule(&id)?;
+    changed(&state)
+}
+
+// ---- Account sync. These talk to the network, so they run off the UI thread.
+
+async fn blocking<T: Send + 'static>(
+    f: impl FnOnce() -> Result<T, String> + Send + 'static,
+) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn sync_sign_in(
+    state: State<'_, SharedState>,
+    sync: State<'_, Arc<SyncController>>,
+    email: String,
+    password: String,
+    create: bool,
+) -> Result<AppStateDto, String> {
+    let ctl = sync.inner().clone();
+    blocking(move || ctl.sign_in(&email, &password, create)).await?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub async fn sync_sign_out(
+    state: State<'_, SharedState>,
+    sync: State<'_, Arc<SyncController>>,
+) -> Result<AppStateDto, String> {
+    let ctl = sync.inner().clone();
+    blocking(move || {
+        ctl.sign_out();
+        Ok(())
+    })
+    .await?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub async fn sync_now(
+    state: State<'_, SharedState>,
+    sync: State<'_, Arc<SyncController>>,
+) -> Result<AppStateDto, String> {
+    sync.nudge();
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub async fn sync_delete_account(
+    state: State<'_, SharedState>,
+    sync: State<'_, Arc<SyncController>>,
+    password: String,
+) -> Result<AppStateDto, String> {
+    let ctl = sync.inner().clone();
+    blocking(move || ctl.delete_account(&password)).await?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub async fn sync_devices(sync: State<'_, Arc<SyncController>>) -> Result<Vec<DeviceInfo>, String> {
+    let ctl = sync.inner().clone();
+    blocking(move || ctl.devices()).await
+}
+
+#[tauri::command]
+pub async fn sync_revoke_device(
+    sync: State<'_, Arc<SyncController>>,
+    id: String,
+) -> Result<(), String> {
+    let ctl = sync.inner().clone();
+    blocking(move || ctl.revoke_device(&id)).await
+}
+
+#[tauri::command]
+pub async fn sync_set_join_remote(
+    state: State<'_, SharedState>,
+    sync: State<'_, Arc<SyncController>>,
+    on: bool,
+) -> Result<AppStateDto, String> {
+    sync.set_join_remote(on)?;
     snapshot(&state)
 }

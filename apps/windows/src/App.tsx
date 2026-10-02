@@ -74,7 +74,7 @@ export default function App() {
           {view === "focus" && <Focus state={state} onState={refresh} onOpenSession={() => navigate("active")} />}
           {view === "active" && <Active state={state} onState={refresh} onBackToFocus={() => navigate("focus")} />}
           {view === "profiles" && <Profiles state={state} onState={refresh} />}
-          {view === "devices" && <Devices state={state} />}
+          {view === "devices" && <Devices state={state} onState={refresh} />}
           {view === "stats" && <Stats state={state} />}
           {view === "commitment" && <Commitment state={state} onState={refresh} />}
           {view === "bedtime" && <Bedtime state={state} onState={refresh} />}
