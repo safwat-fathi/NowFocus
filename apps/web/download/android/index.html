@@ -202,7 +202,7 @@
           "name": "Will it keep working with my phone’s battery saver?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "We haven’t tested it against phone-maker battery managers, which can stop background apps. If blocking stops, check the Devices tab to see what’s off. We won’t promise more until it’s been tested."
+            "text": "We’ve tested it on a Samsung Galaxy M52 5G running Android 13 (One UI 5.1), where focus sessions and Bedtime Wind-Down kept working. We haven’t tested other makers’ battery managers (Xiaomi, Huawei, Oppo and similar), which can stop background apps. If blocking stops, check the Devices tab to see what’s off. We won’t promise more until it’s been tested."
           }
         }
       ]
@@ -306,7 +306,7 @@
   <li>Download the APK on your phone. When a build is published, the button at the top of this page will link to it.</li>
   <li>Open it. Android asks you to allow installs from the app you opened it with (your browser or Files). Allow it for now.</li>
   <li>Tap <strong>Install</strong>, then <strong>Open</strong>.</li>
-  <li>Work through the three onboarding steps (see <a href="#setup">First-run setup</a>).</li>
+  <li>Work through the five onboarding steps (see <a href="#setup">First-run setup</a>).</li>
   <li>On Android 13 or later, if the Accessibility switch is greyed out, open <strong>Settings → Apps → NowFocus</strong>, tap <strong>⋮</strong>, choose <strong>Allow restricted settings</strong>, then go back and switch it on.</li>
 </ol>
   <p>Installs from Google Play, once available, shouldn’t need the “allow installs” and “restricted settings” steps.</p>
@@ -314,7 +314,7 @@
 
 <section id="setup">
   <h2>First-run setup</h2>
-  <p class="lead">On the last onboarding step NowFocus asks for three permissions, in this order. Each has an <strong>Allow</strong> button that turns into an <strong>Allowed</strong> pill. <strong>Get started</strong> is always enabled, so none are forced, but without Accessibility apps aren’t blocked and without the VPN sites aren’t.</p>
+  <p class="lead">On the fourth onboarding step (Permissions) NowFocus asks for three permissions, in this order. Each has an <strong>Allow</strong> button that turns into an <strong>Allowed</strong> pill. <strong>Continue</strong> is always enabled, so none are forced, but without Accessibility apps aren’t blocked and without the VPN sites aren’t. The fifth step won’t start your first session until Accessibility is on.</p>
   <ol>
   <li><strong>App blocking (Accessibility).</strong> Lets NowFocus see which app comes to the foreground so it can block the ones you chose. If you turn on partial blocking, it also reads the YouTube and Facebook screens during a session. Tap Allow, find NowFocus in Accessibility settings and switch it on.</li>
   <li><strong>Website filter (VPN).</strong> Blocks sites on your phone by answering DNS lookups. Only DNS goes through it. Tap Allow and accept Android’s VPN prompt. Android allows one VPN at a time.</li>
@@ -328,19 +328,21 @@
   <p class="lead">Every screen in the app, in the order you’ll meet them. Button names and messages are quoted from the app.</p>
 <section class="screen" id="s-onboarding">
   <h3>Onboarding</h3>
-  <p>A three-step first-run flow with a progress bar: Welcome, People, Permissions. There’s no Back button and nothing is forced.</p>
+  <p>A five-step first-run flow with a progress bar: Welcome, Goals, People, Permissions, Your first session. There’s no Back button, and only the first session needs anything (Accessibility on and one app picked); you can skip it with “Not now”.</p>
   <h4>What’s on it</h4>
   <ul>
     <li><strong>Welcome:</strong> “You decide what deserves your attention.” with the button “Let’s set it up”.</li>
+    <li><strong>Goals:</strong> “What are you focusing for?” Add goals with a priority; they’re shown while you wait to end a Strict session and when a blocked app opens. “Skip for now” becomes “Continue” once you add one.</li>
     <li><strong>People:</strong> “Who matters to you?” with “+ Add someone” (opens your contact picker) and “Skip for now”, which becomes “Continue” once you add someone.</li>
-    <li><strong>Permissions:</strong> “A few permissions, so blocking actually holds.” One Allow button per row, then “Get started”.</li>
+    <li><strong>Permissions:</strong> “A few permissions, so blocking actually holds.” One Allow button per row, then “Continue”.</li>
+    <li><strong>Your first session:</strong> “Which app steals your time?” Pick an app with “+ Pick an app…” (add more with “+ Add another…”, or tap Remove), then “Start 10 minutes”, a Normal session on a new profile called “First focus”. If Accessibility is off, the step shows its Allow row and the button stays disabled. On Android 13 or later this step also asks to show notifications.</li>
   </ul>
   <h4>How to use it</h4>
   <ol>
     <li>Tap “Let’s set it up”.</li>
-    <li>Optionally add up to five people you’d rather talk to than scroll (see People who matter).</li>
-    <li>Grant the permissions, or skip and grant them later from Home.</li>
-    <li>Tap “Get started”.</li>
+    <li>Optionally add goals, and up to five people you’d rather talk to than scroll (see People who matter).</li>
+    <li>Grant the permissions, or skip and grant them later from Home. Accessibility is needed for the last step.</li>
+    <li>Pick the app you lose time to and tap “Start 10 minutes”, or tap “Not now” to go straight to Home.</li>
   </ol>
 </section>
 <section class="screen" id="s-home">
@@ -391,8 +393,7 @@
   <h4>How to use it</h4>
   <ol>
     <li>Leave your phone alone until the countdown ends.</li>
-    <li>Normal ends immediately when you tap End session early, with no confirmation.</li>
-    <li>Strict and Locked open the End early screen.</li>
+    <li>Tapping End session early opens the End early screen in every mode, so a Normal session never ends by accident.</li>
   </ol>
 </section>
 <section class="screen" id="s-end-early">
@@ -400,7 +401,7 @@
   <p>What happens when you try to quit depends on the mode you chose.</p>
   <h4>What’s on it</h4>
   <ul>
-    <li><strong>Normal:</strong> “End this session now?” with an “End session now” button.</li>
+    <li><strong>Normal:</strong> “End this session now?” with the time left, an “End session now” button and “Keep going”.</li>
     <li><strong>Strict, stage one:</strong> type “I am choosing to end this focus session early.” exactly (it’s case-sensitive; outer spaces are ignored), then tap “Start 30-second pause”.</li>
     <li><strong>Strict, stage two:</strong> a 30-second countdown. If you recorded a voice note, play it to the end first (“Hear your note first”). Then “End session now” unlocks. “Stay focused” is always available.</li>
     <li><strong>Locked:</strong> “This one’s locked, by you.” There’s no early exit; the only button is “Back to focus”.</li>
@@ -432,7 +433,7 @@
 </section>
 <section class="screen" id="s-rules">
   <h3>Rules (profiles)</h3>
-  <p>Your Focus Profiles: named lists of sites and apps to block. Each row shows “N sites · N apps” and a Remove button. Remove deletes the profile immediately, without asking.</p>
+  <p>Your Focus Profiles: named lists of sites and apps to block. Each row shows “N sites · N apps” and a Remove button. Remove asks “Remove <em>name</em>?” with Remove and Cancel first. If Bedtime Wind-Down uses the profile, the question says Bedtime will stop blocking until you pick another.</p>
   <h4>What’s on it</h4>
   <ul>
     <li>“+ New profile”.</li>
@@ -571,10 +572,10 @@
   <h3>A self-control tool, not a lock on your phone</h3>
   <ul>
   <li>Turning off Accessibility, revoking the VPN permission or uninstalling NowFocus defeats Normal, Strict, Locked, Bedtime and the Commitment Shield alike.</li>
-  <li>Website blocking works at the DNS level. Blocked sites fail to load (there’s no block page), apps that use their own encrypted DNS or a strict Private DNS setting can bypass it, and only one VPN can run at a time.</li>
+  <li>Website blocking works at the DNS level. Blocked sites fail to load (there’s no block page). While the screen is on, NowFocus posts a short “NowFocus blocked a site” notification, at most once a minute, that doesn’t name the site and stays off the lock screen, and the session notification says blocked sites won’t load until the timer ends. Apps that use their own encrypted DNS or a strict Private DNS setting can bypass it, and only one VPN can run at a time.</li>
   <li>Partial blocking is experimental (see above).</li>
   <li>Bedtime alarms can be a few minutes off, and “lock at sleep time” is skipped when Accessibility is off or on Android 8.</li>
-  <li>We haven’t tested how phone-maker battery savers (Samsung, Xiaomi and similar) treat NowFocus.</li>
+  <li>We’ve tested NowFocus on a Samsung Galaxy M52 5G running Android 13 (One UI 5.1), where focus sessions and Bedtime Wind-Down kept working. Other makers’ battery savers (Xiaomi, Huawei, Oppo and similar) haven’t been tested.</li>
   <li>Cross-device sync isn’t available. Each phone is on its own.</li>
 </ul>
 </div>
@@ -614,7 +615,7 @@
   </details>
   <details>
     <summary>Will it keep working with my phone’s battery saver?</summary>
-    <p>We haven’t tested it against phone-maker battery managers, which can stop background apps. If blocking stops, check the Devices tab to see what’s off. We won’t promise more until it’s been tested.</p>
+    <p>We’ve tested it on a Samsung Galaxy M52 5G running Android 13 (One UI 5.1), where focus sessions and Bedtime Wind-Down kept working. We haven’t tested other makers’ battery managers (Xiaomi, Huawei, Oppo and similar), which can stop background apps. If blocking stops, check the Devices tab to see what’s off. We won’t promise more until it’s been tested.</p>
   </details>
 </div>
   <div class="next-links">
