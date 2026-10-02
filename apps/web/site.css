@@ -97,6 +97,13 @@ a.btn-secondary:hover { color: var(--color-text); }
 .foot { max-width: 1200px; margin: 0 auto; padding: 32px var(--gutter); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--color-neutral-700); }
 .foot-brand { display: flex; align-items: center; gap: 10px; }
 .foot-links { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.foot-btn { font: inherit; padding: 0; border: 0; background: none; cursor: pointer; color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; }
+.foot-btn:hover { color: var(--color-accent-900); }
+
+/* — analytics consent banner (consent.js) — */
+.consent { position: fixed; inset: auto 0 0 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px var(--gutter); background: var(--color-surface); border-top: 2px solid var(--color-divider); font-size: 14px; line-height: 1.5; }
+.consent p { margin: 0; flex: 1 1 320px; max-width: 70ch; }
+.consent-actions { display: flex; gap: 8px; }
 
 /* — legal pages — */
 .prose { max-width: 68ch; padding: 64px 0 88px; }

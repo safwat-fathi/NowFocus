@@ -1,8 +1,8 @@
 # NowFocus (full text summary)
 
-Source: https://nowfocus.online/ · Last updated 2026-10-01 · Contact: safwat.rashwan@gmail.com
+Source: https://nowfocus.online/ · Last updated 2026-10-02 · Contact: safwat.rashwan@gmail.com
 
-NowFocus is a deep-work app for Android, macOS and Windows. Start a session and the apps and sites you chose go dark until the timer ends. It runs on your device, so what you block and what you try to open never reaches NowFocus. There is no account, no ads, no trackers and no analytics.
+NowFocus is a deep-work app for Android, macOS and Windows. Start a session and the apps and sites you chose go dark until the timer ends. It runs on your device, so what you block and what you try to open never reaches NowFocus. The apps have no account, no ads, no trackers and no analytics.
 
 ## How a session works
 1. Start a session: pick a Focus Profile (the apps and sites to block) and a length.
@@ -27,7 +27,7 @@ NowFocus is a deep-work app for Android, macOS and Windows. Start a session and 
 Free. Nothing is locked behind payment today. Paid plans may come later and the site will say so first.
 
 ## Privacy summary
-Profiles, sessions, stats, goals, contacts you add and voice notes stay on the device. The apps connect to no NowFocus server. On Android, unblocked DNS lookups pass to your network's DNS server (or Cloudflare 1.1.1.1 if it doesn't answer); Google device backup may copy app data to your own Google account (voice notes are excluded). Not directed at children under 13. The website is static: no cookies, no analytics, no third-party loads. Details: https://nowfocus.online/privacy/
+Profiles, sessions, stats, goals, contacts you add and voice notes stay on the device. The apps connect to no NowFocus server. On Android, unblocked DNS lookups pass to your network's DNS server (or Cloudflare 1.1.1.1 if it doesn't answer); Google device backup may copy app data to your own Google account (voice notes are excluded). Not directed at children under 13. The website uses Google Analytics 4 with consent: cookies only if you accept, basic cookieless pings otherwise; no Google signals or ads personalisation. Details: https://nowfocus.online/privacy/
 
 ## Limits
 It is a self-control tool, not a lock. Someone who owns the device can uninstall it or switch off its permissions.

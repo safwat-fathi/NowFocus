@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy — NowFocus</title>
-<meta name="description" content="How NowFocus handles your data: everything stays on your device, with no account, ads or trackers, and no NowFocus server involved today.">
+<meta name="description" content="How NowFocus handles your data: the apps keep everything on your device, with no account, ads or trackers. The website uses consent-based analytics.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#f3f2f2">
 <link rel="canonical" href="https://nowfocus.online/privacy/">
@@ -15,7 +15,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NowFocus">
 <meta property="og:title" content="Privacy — NowFocus">
-<meta property="og:description" content="How NowFocus handles your data: everything stays on your device, with no account, ads or trackers, and no NowFocus server involved today.">
+<meta property="og:description" content="How NowFocus handles your data: the apps keep everything on your device, with no account, ads or trackers. The website uses consent-based analytics.">
 <meta property="og:url" content="https://nowfocus.online/privacy/">
 <meta property="og:image" content="https://nowfocus.online/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -24,6 +24,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/site.css">
+<script src="/consent.js" defer></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -63,7 +64,7 @@
       "@id": "https://nowfocus.online/privacy/#webpage",
       "url": "https://nowfocus.online/privacy/",
       "name": "Privacy — NowFocus",
-      "description": "How NowFocus handles your data: everything stays on your device, with no account, ads or trackers, and no NowFocus server involved today.",
+      "description": "How NowFocus handles your data: the apps keep everything on your device, with no account, ads or trackers. The website uses consent-based analytics.",
       "isPartOf": {
         "@id": "https://nowfocus.online/#website"
       },
@@ -75,7 +76,7 @@
         "height": 630
       },
       "datePublished": "2026-09-30",
-      "dateModified": "2026-09-30",
+      "dateModified": "2026-10-02",
       "publisher": {
         "@id": "https://nowfocus.online/#org"
       }
@@ -127,9 +128,9 @@
 </nav>
 <article class="prose">
   <h1>Privacy</h1>
-  <p class="updated">Last updated: 30 September 2026</p>
+  <p class="updated">Last updated: 2 October 2026</p>
 
-  <p>NowFocus is built to work on your device, not on ours. Today the apps have no account, no ads, no trackers and no analytics, and we don’t sell or share your data, because we don’t receive it.</p>
+  <p>NowFocus is built to work on your device, not on ours. Today the apps have no account, no ads, no trackers and no analytics, and we don’t sell or share your data, because we don’t receive it. The website is separate: it uses consent-based analytics, described under “This website” below.</p>
 
   <h2>What stays on your device</h2>
   <p>The Android, macOS and Windows apps keep the following on the device they run on, and never send it to NowFocus:</p>
@@ -159,8 +160,13 @@
   <h2>Cross-device sync (planned)</h2>
   <p>We are building optional sync so a session can span your devices. No released app uses it yet. When it does, it will need an account and will store your profiles, sessions and device list on our servers. We’ll update this page before it’s switched on, and blocking will keep working from each device’s own copy if the server is unreachable.</p>
 
-  <h2>This website</h2>
-  <p>This site is static. It sets no cookies, runs no analytics and loads nothing from third parties: even the font is served from this site. Like any web host, ours may keep standard server logs (such as IP address and time of request) for security and reliability.</p>
+  <h2 id="website">This website</h2>
+  <p>This site is static and has no account or login. It uses Google Analytics 4, from Google, to count visits and see which pages are read. Google processes that data for us under its Google Analytics terms. What it may do depends on your choice in the banner:</p>
+  <ul>
+    <li><strong>Accept.</strong> Google Analytics sets cookies in your browser to recognise a returning visitor and group page views into visits.</li>
+    <li><strong>Decline, or no answer yet.</strong> It sets no cookies and stores nothing in your browser. The page still contacts Google, so Google receives your IP address, browser and device details, and the page you’re on, and uses them for basic, cookieless counts.</li>
+  </ul>
+  <p>We have turned off Google signals and ads personalisation, we don’t use Google Analytics for advertising, and we only see aggregate reports. Your choice is remembered in this browser (in local storage, as <code>nf-consent</code>), and you can change it at any time with “Cookie settings” in the footer. Declining removes the analytics cookies already set. Google Analytics is the only third-party load on this site: even the font is served from here. The apps don’t use Google Analytics. Like any web host, ours may keep standard server logs (such as IP address and time of request) for security and reliability.</p>
 
   <h2>Children</h2>
   <p>NowFocus is not directed at children under 13, and we don’t knowingly collect anything from them.</p>
@@ -187,6 +193,7 @@
     <a href="/privacy/" aria-current="page">Privacy</a>
     <a href="/terms/">Terms</a>
     <a href="mailto:safwat.rashwan@gmail.com">Contact</a>
+    <button type="button" class="foot-btn" data-consent-reset>Cookie settings</button>
   </nav>
 </footer>
 </body>

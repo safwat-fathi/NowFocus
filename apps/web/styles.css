@@ -1,6 +1,6 @@
 /* Modernist — design-system tokens and component classes. This file is the source of truth for the system's look; retune it here.
    Copied from the claude.ai/design "Modernist" system. Only change: Archivo is served from ./fonts instead of the Google Fonts CDN,
-   so the site makes no third-party requests (same choice as apps/windows/src/styles/theme.css). */
+   so fonts need no third-party request (same choice as apps/windows/src/styles/theme.css). */
 
 @font-face {
   font-family: "Archivo";
