@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../lib/api";
+import { api, endNormalAfterAsking } from "../lib/api";
 import type { AppState } from "../types";
 
 const QUICK_DURATIONS: [string, number][] = [["25m", 25], ["1h", 60], ["2h", 120]];
@@ -17,6 +17,12 @@ export function Tray({ state, onState, onOpen }: { state: AppState; onState: (s:
     if (!profileId) return;
     onState(await api.startSession(profileId, duration, "normal"));
     onOpen();
+  }
+
+  async function endEarly() {
+    if (state.session!.mode !== "normal") return onState(await api.beginUnlock());
+    const ended = await endNormalAfterAsking();
+    if (ended) onState(ended);
   }
 
   return (
@@ -44,7 +50,7 @@ export function Tray({ state, onState, onOpen }: { state: AppState; onState: (s:
                   <button className="btn btn-primary" onClick={onOpen} style={{ minHeight: 42, justifyContent: "flex-start" }}>Open</button>
                   <button
                     className="btn btn-secondary"
-                    onClick={async () => onState(state.session!.mode === "normal" ? await api.endSessionNormal() : await api.beginUnlock())}
+                    onClick={endEarly}
                     style={{ minHeight: 42, justifyContent: "flex-start" }}
                   >
                     End early

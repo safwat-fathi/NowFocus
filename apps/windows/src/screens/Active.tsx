@@ -1,4 +1,4 @@
-import { api } from "../lib/api";
+import { api, endNormalAfterAsking } from "../lib/api";
 import type { AppState } from "../types";
 
 export function Active({
@@ -29,7 +29,8 @@ export function Active({
 
   async function endEarly() {
     if (session!.mode === "normal") {
-      onState(await api.endSessionNormal());
+      const ended = await endNormalAfterAsking();
+      if (ended) onState(ended);
     } else {
       onState(await api.beginUnlock());
     }
@@ -66,6 +67,12 @@ export function Active({
               <span>{state.stats.blockAttemptsToday}</span>
             </div>
           </div>
+          {session.paused && (
+            <p style={{ fontSize: 14, fontWeight: 600, margin: "14px 0 0" }}>Cheat day: blocking is paused until midnight.</p>
+          )}
+          <p style={{ fontSize: 13, color: "var(--color-neutral-800)", margin: "14px 0 0" }}>
+            Blocked sites show “can’t be reached” until the session ends. That’s NowFocus, not your internet.
+          </p>
           <div className="active-actions">
             <button
               className="btn"

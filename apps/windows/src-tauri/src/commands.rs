@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use tauri::State;
 
-use crate::dto::AppStateDto;
+use crate::dto::{AppStateDto, ScheduleDto};
 use crate::state::AppState;
 
 pub type SharedState = Mutex<AppState>;
@@ -253,5 +253,56 @@ pub fn set_bedtime(
             lock_at_sleep,
             policy_id,
         )?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub fn use_pass(state: State<SharedState>) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .use_pass()?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub fn schedule_cheat_day(
+    state: State<SharedState>,
+    day_start: String,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .schedule_cheat_day(&day_start)?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub fn cancel_cheat_day(state: State<SharedState>) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .cancel_cheat_day()?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub fn save_schedule(
+    state: State<SharedState>,
+    schedule: ScheduleDto,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .save_schedule(schedule)?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub fn delete_schedule(state: State<SharedState>, id: String) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .delete_schedule(&id)?;
     snapshot(&state)
 }

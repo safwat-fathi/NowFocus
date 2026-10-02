@@ -6,13 +6,16 @@
 
 pub mod bedtime_schedule;
 pub mod block_policy;
+pub mod cheat_day;
 pub mod commitment;
 pub mod domain_validation;
 pub mod enforcement_health;
 pub mod focus_session;
 pub mod history_stats;
 pub mod hosts_block;
+pub mod passes;
 pub mod persistence;
+pub mod schedule;
 pub mod session_engine;
 
 pub use bedtime_schedule::BedtimeSettings;
@@ -20,6 +23,6 @@ pub use block_policy::{ApplicationRule, BlockPolicy, DomainRule, FeedRule, Polic
 pub use commitment::CommitmentState;
 pub use enforcement_health::{EnforcementStatus, PlatformCapabilities};
 pub use focus_session::{
-    EnforcementMode, FocusSession, FocusSessionStatus, NotificationMode, SessionType,
+    EnforcementMode, FocusSession, FocusSessionStatus, NotificationMode, SessionOrigin, SessionType,
 };
 pub use persistence::{Database, PersistenceError};

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { AppState } from "../types";
 
 const DAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
@@ -14,6 +15,13 @@ export function Stats({ state }: { state: AppState }) {
   const week = s.weekMinutes.length === 7 ? s.weekMinutes : [0, 0, 0, 0, 0, 0, 0];
   const peak = Math.max(...week, 1);
   const todayIdx = (new Date().getDay() + 6) % 7; // JS Sun=0 → Mon-first index
+  const [copied, setCopied] = useState(false);
+
+  async function copyWeek() {
+    await navigator.clipboard.writeText(s.weekSummary);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   return (
     <div className="screen">
@@ -64,6 +72,16 @@ export function Stats({ state }: { state: AppState }) {
           <div className="stat-row__label">Streak</div>
           <div className="stat-row__value" style={{ fontSize: 30 }}>{s.streakDays}d</div>
         </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 16, maxWidth: 480, marginTop: 14 }}>
+        <div>
+          <div className="stat-row__label">Focus score (wk)</div>
+          <div className="stat-row__value" style={{ fontSize: 30 }}>{s.focusScore ?? "-"}</div>
+        </div>
+        <button className="btn btn-secondary" onClick={copyWeek} style={{ marginLeft: "auto", minHeight: 40 }}>
+          {copied ? "Copied" : "Copy this week"}
+        </button>
       </div>
 
       {s.topTargets.length > 0 && (

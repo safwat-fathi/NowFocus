@@ -32,6 +32,16 @@ pub enum SessionType {
     BedtimeWinddown,
 }
 
+/// Where a session came from. Only `User` and `Remote` sessions are synced across devices: Bedtime and
+/// schedules run on every device from its own settings, so syncing them too would start them N times.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionOrigin {
+    User,
+    Schedule,
+    Remote,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NotificationMode {
@@ -55,6 +65,7 @@ pub struct FocusSession {
     pub cancelled_at: Option<DateTime<Utc>>,
     pub device_id: String,
     pub revision: i64,
+    pub origin: SessionOrigin,
 }
 
 impl FocusSession {
@@ -81,6 +92,7 @@ impl FocusSession {
             cancelled_at: None,
             device_id: device_id.into(),
             revision: 1,
+            origin: SessionOrigin::User,
         }
     }
 }

@@ -130,6 +130,11 @@ pub fn run() {
             commands::start_commitment,
             commands::clear_commitment,
             commands::set_bedtime,
+            commands::use_pass,
+            commands::schedule_cheat_day,
+            commands::cancel_cheat_day,
+            commands::save_schedule,
+            commands::delete_schedule,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the NowFocus app");
@@ -229,7 +234,10 @@ pub(crate) fn refresh_tray() {
             Ok(dto) => {
                 // Minute granularity: this runs on every command, so a per-second label would rewrite the tooltip constantly.
                 let tip = match &dto.session {
-                    Some(s) => format!("NowFocus · {}m left", (s.remaining_ms.max(0) + 59_999) / 60_000),
+                    Some(s) => format!(
+                        "NowFocus · {}m left",
+                        (s.remaining_ms.max(0) + 59_999) / 60_000
+                    ),
                     None => "NowFocus".to_string(),
                 };
                 (dto.session.is_some(), tip)
@@ -284,6 +292,9 @@ fn periodic_tick() {
         let lock_now = {
             let Ok(mut guard) = state.lock() else { return };
             let lock = guard.bedtime_tick();
+            guard.schedule_tick();
+            // Re-applies a session after a restart, pauses it for a cheat day and brings it back when the day ends.
+            guard.reconcile_enforcement();
             guard.refresh_commitment();
             lock
         };

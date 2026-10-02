@@ -1,4 +1,9 @@
+import { useState } from "react";
+import { api } from "../lib/api";
+import type { AppState } from "../types";
 import { ArrowRightIcon } from "../components/Icons";
+
+const FIRST_PROFILE = "First focus";
 
 const LAYERS = [
   { title: "NowFocus Service", sub: "Runs as a Windows service, restarts itself, survives closing the app." },
@@ -11,7 +16,48 @@ const LAYERS = [
  * checklist is informational rather than install buttons, since the real
  * install actions (Windows service, DNS filter, browser extension) land in
  * later phases. Revisit once those exist. */
-export function Onboarding({ onDone }: { onDone: () => void }) {
+export function Onboarding({
+  state,
+  onState,
+  onStarted,
+  onDone,
+}: {
+  state: AppState;
+  onState: (s: AppState) => void;
+  onStarted: () => void;
+  onDone: () => void;
+}) {
+  const [site, setSite] = useState("");
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState("");
+
+  // A new profile, not the starter "Deep Work": sync drops an untouched starter on first sign-in, and adding a
+  // site to it would make nearly every starter "touched" and duplicate it on the user's next device.
+  async function startFirstSession() {
+    if (starting) return;
+    setStarting(true);
+    setError("");
+    try {
+      let next = state;
+      let profile = next.profiles.find((p) => p.name === FIRST_PROFILE);
+      if (!profile) {
+        next = await api.createProfile(FIRST_PROFILE);
+        profile = next.profiles.find((p) => p.name === FIRST_PROFILE);
+      }
+      if (!profile) throw new Error("Couldn't create a profile");
+      // A retry after a failed start (say the service wasn't running) finds the site already added.
+      await api.addDomain(profile.id, site.trim()).catch((e) => {
+        if (!String(e).includes("already on the list")) throw e;
+      });
+      onState(await api.startSession(profile.id, 10, "normal"));
+      onStarted();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setStarting(false);
+    }
+  }
+
   return (
     <div className="onboard">
       <div className="onboard__pane onboard__pane--left">
@@ -41,9 +87,28 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         <p style={{ fontSize: 13, color: "var(--color-neutral-700)", margin: "14px 0 0" }}>
           Windows will ask for admin approval once. Your browsing never leaves this PC.
         </p>
-        <button className="btn btn-primary" onClick={onDone} style={{ marginTop: "auto", minHeight: 56, justifyContent: "space-between", fontSize: 16 }}>
-          Get started
+        <div className="onboard__kicker" style={{ color: "var(--color-neutral-700)", marginTop: 18 }}>
+          Your first session
+        </div>
+        <input
+          className="input"
+          value={site}
+          onChange={(e) => setSite(e.target.value)}
+          placeholder="A site that steals your time, e.g. youtube.com"
+          style={{ marginTop: 8, minHeight: 48, fontSize: 16 }}
+        />
+        {error && <div className="error-line">{error}</div>}
+        <button
+          className="btn btn-primary"
+          onClick={startFirstSession}
+          disabled={!site.trim() || starting}
+          style={{ marginTop: "auto", minHeight: 56, justifyContent: "space-between", fontSize: 16 }}
+        >
+          Start 10 minutes
           <ArrowRightIcon />
+        </button>
+        <button className="btn btn-secondary" onClick={onDone} style={{ marginTop: 8, minHeight: 44, justifyContent: "flex-start", fontSize: 14 }}>
+          Not now
         </button>
       </div>
     </div>

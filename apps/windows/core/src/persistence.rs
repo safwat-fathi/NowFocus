@@ -7,10 +7,12 @@ use crate::bedtime_schedule::BedtimeSettings;
 use crate::block_policy::{
     ApplicationRule, BlockPolicy, DomainRule, FeedRule, NotificationMode, PolicyMode, Profile,
 };
+use crate::cheat_day::CheatDay;
 use crate::focus_session::{
     EnforcementMode, FocusSession, FocusSessionStatus, NotificationMode as SessionNotificationMode,
-    SessionType,
+    SessionOrigin, SessionType,
 };
+use crate::schedule::Schedule;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PersistenceError {
@@ -110,6 +112,24 @@ impl Database {
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 device_id TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS cheat_day (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                start_at TEXT NOT NULL,
+                end_at TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS schedules (
+                id TEXT PRIMARY KEY,
+                data_json TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS schedule_runs (
+                schedule_id TEXT PRIMARY KEY,
+                window_start TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS sync_kv (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS bedtime_settings (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 enabled INTEGER NOT NULL,
@@ -120,6 +140,14 @@ impl Database {
                 policy_id TEXT
             );
             ",
+        )?;
+
+        // Columns added after the first release: older databases get them here, once.
+        add_column_if_missing(
+            &conn,
+            "focus_sessions",
+            "origin",
+            "TEXT NOT NULL DEFAULT 'user'",
         )?;
 
         Ok(Self { conn })
@@ -329,11 +357,12 @@ impl Database {
         self.conn.execute(
             "INSERT INTO focus_sessions
                 (id, policy_id, session_type, start_at, end_at, status, enforcement_mode, notification_mode,
-                 created_at, completed_at, cancelled_at, device_id, revision)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                 created_at, completed_at, cancelled_at, device_id, revision, origin)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
              ON CONFLICT(id) DO UPDATE SET
                 status = excluded.status, completed_at = excluded.completed_at,
-                cancelled_at = excluded.cancelled_at, revision = excluded.revision",
+                cancelled_at = excluded.cancelled_at, revision = excluded.revision,
+                end_at = excluded.end_at",
             params![
                 session.id,
                 session.policy_id,
@@ -348,6 +377,7 @@ impl Database {
                 session.cancelled_at.map(|d| d.to_rfc3339()),
                 session.device_id,
                 session.revision,
+                origin_to_str(session.origin),
             ],
         )?;
         Ok(())
@@ -360,7 +390,7 @@ impl Database {
     pub fn most_recent_session(&self) -> Result<Option<FocusSession>> {
         let row = self.conn.query_row(
             "SELECT id, policy_id, session_type, start_at, end_at, status, enforcement_mode, notification_mode,
-                    created_at, completed_at, cancelled_at, device_id, revision
+                    created_at, completed_at, cancelled_at, device_id, revision, origin
              FROM focus_sessions ORDER BY created_at DESC LIMIT 1",
             [],
             Self::row_to_session,
@@ -395,6 +425,7 @@ impl Database {
                     .transpose()?,
                 device_id: r.get(11)?,
                 revision: r.get(12)?,
+                origin: str_to_origin(&r.get::<_, String>(13)?),
             })
         })())
     }
@@ -423,7 +454,7 @@ impl Database {
     pub fn sessions_since(&self, since: DateTime<Utc>) -> Result<Vec<FocusSession>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, policy_id, session_type, start_at, end_at, status, enforcement_mode, notification_mode,
-                    created_at, completed_at, cancelled_at, device_id, revision
+                    created_at, completed_at, cancelled_at, device_id, revision, origin
              FROM focus_sessions WHERE start_at >= ?1 ORDER BY start_at DESC",
         )?;
         let mut sessions = Vec::new();
@@ -455,7 +486,7 @@ impl Database {
     ) -> Result<Vec<FocusSession>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, policy_id, session_type, start_at, end_at, status, enforcement_mode, notification_mode,
-                    created_at, completed_at, cancelled_at, device_id, revision
+                    created_at, completed_at, cancelled_at, device_id, revision, origin
              FROM focus_sessions
              WHERE session_type = 'focus' AND start_at >= ?1 AND start_at < ?2
              ORDER BY start_at ASC",
@@ -520,6 +551,150 @@ impl Database {
         }
     }
 
+    // ---- Cheat day (single row) ------------------------------------------
+
+    pub fn get_cheat_day(&self) -> Result<Option<CheatDay>> {
+        let row = self.conn.query_row(
+            "SELECT start_at, end_at, created_at FROM cheat_day WHERE id = 1",
+            [],
+            |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                ))
+            },
+        );
+        match row {
+            Ok((s, e, c)) => Ok(Some(CheatDay {
+                start_at: parse_time(&s)?,
+                end_at: parse_time(&e)?,
+                created_at: parse_time(&c)?,
+            })),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn set_cheat_day(&self, cheat: Option<&CheatDay>) -> Result<()> {
+        match cheat {
+            None => {
+                self.conn
+                    .execute("DELETE FROM cheat_day WHERE id = 1", [])?;
+            }
+            Some(c) => {
+                self.conn.execute(
+                    "INSERT INTO cheat_day (id, start_at, end_at, created_at) VALUES (1, ?1, ?2, ?3)
+                     ON CONFLICT(id) DO UPDATE SET start_at = excluded.start_at, end_at = excluded.end_at, created_at = excluded.created_at",
+                    params![c.start_at.to_rfc3339(), c.end_at.to_rfc3339(), c.created_at.to_rfc3339()],
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    // ---- Schedules --------------------------------------------------------
+
+    pub fn list_schedules(&self) -> Result<Vec<Schedule>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT data_json FROM schedules ORDER BY rowid ASC")?;
+        let rows = stmt
+            .query_map([], |r| r.get::<_, String>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows
+            .iter()
+            .filter_map(|j| serde_json::from_str(j).ok())
+            .collect())
+    }
+
+    pub fn save_schedule(&self, s: &Schedule) -> Result<()> {
+        let json = serde_json::to_string(s).unwrap_or_default();
+        self.conn.execute(
+            "INSERT INTO schedules (id, data_json) VALUES (?1, ?2)
+             ON CONFLICT(id) DO UPDATE SET data_json = excluded.data_json",
+            params![s.id, json],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_schedule(&self, id: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM schedules WHERE id = ?1", params![id])?;
+        self.conn.execute(
+            "DELETE FROM schedule_runs WHERE schedule_id = ?1",
+            params![id],
+        )?;
+        Ok(())
+    }
+
+    /// The start of the last window of schedule `id` that was begun, so ending one early doesn't restart it.
+    pub fn schedule_run(&self, id: &str) -> Result<Option<DateTime<Utc>>> {
+        let row = self.conn.query_row(
+            "SELECT window_start FROM schedule_runs WHERE schedule_id = ?1",
+            params![id],
+            |r| r.get::<_, String>(0),
+        );
+        match row {
+            Ok(s) => Ok(Some(parse_time(&s)?)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn note_schedule_run(&self, id: &str, window_start: DateTime<Utc>) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO schedule_runs (schedule_id, window_start) VALUES (?1, ?2)
+             ON CONFLICT(schedule_id) DO UPDATE SET window_start = excluded.window_start",
+            params![id, window_start.to_rfc3339()],
+        )?;
+        Ok(())
+    }
+
+    // ---- Key/value (sync bookkeeping) ------------------------------------
+
+    pub fn kv_get(&self, key: &str) -> Result<Option<String>> {
+        let row = self.conn.query_row(
+            "SELECT value FROM sync_kv WHERE key = ?1",
+            params![key],
+            |r| r.get::<_, String>(0),
+        );
+        match row {
+            Ok(v) => Ok(Some(v)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    pub fn kv_set(&self, key: &str, value: &str) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO sync_kv (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
+    pub fn kv_delete(&self, key: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM sync_kv WHERE key = ?1", params![key])?;
+        Ok(())
+    }
+
+    /// A profile the account no longer has (a sync pull). Users never delete profiles on Windows.
+    pub fn delete_profile(&self, id: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM domain_rules WHERE policy_id = ?1", params![id])?;
+        self.conn.execute(
+            "DELETE FROM application_rules WHERE policy_id = ?1",
+            params![id],
+        )?;
+        self.conn
+            .execute("DELETE FROM feed_rules WHERE profile_id = ?1", params![id])?;
+        self.conn
+            .execute("DELETE FROM block_policies WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
     pub fn set_bedtime(&self, s: &BedtimeSettings) -> Result<()> {
         self.conn.execute(
             "INSERT INTO bedtime_settings
@@ -539,6 +714,43 @@ impl Database {
             ],
         )?;
         Ok(())
+    }
+}
+
+fn add_column_if_missing(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    definition: &str,
+) -> Result<()> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+    let exists = stmt
+        .query_map([], |r| r.get::<_, String>(1))?
+        .collect::<std::result::Result<Vec<_>, _>>()?
+        .iter()
+        .any(|c| c == column);
+    drop(stmt);
+    if !exists {
+        conn.execute(
+            &format!("ALTER TABLE {table} ADD COLUMN {column} {definition}"),
+            [],
+        )?;
+    }
+    Ok(())
+}
+
+fn origin_to_str(o: SessionOrigin) -> &'static str {
+    match o {
+        SessionOrigin::User => "user",
+        SessionOrigin::Schedule => "schedule",
+        SessionOrigin::Remote => "remote",
+    }
+}
+fn str_to_origin(s: &str) -> SessionOrigin {
+    match s {
+        "schedule" => SessionOrigin::Schedule,
+        "remote" => SessionOrigin::Remote,
+        _ => SessionOrigin::User,
     }
 }
 
@@ -811,5 +1023,125 @@ mod tests {
             .unwrap();
         assert_eq!(rows.len(), 1, "bedtime session must not be counted");
         assert_eq!(rows[0].id, focus.id);
+    }
+
+    #[test]
+    fn cheat_day_round_trips_and_clears() {
+        let db = Database::open_in_memory().unwrap();
+        assert!(db.get_cheat_day().unwrap().is_none());
+        let now = Utc::now();
+        let c = CheatDay {
+            start_at: now,
+            end_at: now + Duration::days(1),
+            created_at: now,
+        };
+        db.set_cheat_day(Some(&c)).unwrap();
+        let back = db.get_cheat_day().unwrap().unwrap();
+        assert_eq!(
+            (back.start_at.timestamp(), back.end_at.timestamp()),
+            (c.start_at.timestamp(), c.end_at.timestamp())
+        );
+        db.set_cheat_day(None).unwrap();
+        assert!(db.get_cheat_day().unwrap().is_none());
+    }
+
+    #[test]
+    fn schedules_and_their_runs_round_trip_and_delete_together() {
+        let db = Database::open_in_memory().unwrap();
+        let s = Schedule {
+            id: "s1".into(),
+            name: "Work".into(),
+            days: vec![0, 1, 2],
+            start_minute: 540,
+            end_minute: 720,
+            policy_id: "p".into(),
+            mode: EnforcementMode::Strict,
+            enabled: true,
+        };
+        db.save_schedule(&s).unwrap();
+        db.save_schedule(&Schedule {
+            name: "Work 2".into(),
+            ..s.clone()
+        })
+        .unwrap(); // upsert
+        assert_eq!(db.list_schedules().unwrap().len(), 1);
+        assert_eq!(db.list_schedules().unwrap()[0].name, "Work 2");
+
+        let t = Utc::now();
+        db.note_schedule_run("s1", t).unwrap();
+        assert_eq!(
+            db.schedule_run("s1").unwrap().unwrap().timestamp(),
+            t.timestamp()
+        );
+        db.delete_schedule("s1").unwrap();
+        assert!(db.list_schedules().unwrap().is_empty());
+        assert!(db.schedule_run("s1").unwrap().is_none());
+    }
+
+    #[test]
+    fn kv_round_trips_and_deletes() {
+        let db = Database::open_in_memory().unwrap();
+        assert_eq!(db.kv_get("k").unwrap(), None);
+        db.kv_set("k", "v1").unwrap();
+        db.kv_set("k", "v2").unwrap();
+        assert_eq!(db.kv_get("k").unwrap().as_deref(), Some("v2"));
+        db.kv_delete("k").unwrap();
+        assert_eq!(db.kv_get("k").unwrap(), None);
+    }
+
+    #[test]
+    fn delete_profile_removes_its_rules_too() {
+        let db = Database::open_in_memory().unwrap();
+        let mut p = Profile::new("Gone");
+        p.policy.domains.push(DomainRule::new("a.com"));
+        p.policy
+            .applications
+            .push(ApplicationRule::new(r"C:.exe", "A"));
+        db.save_profile(&p).unwrap();
+        db.delete_profile(&p.policy.id).unwrap();
+        assert!(db.get_profile(&p.policy.id).unwrap().is_none());
+        assert!(db.list_policy_ids().unwrap().is_empty());
+    }
+
+    #[test]
+    fn session_origin_round_trips_and_an_extension_is_kept() {
+        let db = Database::open_in_memory().unwrap();
+        let now = Utc::now();
+        let mut s = FocusSession::new("p", now, now + Duration::minutes(30), "dev");
+        s.origin = SessionOrigin::Remote;
+        db.save_session(&s).unwrap();
+        assert_eq!(
+            db.most_recent_session().unwrap().unwrap().origin,
+            SessionOrigin::Remote
+        );
+        s.end_at = now + Duration::minutes(60);
+        db.save_session(&s).unwrap();
+        assert_eq!(
+            db.most_recent_session()
+                .unwrap()
+                .unwrap()
+                .end_at
+                .timestamp(),
+            s.end_at.timestamp()
+        );
+    }
+
+    #[test]
+    fn an_older_database_without_the_origin_column_is_upgraded_in_place() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE focus_sessions (
+                id TEXT PRIMARY KEY, policy_id TEXT NOT NULL, session_type TEXT NOT NULL, start_at TEXT NOT NULL,
+                end_at TEXT NOT NULL, status TEXT NOT NULL, enforcement_mode TEXT NOT NULL, notification_mode TEXT NOT NULL,
+                created_at TEXT NOT NULL, completed_at TEXT, cancelled_at TEXT, device_id TEXT NOT NULL, revision INTEGER NOT NULL
+             );
+             INSERT INTO focus_sessions VALUES ('old','p','focus','2026-01-01T09:00:00+00:00','2026-01-01T10:00:00+00:00',
+                'completed','normal','normal','2026-01-01T09:00:00+00:00',NULL,NULL,'dev',1);",
+        )
+        .unwrap();
+        let db = Database::from_connection(conn).unwrap();
+        let s = db.most_recent_session().unwrap().unwrap();
+        assert_eq!(s.id, "old");
+        assert_eq!(s.origin, SessionOrigin::User);
     }
 }

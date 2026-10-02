@@ -38,6 +38,17 @@ export function Sidebar({ state, screen, onNavigate }: { state: AppState; screen
         {state.bedtime.enabled && <span className="nav-item__dot" />}
       </button>
 
+      <button className="nav-item" data-active={screen === "schedules"} onClick={() => onNavigate("schedules")}>
+        <FocusIcon />
+        <span className="nav-item__label">Schedules</span>
+        {state.schedules.some((s) => s.enabled) && <span className="nav-item__dot" />}
+      </button>
+      <button className="nav-item" data-active={screen === "cheatday"} onClick={() => onNavigate("cheatday")}>
+        <StatsIcon />
+        <span className="nav-item__label">Cheat day</span>
+        {state.cheatDay?.active && <span className="nav-item__dot" />}
+      </button>
+
       <div className="sidebar__footer">
         <div className="sidebar__footer-title">This PC</div>
         <div className="sidebar__footer-sub">

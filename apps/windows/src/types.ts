@@ -41,6 +41,8 @@ export interface Session {
   remainingMs: number;
   remainingLabel: string;
   progressPct: number;
+  /** A cheat day is pausing this session's blocking. */
+  paused: boolean;
 }
 
 export type UnlockPhase = "typing" | "waiting";
@@ -73,6 +75,10 @@ export interface TargetCount {
 }
 
 export interface Stats {
+  /** 0-100 for this week, null with no sessions. */
+  focusScore: number | null;
+  /** Counts-only text for "Copy this week". */
+  weekSummary: string;
   todayMinutes: number;
   sessionsCompleted: number;
   sessionsStarted: number;
@@ -88,6 +94,29 @@ export interface Stats {
 export interface Shield {
   targetKind: string;
   targetName: string;
+  /** Passes the running session still has for this app (0 = none offered). */
+  passesLeft: number;
+}
+
+export interface Schedule {
+  /** Empty for a new schedule. */
+  id: string;
+  name: string;
+  /** 0 = Monday .. 6 = Sunday: the days the window starts on. */
+  days: number[];
+  startMinute: number;
+  endMinute: number;
+  policyId: string;
+  mode: SessionMode;
+  enabled: boolean;
+  daysLabel: string;
+}
+
+export interface CheatDay {
+  startAt: string;
+  endAt: string;
+  active: boolean;
+  upcoming: boolean;
 }
 
 export interface Commitment {
@@ -115,6 +144,10 @@ export interface AppState {
   stats: Stats;
   commitment: Commitment | null;
   bedtime: Bedtime;
+  schedules: Schedule[];
+  cheatDay: CheatDay | null;
+  /** Day starts (RFC3339) a cheat day can still be planned for. */
+  cheatOptions: string[];
 }
 
 export type ScreenId =
@@ -126,4 +159,6 @@ export type ScreenId =
   | "stats"
   | "commitment"
   | "bedtime"
+  | "schedules"
+  | "cheatday"
   | "tray";

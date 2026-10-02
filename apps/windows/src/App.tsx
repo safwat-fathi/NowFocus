@@ -5,7 +5,9 @@ import { UnlockDialog } from "./components/UnlockDialog";
 import { api } from "./lib/api";
 import type { AppState, ScreenId } from "./types";
 
+import { CheatDay } from "./screens/CheatDay";
 import { Onboarding } from "./screens/Onboarding";
+import { Schedules } from "./screens/Schedules";
 import { Focus } from "./screens/Focus";
 import { Active } from "./screens/Active";
 import { Shield } from "./screens/Shield";
@@ -68,7 +70,7 @@ export default function App() {
             (view === "shield" || view === "tray" ? " main--dark" : "")
           }
         >
-          {view === "onboard" && <Onboarding onDone={() => navigate("focus")} />}
+          {view === "onboard" && <Onboarding state={state} onState={refresh} onStarted={() => navigate("active")} onDone={() => navigate("focus")} />}
           {view === "focus" && <Focus state={state} onState={refresh} onOpenSession={() => navigate("active")} />}
           {view === "active" && <Active state={state} onState={refresh} onBackToFocus={() => navigate("focus")} />}
           {view === "profiles" && <Profiles state={state} onState={refresh} />}
@@ -76,6 +78,8 @@ export default function App() {
           {view === "stats" && <Stats state={state} />}
           {view === "commitment" && <Commitment state={state} onState={refresh} />}
           {view === "bedtime" && <Bedtime state={state} onState={refresh} />}
+          {view === "schedules" && <Schedules state={state} onState={refresh} />}
+          {view === "cheatday" && <CheatDay state={state} onState={refresh} />}
           {view === "tray" && <Tray state={state} onState={refresh} onOpen={() => navigate(state.session ? "active" : "focus")} />}
           {view === "shield" && <Shield state={state} onState={refresh} />}
         </div>

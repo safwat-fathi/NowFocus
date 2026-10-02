@@ -55,6 +55,8 @@ pub struct SessionDto {
     pub remaining_ms: i64,
     pub remaining_label: String,
     pub progress_pct: f64,
+    /// A cheat day is pausing this session's blocking.
+    pub paused: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -98,6 +100,10 @@ pub struct TargetCountDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StatsDto {
+    /// 0..=100 for this week, or None with no sessions.
+    pub focus_score: Option<i64>,
+    /// Counts-only text for "Copy this week".
+    pub week_summary: String,
     pub today_minutes: i64,
     pub sessions_completed: i64,
     pub sessions_started: i64,
@@ -136,6 +142,34 @@ pub struct BedtimeDto {
 pub struct ShieldDto {
     pub target_kind: String,
     pub target_name: String,
+    /// Passes the running session still has for this app (0 = none offered).
+    pub passes_left: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduleDto {
+    /// Empty for a new schedule.
+    pub id: String,
+    pub name: String,
+    /// 0 = Monday .. 6 = Sunday: the days the window starts on.
+    pub days: Vec<u8>,
+    pub start_minute: i64,
+    pub end_minute: i64,
+    pub policy_id: String,
+    pub mode: String,
+    pub enabled: bool,
+    #[serde(default)]
+    pub days_label: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheatDayDto {
+    pub start_at: String,
+    pub end_at: String,
+    pub active: bool,
+    pub upcoming: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,4 +185,8 @@ pub struct AppStateDto {
     /// apply/clear and the 30s tick, never per-snapshot — see AppState).
     pub commitment: Option<CommitmentDto>,
     pub bedtime: BedtimeDto,
+    pub schedules: Vec<ScheduleDto>,
+    pub cheat_day: Option<CheatDayDto>,
+    /// Day starts (RFC3339) a cheat day can still be planned for.
+    pub cheat_options: Vec<String>,
 }

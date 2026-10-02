@@ -5,17 +5,20 @@ use chrono::{
     DateTime, Duration as ChronoDuration, Local, NaiveDate, NaiveDateTime, TimeZone, Utc,
 };
 use now_focus_core::block_policy::FeedRule;
+use now_focus_core::cheat_day::{self, CheatDay};
 use now_focus_core::history_stats::BlockEvent;
+use now_focus_core::schedule::{self, Schedule};
 use now_focus_core::{
-    bedtime_schedule, domain_validation, history_stats, session_engine, ApplicationRule,
+    bedtime_schedule, domain_validation, history_stats, passes, session_engine, ApplicationRule,
     BedtimeSettings, DomainRule, EnforcementMode, FocusSession, FocusSessionStatus, Profile,
-    SessionType,
+    SessionOrigin, SessionType,
 };
 use now_focus_ipc::CommitmentStatusWire;
 
 use crate::dto::{
-    AppStateDto, ApplicationRuleDto, BedtimeDto, CommitmentDto, DomainRuleDto, FeedRuleDto,
-    ProfileDto, SessionDto, ShieldDto, StatsDto, TargetCountDto, UnlockStateDto,
+    AppStateDto, ApplicationRuleDto, BedtimeDto, CheatDayDto, CommitmentDto, DomainRuleDto,
+    FeedRuleDto, ProfileDto, ScheduleDto, SessionDto, ShieldDto, StatsDto, TargetCountDto,
+    UnlockStateDto,
 };
 use crate::enforcer::Enforcer;
 
@@ -68,6 +71,15 @@ pub struct AppState {
     last_block_at: HashMap<String, DateTime<Utc>>,
     /// Debounce for the bedtime sleep-time screen lock (macOS's lastSleepLockAt).
     last_sleep_lock_at: Option<DateTime<Utc>>,
+    /// Whether the running session's policy is applied to the enforcer right now. False while a cheat day
+    /// pauses it, and until the first tick after launch re-asserts it.
+    session_enforced: bool,
+    /// Live per-app passes (lowercased exe path to when it ends) and how many the running session has used.
+    /// In memory only: a restart forgets them.
+    passes: Vec<(String, DateTime<Utc>)>,
+    passes_used: (Option<String>, usize),
+    /// The blocked app the Shield is showing, so a pass can name it.
+    shield_native: Option<String>,
 }
 
 impl AppState {
@@ -83,8 +95,16 @@ impl AppState {
         }
 
         let commitment = enforcer.commitment_status();
+        Ok(Self::from_parts(db, enforcer, device_id, commitment))
+    }
 
-        Ok(Self {
+    fn from_parts(
+        db: now_focus_core::Database,
+        enforcer: Box<dyn Enforcer>,
+        device_id: String,
+        commitment: Option<CommitmentStatusWire>,
+    ) -> Self {
+        Self {
             db,
             enforcer,
             device_id,
@@ -93,7 +113,11 @@ impl AppState {
             commitment,
             last_block_at: HashMap::new(),
             last_sleep_lock_at: None,
-        })
+            session_enforced: false,
+            passes: Vec::new(),
+            passes_used: (None, 0),
+            shield_native: None,
+        }
     }
 
     // ---- Recovery --------------------------------------------------
@@ -122,8 +146,10 @@ impl AppState {
             }
             if !session_engine::is_active(&session, Utc::now()) {
                 self.enforcer.clear()?;
+                self.session_enforced = false;
                 self.unlock = None;
                 self.shield = None;
+                self.shield_native = None;
             }
         }
         Ok(Some(session))
@@ -183,16 +209,61 @@ impl AppState {
 
         let bedtime = bedtime_to_dto(&self.db.get_bedtime().map_err(|e| e.to_string())?);
 
+        let now = Utc::now();
+        let cheat = self.cheat();
+        let paused = cheat.as_ref().is_some_and(|c| c.is_active(now));
+        let session_dto = session_dto.map(|mut s| {
+            s.paused = paused;
+            s
+        });
+        // How many passes the Shield can offer: an app block inside a running Normal or Strict session.
+        let shield = self.shield.clone().map(|mut sh| {
+            sh.passes_left = match (&session, &self.shield_native) {
+                (Some(s), Some(_))
+                    if session_engine::is_active(s, now) && sh.target_kind == "app" =>
+                {
+                    passes::passes_left(
+                        s.enforcement_mode,
+                        s.session_type,
+                        self.passes_used_for(&s.id),
+                    )
+                }
+                _ => 0,
+            };
+            sh
+        });
+        let schedules = self
+            .db
+            .list_schedules()
+            .map_err(|e| e.to_string())?
+            .iter()
+            .map(schedule_to_dto)
+            .collect();
+        let cheat_options = cheat_day::options(now, &Local, cheat.as_ref(), 14)
+            .into_iter()
+            .map(|d| d.to_rfc3339())
+            .collect();
+
         Ok(AppStateDto {
             profiles: profile_dtos,
             session: session_dto,
             unlock: unlock_dto,
-            shield: self.shield.clone(),
+            shield,
             health,
             stats,
             commitment: self.commitment.as_ref().map(commitment_to_dto),
             bedtime,
+            schedules,
+            cheat_day: cheat.as_ref().map(|c| cheat_to_dto(c, now)),
+            cheat_options,
         })
+    }
+
+    fn passes_used_for(&self, session_id: &str) -> usize {
+        match &self.passes_used {
+            (Some(id), n) if id == session_id => *n,
+            _ => 0,
+        }
     }
 
     /// Real Stats numbers, sourced from focus-only session rows (the DB query
@@ -239,14 +310,25 @@ impl AppState {
             .filter(|e| e.occurred_at >= today_start)
             .count() as i64;
 
+        let streak_days = history_stats::current_streak_days(&streak_sessions, today, &Local);
+        let focus_score = history_stats::focus_score(&week_sessions, &Local);
+        let week_summary = history_stats::week_summary_text(
+            &week_sessions,
+            week_events.len(),
+            streak_days,
+            focus_score,
+        );
+
         Ok(StatsDto {
+            focus_score,
+            week_summary,
             today_minutes: history_stats::total_focused_minutes(&today_sessions),
             sessions_completed: history_stats::completed_count(&today_sessions) as i64,
             sessions_started: today_sessions.len() as i64,
             block_attempts_today: today_block_attempts,
             week_minutes: history_stats::week_buckets_minutes(&week_sessions, monday, &Local)
                 .to_vec(),
-            streak_days: history_stats::current_streak_days(&streak_sessions, today, &Local),
+            streak_days,
             completion_rate: history_stats::completion_rate(&week_sessions),
             top_targets: history_stats::top_targets(&week_events, 3)
                 .into_iter()
@@ -268,8 +350,7 @@ impl AppState {
     pub fn rename_profile(&mut self, profile_id: &str, name: String) -> Result<(), String> {
         let mut profile = self.require_profile(profile_id)?;
         profile.policy.name = name;
-        profile.policy.updated_at = Utc::now();
-        self.db.save_profile(&profile).map_err(|e| e.to_string())
+        self.save_edited(profile)
     }
 
     /// Returns `Err` with mockup-matching copy for an invalid or duplicate
@@ -287,7 +368,7 @@ impl AppState {
             return Err(format!("{domain} is already on the list"));
         }
         profile.policy.domains.push(DomainRule::new(domain));
-        self.db.save_profile(&profile).map_err(|e| e.to_string())?;
+        self.save_edited(profile.clone())?;
         self.reapply_if_active(profile_id, &profile)
     }
 
@@ -295,7 +376,7 @@ impl AppState {
         self.reject_if_active(profile_id)?;
         let mut profile = self.require_profile(profile_id)?;
         profile.policy.domains.retain(|d| d.id != rule_id);
-        self.db.save_profile(&profile).map_err(|e| e.to_string())
+        self.save_edited(profile)
     }
 
     /// `native_identifier`/`display_name` come from a real OS file picker on
@@ -320,14 +401,14 @@ impl AppState {
             .policy
             .applications
             .push(ApplicationRule::new(native_identifier, display_name));
-        self.db.save_profile(&profile).map_err(|e| e.to_string())
+        self.save_edited(profile)
     }
 
     pub fn remove_application(&mut self, profile_id: &str, rule_id: &str) -> Result<(), String> {
         self.reject_if_active(profile_id)?;
         let mut profile = self.require_profile(profile_id)?;
         profile.policy.applications.retain(|a| a.id != rule_id);
-        self.db.save_profile(&profile).map_err(|e| e.to_string())
+        self.save_edited(profile)
     }
 
     pub fn toggle_feed(&mut self, profile_id: &str, feed_key: &str) -> Result<(), String> {
@@ -346,6 +427,12 @@ impl AppState {
                 enabled: true,
             });
         }
+        self.save_edited(profile)
+    }
+
+    /// Every user edit goes through here so `updated_at` moves: sync uses it as the time of the change.
+    fn save_edited(&mut self, mut profile: Profile) -> Result<(), String> {
+        profile.policy.updated_at = Utc::now();
         self.db.save_profile(&profile).map_err(|e| e.to_string())
     }
 
@@ -375,7 +462,10 @@ impl AppState {
     /// immediately (idempotent — the policy only grew).
     fn reapply_if_active(&mut self, profile_id: &str, profile: &Profile) -> Result<(), String> {
         if let Some(session) = self.recover()? {
-            if session.policy_id == profile_id && session_engine::is_active(&session, Utc::now()) {
+            if session.policy_id == profile_id
+                && session_engine::is_active(&session, Utc::now())
+                && self.session_enforced
+            {
                 self.enforcer.apply(&profile.policy)?;
             }
         }
@@ -407,11 +497,177 @@ impl AppState {
         );
         session.enforcement_mode = mode;
 
-        self.enforcer.apply(&profile.policy)?;
+        // A session started on a cheat day runs paused: nothing is blocked until the day ends.
+        let paused = self.cheat_active(now);
+        if !paused {
+            self.enforcer.apply(&profile.policy)?;
+        }
+        self.session_enforced = !paused;
         self.db.save_session(&session).map_err(|e| e.to_string())?;
         self.db
             .record_event(&session.id, "SESSION_STARTED", None)
             .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    // ---- Cheat day -----------------------------------------------------------
+
+    fn cheat(&self) -> Option<CheatDay> {
+        self.db.get_cheat_day().ok().flatten()
+    }
+
+    fn cheat_active(&self, now: DateTime<Utc>) -> bool {
+        self.cheat().is_some_and(|c| c.is_active(now))
+    }
+
+    /// Plan a day off from blocking (see `now_focus_core::cheat_day` for the rules). `day_start` is one of the
+    /// instants `snapshot().cheat_options` offered, as RFC3339.
+    pub fn schedule_cheat_day(&mut self, day_start: &str) -> Result<(), String> {
+        let day = DateTime::parse_from_rfc3339(day_start)
+            .map_err(|_| "That isn't a day".to_string())?
+            .with_timezone(&Utc);
+        let now = Utc::now();
+        if !cheat_day::can_schedule(now, day, self.cheat().as_ref(), &Local) {
+            return Err(
+                "A cheat day has to be at least a day ahead, and a week from any other."
+                    .to_string(),
+            );
+        }
+        self.db
+            .set_cheat_day(Some(&cheat_day::for_day(day, now, &Local)))
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn cancel_cheat_day(&mut self) -> Result<(), String> {
+        if let Some(current) = self.cheat() {
+            self.db
+                .set_cheat_day(cheat_day::cancel(&current, Utc::now()).as_ref())
+                .map_err(|e| e.to_string())?;
+        }
+        self.reconcile_enforcement();
+        Ok(())
+    }
+
+    /// Brings the enforcer in line with now: a running session is applied unless a cheat day pauses it, and
+    /// lifted while one does. Runs on the 30s tick and after cheat-day changes, so a session also comes back
+    /// when the day ends, and after the app restarts mid-session. The service-held commitment is untouched.
+    pub fn reconcile_enforcement(&mut self) {
+        let now = Utc::now();
+        let Some(session) = self.recover().ok().flatten() else {
+            return;
+        };
+        let want = session_engine::is_active(&session, now) && !self.cheat_active(now);
+        if want && !self.session_enforced {
+            if let Ok(Some(profile)) = self.db.get_profile(&session.policy_id) {
+                if self.enforcer.apply(&profile.policy).is_ok() {
+                    self.session_enforced = true;
+                }
+            }
+        } else if !want && self.session_enforced && self.enforcer.clear().is_ok() {
+            self.session_enforced = false;
+        }
+    }
+
+    // ---- Schedules -----------------------------------------------------------
+
+    pub fn save_schedule(&mut self, s: ScheduleDto) -> Result<(), String> {
+        let mode = parse_mode(&s.mode)?;
+        if s.name.trim().is_empty() || s.days.is_empty() {
+            return Err("A schedule needs a name and at least one day.".to_string());
+        }
+        self.require_profile(&s.policy_id)
+            .map_err(|_| "Pick a profile that exists.".to_string())?;
+        let id = if s.id.is_empty() {
+            uuid::Uuid::new_v4().to_string()
+        } else {
+            s.id
+        };
+        self.db
+            .save_schedule(&Schedule {
+                id,
+                name: s.name.trim().to_string(),
+                days: s.days.into_iter().filter(|d| *d < 7).collect(),
+                start_minute: s.start_minute.clamp(0, 1439),
+                end_minute: s.end_minute.clamp(0, 1439),
+                policy_id: s.policy_id,
+                mode,
+                enabled: s.enabled,
+            })
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn delete_schedule(&mut self, id: &str) -> Result<(), String> {
+        self.db.delete_schedule(id).map_err(|e| e.to_string())
+    }
+
+    /// Runs on the 30s tick: starts the session a recurring schedule says should be running now. Nothing
+    /// starts by itself on a cheat day, while another session runs, or for a window already begun (even if
+    /// the user ended it early).
+    pub fn schedule_tick(&mut self) {
+        let now = Utc::now();
+        if self.cheat_active(now) {
+            return;
+        }
+        let Ok(schedules) = self.db.list_schedules() else {
+            return;
+        };
+        let Some(due) = schedule::current(&schedules, now, &Local) else {
+            return;
+        };
+        if self.db.schedule_run(&due.schedule_id).ok().flatten() == Some(due.start) {
+            return;
+        }
+        let running = self
+            .recover()
+            .ok()
+            .flatten()
+            .is_some_and(|s| session_engine::is_active(&s, now));
+        if running {
+            return;
+        }
+        let Ok(Some(profile)) = self.db.get_profile(&due.policy_id) else {
+            return;
+        };
+
+        let mut session = FocusSession::new(&profile.policy.id, now, due.end, &self.device_id);
+        session.enforcement_mode = due.mode;
+        session.origin = SessionOrigin::Schedule;
+        // Enforce first; only persist the session if enforcement took (like Bedtime).
+        if self.enforcer.apply(&profile.policy).is_ok() {
+            self.session_enforced = true;
+            let _ = self.db.note_schedule_run(&due.schedule_id, due.start);
+            let _ = self.db.save_session(&session);
+            let _ = self.db.record_event(&session.id, "SESSION_STARTED", None);
+        }
+    }
+
+    // ---- Passes -------------------------------------------------------------
+
+    /// "Open <app> for 5 min": lets the app the Shield just closed stay open, in a Normal or Strict session,
+    /// twice per session. Not a cancel, so it never touches the unlock flow. Apps only: a hosts-file block
+    /// can't be lifted for one site without lifting it for all.
+    pub fn use_pass(&mut self) -> Result<(), String> {
+        let now = Utc::now();
+        let session = self
+            .recover()?
+            .filter(|s| session_engine::is_active(s, now))
+            .ok_or("No session is running")?;
+        let native = self
+            .shield_native
+            .clone()
+            .ok_or("There's nothing to open")?;
+        let used = self.passes_used_for(&session.id);
+        if passes::passes_left(session.enforcement_mode, session.session_type, used) == 0 {
+            return Err("No passes left in this session".to_string());
+        }
+        self.passes.retain(|(_, until)| *until > now);
+        self.passes.push((
+            native.to_lowercase(),
+            now + ChronoDuration::seconds(passes::DURATION_SECS),
+        ));
+        self.passes_used = (Some(session.id), used + 1);
+        self.shield = None;
+        self.shield_native = None;
         Ok(())
     }
 
@@ -431,12 +687,14 @@ impl AppState {
         session.status = FocusSessionStatus::Cancelled;
         session.cancelled_at = Some(Utc::now());
         self.enforcer.clear()?;
+        self.session_enforced = false;
         self.db.save_session(&session).map_err(|e| e.to_string())?;
         self.db
             .record_event(&session.id, event, None)
             .map_err(|e| e.to_string())?;
         self.unlock = None;
         self.shield = None;
+        self.shield_native = None;
         Ok(())
     }
 
@@ -505,7 +763,9 @@ impl AppState {
         self.shield = Some(ShieldDto {
             target_kind: target_kind.clone(),
             target_name: target_name.clone(),
+            passes_left: 0, // filled in per snapshot
         });
+        self.shield_native = None; // only a real app detection (check_foreground_app) sets it
 
         // 3s dedup per target — a single "try to open it" gesture can fire
         // several foreground-change events (mirrors macOS/Android
@@ -550,7 +810,16 @@ impl AppState {
     #[cfg_attr(not(windows), allow(dead_code))]
     pub fn check_foreground_app(&mut self, exe_path: &str) -> Option<String> {
         let session = self.recover().ok()??;
-        if !session_engine::is_active(&session, Utc::now()) {
+        let now = Utc::now();
+        if !session_engine::is_active(&session, now) || self.cheat_active(now) {
+            return None;
+        }
+        // An app the user was just given a pass for stays open until the pass ends.
+        if self
+            .passes
+            .iter()
+            .any(|(p, until)| *until > now && p.eq_ignore_ascii_case(exe_path))
+        {
             return None;
         }
         let profile = self.db.get_profile(&session.policy_id).ok()??;
@@ -560,7 +829,9 @@ impl AppState {
             .iter()
             .find(|a| a.enabled && a.native_identifier.eq_ignore_ascii_case(exe_path))?;
         let display_name = matched.display_name.clone();
+        let native = matched.native_identifier.clone();
         let _ = self.record_block_attempt("app".to_string(), display_name.clone());
+        self.shield_native = Some(native);
         Some(display_name)
     }
 
@@ -638,6 +909,10 @@ impl AppState {
         }
 
         let now = Utc::now();
+        // Nothing starts by itself on a cheat day, and the screen isn't locked at sleep time.
+        if self.cheat_active(now) {
+            return false;
+        }
         let session = self.recover().ok().flatten();
         let active = session
             .as_ref()
@@ -664,6 +939,7 @@ impl AppState {
                     bedtime.enforcement_mode = EnforcementMode::Locked;
                     // Enforce first; only persist the session if enforcement took.
                     if self.enforcer.apply(&profile.policy).is_ok() {
+                        self.session_enforced = true;
                         let _ = self.db.save_session(&bedtime);
                         let _ = self.db.record_event(&bedtime.id, "SESSION_STARTED", None);
                     }
@@ -763,6 +1039,7 @@ fn session_to_dto(session: &FocusSession, profile_name: &str) -> SessionDto {
         remaining_ms: remaining.num_milliseconds(),
         remaining_label: format_remaining(remaining),
         progress_pct: (elapsed as f64 / total as f64) * 100.0,
+        paused: false, // set per snapshot, from the cheat day
     }
 }
 
@@ -822,6 +1099,29 @@ fn commitment_to_dto(w: &CommitmentStatusWire) -> CommitmentDto {
     }
 }
 
+fn schedule_to_dto(s: &Schedule) -> ScheduleDto {
+    ScheduleDto {
+        id: s.id.clone(),
+        name: s.name.clone(),
+        days: s.days.clone(),
+        start_minute: s.start_minute,
+        end_minute: s.end_minute,
+        policy_id: s.policy_id.clone(),
+        mode: mode_str(s.mode).to_string(),
+        enabled: s.enabled,
+        days_label: schedule::days_label(&s.days),
+    }
+}
+
+fn cheat_to_dto(c: &CheatDay, now: DateTime<Utc>) -> CheatDayDto {
+    CheatDayDto {
+        start_at: c.start_at.to_rfc3339(),
+        end_at: c.end_at.to_rfc3339(),
+        active: c.is_active(now),
+        upcoming: now < c.start_at,
+    }
+}
+
 fn bedtime_to_dto(s: &BedtimeSettings) -> BedtimeDto {
     BedtimeDto {
         enabled: s.enabled,
@@ -844,16 +1144,30 @@ mod tests {
     /// pushed to the enforcer.
     struct FakeEnforcer {
         applied: Arc<Mutex<Vec<BlockPolicy>>>,
+        clears: Arc<std::sync::atomic::AtomicUsize>,
     }
 
     impl FakeEnforcer {
         fn new() -> (Self, Arc<Mutex<Vec<BlockPolicy>>>) {
+            let (fake, log, _) = Self::counting();
+            (fake, log)
+        }
+
+        /// Also returns how many times `clear` was called.
+        fn counting() -> (
+            Self,
+            Arc<Mutex<Vec<BlockPolicy>>>,
+            Arc<std::sync::atomic::AtomicUsize>,
+        ) {
             let log = Arc::new(Mutex::new(Vec::new()));
+            let clears = Arc::new(std::sync::atomic::AtomicUsize::new(0));
             (
                 Self {
                     applied: log.clone(),
+                    clears: clears.clone(),
                 },
                 log,
+                clears,
             )
         }
     }
@@ -864,6 +1178,8 @@ mod tests {
             Ok(())
         }
         fn clear(&mut self) -> Result<(), String> {
+            self.clears
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             Ok(())
         }
         fn health(&self) -> crate::dto::HealthDto {
@@ -894,16 +1210,7 @@ mod tests {
                 db.save_profile(&starter).map_err(|e| e.to_string())?;
             }
             let commitment = enforcer.commitment_status();
-            Ok(Self {
-                db,
-                enforcer,
-                device_id,
-                unlock: None,
-                shield: None,
-                commitment,
-                last_block_at: HashMap::new(),
-                last_sleep_lock_at: None,
-            })
+            Ok(Self::from_parts(db, enforcer, device_id, commitment))
         }
     }
 
@@ -1045,6 +1352,277 @@ mod tests {
         assert!(
             snap.shield.is_none(),
             "the shield covers the screen and has no unlock UI, so it must step aside"
+        );
+    }
+
+    // ---- Cheat day, passes, schedules --------------------------------------
+
+    fn cheat_now() -> CheatDay {
+        let now = Utc::now();
+        CheatDay {
+            start_at: now - ChronoDuration::hours(1),
+            end_at: now + ChronoDuration::hours(5),
+            created_at: now - ChronoDuration::days(3),
+        }
+    }
+
+    fn app_profile(state: &mut AppState) -> String {
+        state.create_profile("Apps".into()).unwrap();
+        let id = state
+            .snapshot()
+            .unwrap()
+            .profiles
+            .iter()
+            .find(|p| p.name == "Apps")
+            .unwrap()
+            .id
+            .clone();
+        state
+            .add_application(&id, r"C:\Apps\Chat.exe".into(), "Chat".into())
+            .unwrap();
+        id
+    }
+
+    #[test]
+    fn a_session_started_on_a_cheat_day_runs_paused_and_applies_nothing() {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, log, _) = FakeEnforcer::counting();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        let id = app_profile(&mut state);
+        state.db.set_cheat_day(Some(&cheat_now())).unwrap();
+
+        state.start_session(&id, 60, "locked").unwrap();
+
+        assert!(
+            log.lock().unwrap().is_empty(),
+            "nothing is blocked on a cheat day"
+        );
+        let snap = state.snapshot().unwrap();
+        assert!(snap.session.unwrap().paused);
+        assert!(
+            state.check_foreground_app(r"C:\Apps\Chat.exe").is_none(),
+            "apps aren't closed either"
+        );
+    }
+
+    #[test]
+    fn ending_a_cheat_day_early_puts_the_running_session_back() {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, log, _) = FakeEnforcer::counting();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        let id = app_profile(&mut state);
+        state.db.set_cheat_day(Some(&cheat_now())).unwrap();
+        state.start_session(&id, 60, "normal").unwrap();
+
+        state.cancel_cheat_day().unwrap(); // a live one ends now
+
+        assert_eq!(log.lock().unwrap().len(), 1, "the session is applied again");
+        assert!(!state.snapshot().unwrap().session.unwrap().paused);
+        assert!(state.check_foreground_app(r"C:\Apps\Chat.exe").is_some());
+    }
+
+    #[test]
+    fn a_cheat_day_that_starts_mid_session_lifts_enforcement_on_the_next_tick() {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, _log, clears) = FakeEnforcer::counting();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        let id = app_profile(&mut state);
+        state.start_session(&id, 60, "locked").unwrap();
+        let before = clears.load(std::sync::atomic::Ordering::SeqCst);
+
+        state.db.set_cheat_day(Some(&cheat_now())).unwrap();
+        state.reconcile_enforcement();
+
+        assert_eq!(clears.load(std::sync::atomic::Ordering::SeqCst), before + 1);
+        state.reconcile_enforcement(); // idempotent
+        assert_eq!(clears.load(std::sync::atomic::Ordering::SeqCst), before + 1);
+    }
+
+    #[test]
+    fn a_restart_mid_session_reapplies_it() {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, log, _) = FakeEnforcer::counting();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        let id = app_profile(&mut state);
+        state.start_session(&id, 60, "normal").unwrap();
+        log.lock().unwrap().clear();
+        state.session_enforced = false; // what a fresh process starts with
+
+        state.reconcile_enforcement();
+
+        assert_eq!(log.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_pass_lets_a_blocked_app_stay_open_twice_per_session() {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, _) = FakeEnforcer::new();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        let id = app_profile(&mut state);
+        state.start_session(&id, 60, "strict").unwrap();
+
+        assert!(state.check_foreground_app(r"C:\Apps\Chat.exe").is_some());
+        assert_eq!(state.snapshot().unwrap().shield.unwrap().passes_left, 2);
+        state.use_pass().unwrap();
+        assert!(state.snapshot().unwrap().shield.is_none());
+        assert!(
+            state.check_foreground_app(r"c:pps\chat.EXE").is_none(),
+            "open for the pass, matched case-insensitively"
+        );
+
+        // A second block (another app's pass can't be taken for this one): force the shield and spend the second pass.
+        state.passes.clear();
+        assert!(state.check_foreground_app(r"C:\Apps\Chat.exe").is_some());
+        assert_eq!(state.snapshot().unwrap().shield.unwrap().passes_left, 1);
+        state.use_pass().unwrap();
+
+        state.passes.clear();
+        assert!(state.check_foreground_app(r"C:\Apps\Chat.exe").is_some());
+        assert_eq!(state.snapshot().unwrap().shield.unwrap().passes_left, 0);
+        assert!(state.use_pass().unwrap_err().contains("No passes left"));
+    }
+
+    #[test]
+    fn locked_and_bedtime_sessions_offer_no_pass() {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, _) = FakeEnforcer::new();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        let id = app_profile(&mut state);
+        state.start_session(&id, 60, "locked").unwrap();
+        assert!(state.check_foreground_app(r"C:\Apps\Chat.exe").is_some());
+        assert_eq!(state.snapshot().unwrap().shield.unwrap().passes_left, 0);
+        assert!(state.use_pass().is_err());
+    }
+
+    #[test]
+    fn a_simulated_block_has_nothing_to_pass() {
+        let (mut state, _id, _log) = setup();
+        state
+            .simulate_block("app".into(), "Notepad".into())
+            .unwrap();
+        assert_eq!(state.snapshot().unwrap().shield.unwrap().passes_left, 0);
+        assert!(state.use_pass().is_err());
+    }
+
+    fn all_day_schedule(policy_id: &str, mode: &str) -> ScheduleDto {
+        // A window that contains now, whatever time the test runs: it started 5 minutes ago and lasts 2 hours.
+        let minute_of_day = {
+            use chrono::Timelike;
+            let t = Local::now();
+            (t.hour() * 60 + t.minute()) as i64
+        };
+        let start = (minute_of_day - 5).rem_euclid(1440);
+        ScheduleDto {
+            id: String::new(),
+            name: "Work".into(),
+            days: vec![0, 1, 2, 3, 4, 5, 6],
+            start_minute: start,
+            end_minute: (start + 120) % 1440,
+            policy_id: policy_id.into(),
+            mode: mode.into(),
+            enabled: true,
+            days_label: String::new(),
+        }
+    }
+
+    #[test]
+    fn a_due_schedule_starts_a_session_once_and_not_again_after_it_is_ended() {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, log, _) = FakeEnforcer::counting();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        let id = app_profile(&mut state);
+        state
+            .save_schedule(all_day_schedule(&id, "normal"))
+            .unwrap();
+
+        state.schedule_tick();
+        let session = state
+            .snapshot()
+            .unwrap()
+            .session
+            .expect("the schedule started a session");
+        assert_eq!(session.profile_id, id);
+        assert_eq!(
+            state.db.most_recent_session().unwrap().unwrap().origin,
+            SessionOrigin::Schedule
+        );
+        assert_eq!(log.lock().unwrap().len(), 1);
+
+        state.end_session_normal().unwrap();
+        state.schedule_tick(); // the window was already begun: ending it early sticks
+        assert!(state.snapshot().unwrap().session.is_none());
+    }
+
+    #[test]
+    fn schedules_wait_for_a_running_session_and_for_a_cheat_day() {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, _) = FakeEnforcer::new();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        let id = app_profile(&mut state);
+        state
+            .save_schedule(all_day_schedule(&id, "normal"))
+            .unwrap();
+
+        state.db.set_cheat_day(Some(&cheat_now())).unwrap();
+        state.schedule_tick();
+        assert!(
+            state.snapshot().unwrap().session.is_none(),
+            "nothing starts on a cheat day"
+        );
+
+        state.cancel_cheat_day().unwrap();
+        let other = state
+            .snapshot()
+            .unwrap()
+            .profiles
+            .iter()
+            .find(|p| p.name == "Deep Work")
+            .unwrap()
+            .id
+            .clone();
+        state.start_session(&other, 30, "normal").unwrap();
+        state.schedule_tick();
+        assert_eq!(
+            state.snapshot().unwrap().session.unwrap().profile_id,
+            other,
+            "the running session holds"
+        );
+    }
+
+    #[test]
+    fn a_schedule_needs_a_name_a_day_and_a_real_profile() {
+        let (mut state, id, _log) = setup();
+        let mut s = all_day_schedule(&id, "normal");
+        s.name = " ".into();
+        assert!(state.save_schedule(s).is_err());
+        let mut s = all_day_schedule(&id, "normal");
+        s.days.clear();
+        assert!(state.save_schedule(s).is_err());
+        let s = all_day_schedule("missing", "normal");
+        assert!(state.save_schedule(s).is_err());
+        let s = all_day_schedule(&id, "weird");
+        assert!(state.save_schedule(s).is_err());
+    }
+
+    #[test]
+    fn a_cheat_day_can_only_be_planned_a_day_ahead() {
+        let (mut state, _id, _log) = setup();
+        let soon = (Utc::now() + ChronoDuration::hours(2)).to_rfc3339();
+        assert!(state.schedule_cheat_day(&soon).is_err());
+        let ok = state.snapshot().unwrap().cheat_options[0].clone();
+        state.schedule_cheat_day(&ok).unwrap();
+        assert!(state.snapshot().unwrap().cheat_day.unwrap().upcoming);
+        // One a week: a day two days from it is refused.
+        let first = DateTime::parse_from_rfc3339(&ok)
+            .unwrap()
+            .with_timezone(&Utc);
+        assert!(state
+            .schedule_cheat_day(&(first + ChronoDuration::days(2)).to_rfc3339())
+            .is_err());
+        state.cancel_cheat_day().unwrap();
+        assert!(
+            state.snapshot().unwrap().cheat_day.is_none(),
+            "cancelling a planned day removes it"
         );
     }
 }

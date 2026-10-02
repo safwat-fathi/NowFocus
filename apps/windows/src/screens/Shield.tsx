@@ -1,4 +1,4 @@
-import { api } from "../lib/api";
+import { api, endNormalAfterAsking } from "../lib/api";
 import type { AppState } from "../types";
 import { ArrowRightIcon } from "../components/Icons";
 
@@ -15,10 +15,20 @@ export function Shield({ state, onState }: { state: AppState; onState: (s: AppSt
     onState(await api.dismissShield());
   }
 
+  async function usePass() {
+    try {
+      onState(await api.usePass());
+    } catch {
+      /* the session ended or no passes are left: the next poll shows the real state */
+    }
+  }
+
   async function endEarly() {
     if (!session) return;
-    if (session.mode === "normal") onState(await api.endSessionNormal());
-    else onState(await api.beginUnlock());
+    if (session.mode === "normal") {
+      const ended = await endNormalAfterAsking();
+      if (ended) onState(ended);
+    } else onState(await api.beginUnlock());
   }
 
   return (
@@ -50,6 +60,14 @@ export function Shield({ state, onState }: { state: AppState; onState: (s: AppSt
           Back to work
           <ArrowRightIcon size={22} />
         </button>
+        {shield.passesLeft > 0 && (
+          <button className="btn btn-secondary" onClick={usePass} style={{ minHeight: 48, justifyContent: "flex-start", fontSize: 15, marginTop: 12 }}>
+            Let me use {shield.targetName} for 5 min ({shield.passesLeft} left)
+          </button>
+        )}
+        {shield.passesLeft > 0 && (
+          <p style={{ fontSize: 12, color: "var(--color-neutral-400)", margin: "6px 0 0" }}>Open it again after this closes. Only that app is let through.</p>
+        )}
         <button className="btn" onClick={endEarly} style={{ minHeight: 48, justifyContent: "flex-start", color: "var(--color-neutral-300)", fontSize: 15, marginTop: 6, paddingLeft: 0 }}>
           I really need it
         </button>

@@ -75,18 +75,29 @@ pub fn week_buckets_minutes<Tz: TimeZone>(
     buckets
 }
 
-/// Consecutive days with at least one session, walking back from the most recent
-/// active day. One-day grace: a streak whose most recent day was yesterday
-/// still counts (it shouldn't zero out before today's session happens).
+/// A day counts toward the streak with at least this much real focused time, so opening and ending a session at
+/// once doesn't.
+pub const STREAK_MIN_MINUTES: i64 = 10;
+
+/// Consecutive days with at least [`STREAK_MIN_MINUTES`] of focused time, walking back from the most recent
+/// such day. One-day grace: a streak whose most recent day was yesterday still counts (it shouldn't zero out
+/// before today's session happens). Mirrors Android's `currentStreakDays`.
 pub fn current_streak_days<Tz: TimeZone>(
     sessions: &[FocusSession],
     today: NaiveDate,
     tz: &Tz,
 ) -> i64 {
-    use std::collections::HashSet;
-    let active: HashSet<NaiveDate> = sessions
-        .iter()
-        .map(|s| s.start_at.with_timezone(tz).date_naive())
+    use std::collections::{HashMap, HashSet};
+    let mut per_day: HashMap<NaiveDate, i64> = HashMap::new();
+    for s in sessions {
+        *per_day
+            .entry(s.start_at.with_timezone(tz).date_naive())
+            .or_insert(0) += focused_minutes(s);
+    }
+    let active: HashSet<NaiveDate> = per_day
+        .into_iter()
+        .filter(|(_, minutes)| *minutes >= STREAK_MIN_MINUTES)
+        .map(|(d, _)| d)
         .collect();
     let Some(most_recent) = active.iter().max().copied() else {
         return 0;
@@ -101,6 +112,53 @@ pub fn current_streak_days<Tz: TimeZone>(
         day -= Duration::days(1);
     }
     streak
+}
+
+/// 0-100 for the sessions of one week: half the completion rate, 30% focused time (five hours is full marks),
+/// 20% days with focused time (five is full marks). `None` for a week with no sessions, so a quiet week isn't a
+/// zero. Mirrors Android's `focusScore`: keep them in step.
+pub fn focus_score<Tz: TimeZone>(sessions: &[FocusSession], tz: &Tz) -> Option<i64> {
+    if sessions.is_empty() {
+        return None;
+    }
+    let minutes = total_focused_minutes(sessions) as f64;
+    let days = sessions
+        .iter()
+        .filter(|s| focused_minutes(s) > 0)
+        .map(|s| s.start_at.with_timezone(tz).date_naive())
+        .collect::<std::collections::HashSet<_>>()
+        .len() as f64;
+    let score = 0.5 * completion_rate(sessions)
+        + 0.3 * (minutes / 300.0).min(1.0)
+        + 0.2 * (days / 5.0).min(1.0);
+    Some((score * 100.0).round() as i64)
+}
+
+/// The text "Copy this week" puts on the clipboard. Counts only: no app names, sites or times of day.
+pub fn week_summary_text(
+    sessions: &[FocusSession],
+    turned_away: usize,
+    streak_days: i64,
+    score: Option<i64>,
+) -> String {
+    let minutes = total_focused_minutes(sessions);
+    let n = sessions_count(sessions);
+    let mut text = format!(
+        "My NowFocus week: {}h {}m focused across {} {} ({} completed).",
+        minutes / 60,
+        minutes % 60,
+        n,
+        if n == 1 { "session" } else { "sessions" },
+        completed_count(sessions)
+    );
+    if let Some(s) = score {
+        text.push_str(&format!(" Focus score {s}."));
+    }
+    if streak_days > 0 {
+        text.push_str(&format!(" {streak_days}-day streak."));
+    }
+    text.push_str(&format!(" Turned away {turned_away} times."));
+    text
 }
 
 /// The most-turned-away targets, most frequent first (ties broken by name for
@@ -208,5 +266,81 @@ mod tests {
         assert_eq!(top[0], ("Steam".to_string(), 2));
         assert_eq!(top[1], ("Discord".to_string(), 1));
         assert_eq!(turned_away_count(&events), 4);
+    }
+
+    fn cancelled_after(start: DateTime<Utc>, scheduled: i64, actual: i64) -> FocusSession {
+        let mut s = session(start, scheduled, FocusSessionStatus::Cancelled);
+        s.cancelled_at = Some(start + Duration::minutes(actual));
+        s
+    }
+
+    #[test]
+    fn a_session_ended_almost_at_once_does_not_keep_the_streak_alive() {
+        let today = NaiveDate::from_ymd_opt(2026, 1, 10).unwrap();
+        let day = |d: u32| Utc.with_ymd_and_hms(2026, 1, d, 9, 0, 0).unwrap();
+        let rows = vec![
+            session(day(9), 30, FocusSessionStatus::Completed),
+            cancelled_after(day(10), 60, 1),
+        ];
+        assert_eq!(current_streak_days(&rows, today, &Utc), 1);
+        assert_eq!(
+            current_streak_days(&[cancelled_after(day(10), 60, 2)], today, &Utc),
+            0
+        );
+    }
+
+    #[test]
+    fn several_short_sessions_in_a_day_add_up_toward_the_streak() {
+        let today = NaiveDate::from_ymd_opt(2026, 1, 10).unwrap();
+        let t = |h: u32| Utc.with_ymd_and_hms(2026, 1, 10, h, 0, 0).unwrap();
+        let rows = vec![cancelled_after(t(9), 30, 5), cancelled_after(t(11), 30, 6)];
+        assert_eq!(current_streak_days(&rows, today, &Utc), 1);
+    }
+
+    #[test]
+    fn focus_score_is_none_for_an_empty_week_and_full_marks_for_a_perfect_one() {
+        assert_eq!(focus_score(&[], &Utc), None);
+        let monday = Utc.with_ymd_and_hms(2026, 1, 5, 9, 0, 0).unwrap();
+        let perfect: Vec<_> = (0..5)
+            .map(|d| {
+                session(
+                    monday + Duration::days(d),
+                    60,
+                    FocusSessionStatus::Completed,
+                )
+            })
+            .collect(); // 5 days x 1h = 5h, all completed
+        assert_eq!(focus_score(&perfect, &Utc), Some(100));
+    }
+
+    #[test]
+    fn focus_score_weighs_completion_time_and_days() {
+        let monday = Utc.with_ymd_and_hms(2026, 1, 5, 9, 0, 0).unwrap();
+        // 0.5*1 + 0.3*(60/300) + 0.2*(1/5) = 0.60
+        assert_eq!(
+            focus_score(&[session(monday, 60, FocusSessionStatus::Completed)], &Utc),
+            Some(60)
+        );
+        // completion 0, 30 focused minutes: 0.3*0.1 + 0.2*0.2 = 0.07
+        assert_eq!(
+            focus_score(&[cancelled_after(monday, 60, 30)], &Utc),
+            Some(7)
+        );
+    }
+
+    #[test]
+    fn the_weekly_summary_has_counts_only() {
+        let monday = Utc.with_ymd_and_hms(2026, 1, 5, 9, 0, 0).unwrap();
+        let rows = vec![
+            session(monday, 90, FocusSessionStatus::Completed),
+            cancelled_after(monday + Duration::days(1), 60, 30),
+        ];
+        let text = week_summary_text(&rows, 1, 2, focus_score(&rows, &Utc));
+        assert!(
+            text.starts_with("My NowFocus week: 2h 0m focused across 2 sessions (1 completed)."),
+            "{text}"
+        );
+        assert!(text.contains("2-day streak."), "{text}");
+        assert!(text.contains("Turned away 1 times."), "{text}");
     }
 }

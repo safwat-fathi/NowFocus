@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppState } from "../types";
+import { ask } from "@tauri-apps/plugin-dialog";
+import type { AppState, Schedule } from "../types";
 
 // One wrapper per #[tauri::command] in src-tauri/src/commands.rs. Every
 // mutating call returns the fresh AppState — same "recompute everything
@@ -37,6 +38,12 @@ export const api = {
     invoke<AppState>("simulate_block", { targetKind, targetName }),
   dismissShield: () => invoke<AppState>("dismiss_shield"),
 
+  usePass: () => invoke<AppState>("use_pass"),
+  scheduleCheatDay: (dayStart: string) => invoke<AppState>("schedule_cheat_day", { dayStart }),
+  cancelCheatDay: () => invoke<AppState>("cancel_cheat_day"),
+  saveSchedule: (schedule: Schedule) => invoke<AppState>("save_schedule", { schedule }),
+  deleteSchedule: (id: string) => invoke<AppState>("delete_schedule", { id }),
+
   startCommitment: (domains: string[]) => invoke<AppState>("start_commitment", { domains }),
   // May reject with the service's refusal message once past the 60s grace.
   clearCommitment: () => invoke<AppState>("clear_commitment"),
@@ -50,3 +57,10 @@ export const api = {
     policyId: string | null;
   }) => invoke<AppState>("set_bedtime", bedtime),
 };
+
+/** Normal sessions end with no typing or waiting, so ask once first. Resolves to the fresh state, or
+ * null when the user chose to keep going. */
+export async function endNormalAfterAsking(): Promise<AppState | null> {
+  const ok = await ask("End this session now?", { title: "End early?", kind: "warning", okLabel: "End session", cancelLabel: "Keep going" });
+  return ok ? api.endSessionNormal() : null;
+}
