@@ -210,4 +210,53 @@ class HistoryStatsTest {
         assertEquals(millisAt(day, 0), HistoryStats.startOfDayMillis(noonUtc, ZoneOffset.UTC))
         assertEquals(day.atStartOfDay(cairo).toInstant().toEpochMilli(), HistoryStats.startOfDayMillis(noonUtc, cairo))
     }
+
+    @Test
+    fun `a session ended almost at once does not keep the streak alive`() {
+        val today = LocalDate.of(2026, 9, 25)
+        val rows = listOf(completed(today.minusDays(1), 9, 30), cancelled(today, 9, scheduledMinutes = 60, actualMinutes = 1))
+        assertEquals(1, HistoryStats.currentStreakDays(rows, today, zone)) // yesterday counts, today's 1-minute one doesn't
+        assertEquals(0, HistoryStats.currentStreakDays(listOf(cancelled(today, 9, 60, 2)), today, zone))
+    }
+
+    @Test
+    fun `several short sessions in a day add up toward the streak`() {
+        val today = LocalDate.of(2026, 9, 25)
+        val rows = listOf(cancelled(today, 9, 30, 5), cancelled(today, 11, 30, 6))
+        assertEquals(1, HistoryStats.currentStreakDays(rows, today, zone))
+    }
+
+    @Test
+    fun `focus score is null for an empty week and full marks for a perfect one`() {
+        val monday = LocalDate.of(2026, 9, 21)
+        val from = millisAt(monday, 0)
+        val to = millisAt(monday.plusDays(7), 0)
+        assertEquals(null, HistoryStats.focusScore(emptyList(), from, to, zone))
+        val perfect = (0..4).map { completed(monday.plusDays(it.toLong()), 9, 60) } // 5 days x 1h = 5h, all completed
+        assertEquals(100, HistoryStats.focusScore(perfect, from, to, zone))
+    }
+
+    @Test
+    fun `focus score weighs completion, time and days`() {
+        val monday = LocalDate.of(2026, 9, 21)
+        val from = millisAt(monday, 0)
+        val to = millisAt(monday.plusDays(7), 0)
+        // One 60-minute completed session: 0.5*1 + 0.3*(60/300) + 0.2*(1/5) = 0.5 + 0.06 + 0.04 = 0.60
+        assertEquals(60, HistoryStats.focusScore(listOf(completed(monday, 9, 60)), from, to, zone))
+        // One cancelled session: completion 0, 30 focused minutes: 0.3*0.1 + 0.2*0.2 = 0.07
+        assertEquals(7, HistoryStats.focusScore(listOf(cancelled(monday, 9, 60, 30)), from, to, zone))
+    }
+
+    @Test
+    fun `the weekly summary has counts only`() {
+        val monday = LocalDate.of(2026, 9, 21)
+        val from = millisAt(monday, 0)
+        val to = millisAt(monday.plusDays(7), 0)
+        val rows = listOf(completed(monday, 9, 90), cancelled(monday.plusDays(1), 9, 60, 30))
+        val events = listOf(BlockEventRow(packageName = "com.secret.app", timestampMillis = millisAt(monday, 10)))
+        val text = HistoryStats.weekSummaryText(rows, events, from, to, today = monday.plusDays(1), zone = zone)
+        assertTrue(text, text.startsWith("My NowFocus week: 2h 0m focused across 2 sessions (1 completed)."))
+        assertTrue(text, text.contains("Turned away 1 times."))
+        assertFalse(text, text.contains("secret"))
+    }
 }

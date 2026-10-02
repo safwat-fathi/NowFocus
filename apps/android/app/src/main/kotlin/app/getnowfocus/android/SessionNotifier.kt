@@ -52,6 +52,7 @@ object SessionNotifier {
             NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_nowfocus_active)
                 .setContentTitle("Focus session in progress")
+                .setContentText("Blocked sites won't load until the timer ends.")
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(open)

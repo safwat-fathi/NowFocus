@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -10,6 +11,8 @@
     <!-- Only to record the optional STRICT-mode voice note; asked at the Record button, not at install. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Daily app limits: how long an app was in front today. A special-access setting the user switches on in Settings. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <!-- The ongoing "session in progress" notification (API 33+ runtime permission, asked on the setup screen). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -46,6 +49,13 @@
             android:launchMode="singleTask"
             android:taskAffinity="app.getnowfocus.android.blocked" />
 
+        <activity
+            android:name=".FrictionActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="app.getnowfocus.android.friction" />
+
         <service
             android:name=".FocusVpnService"
             android:exported="false"
@@ -69,6 +79,10 @@
 
         <receiver
             android:name=".BedtimeAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ScheduleAlarmReceiver"
             android:exported="false" />
 
         <receiver

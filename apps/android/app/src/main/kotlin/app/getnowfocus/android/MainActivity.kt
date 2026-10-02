@@ -105,6 +105,10 @@ private sealed interface Screen {
     data object Onboarding : Screen
     data object People : Screen
     data object Goals : Screen
+    data object Schedules : Screen
+    data object CheatDay : Screen
+    data object Limits : Screen
+    data object Friction : Screen
 }
 
 // Same presets as the macOS menu bar picker.
@@ -130,6 +134,12 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val onboardingDone by viewModel.onboardingDone.collectAsStateWithLifecycle()
     val people by viewModel.people.collectAsStateWithLifecycle()
     val goals by viewModel.goals.collectAsStateWithLifecycle()
+    val schedules by viewModel.schedules.collectAsStateWithLifecycle()
+    val cheat by viewModel.cheatDay.collectAsStateWithLifecycle()
+    val limits by viewModel.limits.collectAsStateWithLifecycle()
+    val frictionApps by viewModel.frictionApps.collectAsStateWithLifecycle()
+    // A schedule suggested from Stats ("you try X most at 11 PM"), open in the editor but not saved yet.
+    var schedulePrefill by remember { mutableStateOf<Schedule?>(null) }
     val syncStatus by viewModel.sync.status.collectAsStateWithLifecycle()
     // Fingerprint lock on Account only. `accountLock` is null until loaded (renders nothing, never open);
     // `accountUnlocked` lives in memory and is cleared on ON_STOP below, so leaving the app re-locks it.
@@ -206,6 +216,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     session = session,
                     shield = shield,
                     bedtime = bedtime,
+                    cheat = cheat,
                     now = now,
                     resumeKey = resumeCount,
                     onPrimaryCta = { screen = if (running) Screen.Active else Screen.Setup },
@@ -222,14 +233,9 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     ActiveScreen(
                         session = active,
                         now = now,
-                        onEndEarly = {
-                            if (active.enforcementMode == EnforcementMode.NORMAL) {
-                                viewModel.cancelSession()
-                                screen = Screen.Home
-                            } else {
-                                screen = Screen.Unlock
-                            }
-                        },
+                        paused = cheat?.isActive(now) == true,
+                        // Every mode confirms on the Unlock screen; Normal's is a one-tap "End session now".
+                        onEndEarly = { screen = Screen.Unlock },
                     )
                 }
                 Screen.Unlock -> session?.let { active ->
@@ -259,6 +265,33 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                         onOpenPeople = { screen = Screen.People },
                         goalsCount = goals.size,
                         onOpenGoals = { screen = Screen.Goals },
+                        extraRows = listOf(
+                            ProtectionEntry(
+                                "Schedules",
+                                if (schedules.isEmpty()) "Not set up" else "${schedules.count { it.enabled }} on",
+                                onClick = { screen = Screen.Schedules },
+                            ),
+                            ProtectionEntry(
+                                "Daily limits",
+                                if (limits.isEmpty()) "Not set up" else "${limits.size} ${if (limits.size == 1) "app" else "apps"}",
+                                onClick = { screen = Screen.Limits },
+                            ),
+                            ProtectionEntry(
+                                "Opening friction",
+                                if (frictionApps.isEmpty()) "Not set up" else "${frictionApps.size} ${if (frictionApps.size == 1) "app" else "apps"}",
+                                onClick = { screen = Screen.Friction },
+                            ),
+                            ProtectionEntry(
+                                "Cheat day",
+                                when {
+                                    cheat?.isActive(now) == true -> "Blocking is paused until midnight"
+                                    cheat?.let { now < it.startAt } == true -> "Planned"
+                                    else -> "A planned day off from blocking"
+                                },
+                                tag = if (cheat?.isActive(now) == true) "On" else null,
+                                onClick = { screen = Screen.CheatDay },
+                            ),
+                        ),
                     )
                 }
                 is Screen.EditPolicy -> {
@@ -268,7 +301,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                         PolicyEditorScreen(policy, onSave = viewModel::savePolicy, onBack = { screen = Screen.Policies })
                     }
                 }
-                Screen.Stats -> StatsScreen()
+                Screen.Stats -> StatsScreen { app, hour -> schedulePrefill = viewModel.scheduleBlockFor(app, hour); screen = Screen.Schedules }
                 Screen.Commitment -> CommitmentScreen(
                     shield = shield,
                     now = now,
@@ -310,6 +343,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     onAddPerson = { name, phone -> viewModel.addPerson(name, phone, lastTalkedAt = null) },
                     onRemovePerson = viewModel::removePerson,
                     onSetLastTalked = viewModel::setLastTalked,
+                    // Home follows the new session to Active by itself (see the auto-follow effect above).
+                    onStartFirstSession = { apps -> viewModel.startFirstSession(apps); screen = Screen.Home },
                     onDone = { viewModel.completeOnboarding(); screen = Screen.Home },
                 )
                 Screen.People -> PeopleScreen(
@@ -323,6 +358,33 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     goals = goals,
                     onAdd = viewModel::addGoal,
                     onRemove = viewModel::removeGoal,
+                    onBack = { screen = Screen.Policies },
+                )
+                Screen.Schedules -> SchedulesScreen(
+                    schedules = schedules,
+                    policies = policies,
+                    prefill = schedulePrefill,
+                    onSave = { viewModel.saveSchedule(it); schedulePrefill = null },
+                    onDelete = viewModel::deleteSchedule,
+                    onBack = { schedulePrefill = null; screen = Screen.Policies },
+                )
+                Screen.Limits -> LimitsScreen(
+                    limits = limits,
+                    resumeKey = resumeCount,
+                    onChange = viewModel::changeLimit,
+                    onBack = { screen = Screen.Policies },
+                )
+                Screen.Friction -> FrictionAppsScreen(
+                    apps = frictionApps,
+                    onAdd = viewModel::addFrictionApp,
+                    onRemove = viewModel::removeFrictionApp,
+                    onBack = { screen = Screen.Policies },
+                )
+                Screen.CheatDay -> CheatDayScreen(
+                    cheat = cheat,
+                    now = now,
+                    onSchedule = viewModel::scheduleCheatDay,
+                    onCancel = viewModel::cancelCheatDay,
                     onBack = { screen = Screen.Policies },
                 )
             }
@@ -384,6 +446,7 @@ private fun HomeScreen(
     session: FocusSession?,
     shield: CommitmentShield?,
     bedtime: BedtimeSettings,
+    cheat: CheatDay?,
     now: Long,
     resumeKey: Int,
     onPrimaryCta: () -> Unit,
@@ -441,6 +504,11 @@ private fun HomeScreen(
         )
 
         val showShieldRow = shield != null && shield.endAt > now
+        // A cheat day in progress is the one thing that changes what the rest of this screen means.
+        if (cheat?.isActive(now) == true) {
+            Spacer(Modifier.height(NowFocusSpace.s4))
+            Text("Cheat day · blocking is paused until midnight", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.accent700))
+        }
         if (showShieldRow || bedtime.enabled) {
             Spacer(Modifier.height(NowFocusSpace.s6))
             Text("ALWAYS ON", style = kickerStyle(NowFocusColors.neutral700))
@@ -659,7 +727,7 @@ private fun SetupScreen(
 }
 
 @Composable
-private fun ActiveScreen(session: FocusSession, now: Long, onEndEarly: () -> Unit) {
+private fun ActiveScreen(session: FocusSession, now: Long, paused: Boolean, onEndEarly: () -> Unit) {
     val remainingSeconds = (session.endAt - now).coerceAtLeast(0) / 1000
     val hours = remainingSeconds / 3600
     val minutes = remainingSeconds % 3600 / 60
@@ -681,6 +749,10 @@ private fun ActiveScreen(session: FocusSession, now: Long, onEndEarly: () -> Uni
         Spacer(Modifier.height(NowFocusSpace.s3))
         Box(Modifier.fillMaxWidth().height(6.dp).background(NowFocusColors.text.copy(alpha = 0.25f))) {
             Box(Modifier.fillMaxWidth(progress).height(6.dp).background(NowFocusColors.bg))
+        }
+        if (paused) {
+            Spacer(Modifier.height(NowFocusSpace.s3))
+            Text("Cheat day: blocking is paused until midnight.", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.text))
         }
         Spacer(Modifier.weight(1f))
         SecondaryButton(
@@ -712,9 +784,14 @@ private fun UnlockScreen(
 
         when (session.enforcementMode) {
             EnforcementMode.NORMAL -> {
-                Text("End this session now?", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 16.sp))
+                Text(
+                    "End this session now? ${DurationFormat.remaining((session.endAt - now).coerceAtLeast(0))} left.",
+                    style = TextStyle(fontFamily = ArchivoRegular, fontSize = 16.sp),
+                )
                 Spacer(Modifier.height(NowFocusSpace.s4))
                 PrimaryButton("End session now") { if (onCancel(false, false)) onCancelled() }
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                GhostButton("Keep going", onClick = onBack)
             }
             EnforcementMode.LOCKED -> {
                 Text("This one's locked, by you.", style = headingStyle(28.sp))
@@ -800,7 +877,7 @@ private fun UnlockScreen(
 }
 
 @Composable
-private fun StatsScreen() {
+private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
     val context = LocalContext.current
     val zone = remember { ZoneId.systemDefault() }
     val today = remember { LocalDate.now(zone) }
@@ -825,6 +902,7 @@ private fun StatsScreen() {
     val sessionsThisWeek = HistoryStats.sessionsCount(allSessions, weekFrom, weekTo)
     val completion = HistoryStats.completionRate(allSessions, weekFrom, weekTo)
     val streak = HistoryStats.currentStreakDays(allSessions, today, zone)
+    val score = HistoryStats.focusScore(allSessions, weekFrom, weekTo, zone)
     val topBlocked = HistoryStats.topBlockedPackages(weekEvents, weekFrom, weekTo)
     val maxMinutes = (weekMinutes.maxOrNull() ?: 0L).coerceAtLeast(1L)
     val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
@@ -877,6 +955,16 @@ private fun StatsScreen() {
             StatCell("Streak", "$streak days", Modifier.weight(1f))
         }
         SectionRule()
+        Row(Modifier.fillMaxWidth()) {
+            StatCell("Focus score", score?.toString() ?: "-", Modifier.weight(1f))
+            Box(Modifier.weight(1f).padding(vertical = NowFocusSpace.s3), contentAlignment = Alignment.CenterEnd) {
+                SecondaryButton("Share this week") {
+                    val text = HistoryStats.weekSummaryText(allSessions, weekEvents, weekFrom, weekTo, today, zone)
+                    context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
+                }
+            }
+        }
+        SectionRule()
         Spacer(Modifier.height(NowFocusSpace.s4))
 
         Text("MOST TURNED AWAY", style = kickerStyle(NowFocusColors.neutral700))
@@ -924,6 +1012,13 @@ private fun StatsScreen() {
                 listOf(0, 6, 12, 18).forEach { h ->
                     Text(hourLabel(h), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 11.sp, color = NowFocusColors.neutral700))
                 }
+            }
+            // Each app's own busiest hour, with a way to act on it.
+            HistoryStats.appUrges(urgeEvents, zone).forEach { u ->
+                val label = appLabelFor(context, u.packageName)
+                Spacer(Modifier.height(NowFocusSpace.s3))
+                Text("$label: most tries around ${hourLabel(u.hour)} (${u.hourCount} of ${u.total}).", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp))
+                GhostButton("Block $label at ${hourLabel(u.hour)} every day") { onScheduleBlock(AppRule(u.packageName, label), u.hour) }
             }
         }
         Spacer(Modifier.height(NowFocusSpace.s3))
@@ -1211,7 +1306,7 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
 }
 
 @Composable
-private fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier, onChange: (Int) -> Unit) {
+internal fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier, onChange: (Int) -> Unit) {
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
     var editing by remember { mutableStateOf(false) }
     val clock = formatClock(minutes, is24Hour)

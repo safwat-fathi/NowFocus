@@ -42,7 +42,8 @@ class BedtimeAlarmReceiver : BroadcastReceiver() {
                 val settings = repo.bedtimeSettingsFlow.first()
                 reconcileQuietNotifications(context, settings)
                 reconcileBedtimeSession(context, settings)
-                if (settings.enabled && intent.action == ACTION_SLEEP_LOCK && settings.lockAtSleep && Build.VERSION.SDK_INT >= 28) {
+                val cheating = repo.cheatDayFlow.first()?.isActive(System.currentTimeMillis()) == true
+                if (!cheating && settings.enabled && intent.action == ACTION_SLEEP_LOCK && settings.lockAtSleep && Build.VERSION.SDK_INT >= 28) {
                     FocusAccessibilityService.instance?.performGlobalAction(
                         android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
                     )
@@ -62,12 +63,15 @@ class BedtimeAlarmReceiver : BroadcastReceiver() {
  * PRIORITY when it's the current value - so it never touches a filter this
  * function didn't itself have a hand in.
  */
-fun reconcileQuietNotifications(context: Context, settings: BedtimeSettings) {
+suspend fun reconcileQuietNotifications(context: Context, settings: BedtimeSettings) {
     val nm = context.getSystemService(NotificationManager::class.java) ?: return
     if (!nm.isNotificationPolicyAccessGranted) return
     val now = System.currentTimeMillis()
+    // A cheat day is full use of the phone: Bedtime counts as off, which also hands back a filter it set.
+    val cheating = SessionRepository(context).cheatDayFlow.first()?.isActive(now) == true
+    val effective = if (cheating) settings.copy(enabled = false) else settings
     val currentIsPriority = nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_PRIORITY
-    when (BedtimeSchedule.decideQuietFilter(settings, now, ZoneId.systemDefault(), currentIsPriority)) {
+    when (BedtimeSchedule.decideQuietFilter(effective, now, ZoneId.systemDefault(), currentIsPriority)) {
         QuietDecision.SET_PRIORITY -> nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
         QuietDecision.RESTORE_ALL -> nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL)
         QuietDecision.NONE -> {}
@@ -88,12 +92,19 @@ fun reconcileQuietNotifications(context: Context, settings: BedtimeSettings) {
  * session — a mid-window policy edit can't loosen the block.
  */
 suspend fun reconcileBedtimeSession(context: Context, settings: BedtimeSettings) {
+    startBedtimeIfDue(context, settings)
+    reconcileScheduledSessions(context) // every Bedtime re-arm path is also a schedules re-arm path
+}
+
+private suspend fun startBedtimeIfDue(context: Context, settings: BedtimeSettings) {
     if (!settings.enabled) return
     val policyId = settings.policyId ?: return
     val now = System.currentTimeMillis()
     val window = BedtimeSchedule.currentWindow(settings, now, ZoneId.systemDefault()) ?: return
 
     val repo = SessionRepository(context)
+    // Nothing starts by itself on a cheat day. The schedule alarm re-checks when it ends.
+    if (repo.cheatDayFlow.first()?.isActive(now) == true) return
     // Skip while any session is already active — a second session would let
     // one's end clear the other's enforcement (macOS's guard). This also stops
     // us restarting a bedtime session that's already running for this window.

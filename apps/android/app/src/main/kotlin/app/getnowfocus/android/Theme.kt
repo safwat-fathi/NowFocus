@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Text
@@ -223,6 +224,18 @@ fun GhostButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit
     Box(modifier.clickable(onClick = onClick).padding(vertical = NowFocusSpace.s2)) {
         Text(text, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.accent))
     }
+}
+
+/** A yes/no question before something that can't be undone. Same shape as the Delete account dialog. */
+@Composable
+fun ConfirmDialog(title: String, message: String, confirmLabel: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, style = headingStyle(20.sp)) },
+        text = { Text(message, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800)) },
+        confirmButton = { PrimaryButton(confirmLabel, onClick = onConfirm) },
+        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
+    )
 }
 
 @Composable

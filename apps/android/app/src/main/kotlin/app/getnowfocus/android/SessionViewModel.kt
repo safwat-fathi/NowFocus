@@ -52,6 +52,18 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val goals: StateFlow<List<Goal>> =
         repository.goalsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val cheatDay: StateFlow<CheatDay?> =
+        repository.cheatDayFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val limits: StateFlow<List<AppLimit>> =
+        repository.limitsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val frictionApps: StateFlow<List<AppRule>> =
+        repository.frictionAppsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val schedules: StateFlow<List<Schedule>> =
+        repository.schedulesFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     // Defaults true (skip onboarding) until the real, persisted value loads, so
     // an existing user is never bounced back into onboarding for one frame.
     val onboardingDone: StateFlow<Boolean> =
@@ -124,6 +136,25 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     fun startSession(policyId: String, durationMinutes: Int, mode: EnforcementMode = EnforcementMode.NORMAL) {
         val policy = policies.value.find { it.id == policyId } ?: return
+        startSessionOn(policy, durationMinutes, mode)
+    }
+
+    /**
+     * Onboarding's first win: a 10-minute Normal session on a new profile holding the apps the user
+     * just picked, then onboarding is done. A new profile rather than the seeded "Deep Work": the
+     * first sign-in drops an untouched seed ([SyncLogic.isUntouchedSeed]), and adding apps to it
+     * would make nearly every seed "touched" and duplicate it on the user's next device.
+     */
+    fun startFirstSession(apps: List<AppRule>) {
+        val policy = BlockPolicy(name = "First focus", apps = apps)
+        viewModelScope.launch {
+            repository.updatePolicies { it + policy }
+            repository.setOnboardingDone()
+            startSessionOn(policy, 10) // after the profile exists, so the session never points at a missing one
+        }
+    }
+
+    private fun startSessionOn(policy: BlockPolicy, durationMinutes: Int, mode: EnforcementMode = EnforcementMode.NORMAL) {
         val now = System.currentTimeMillis()
         val id = UUID.randomUUID().toString()
         // Only STRICT uses a note. Purging on every start also clears the last
@@ -309,6 +340,87 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             // And enabling bedtime (or picking a profile) mid-window should
             // start the locked session now, not wait for the next boundary.
             reconcileBedtimeSession(getApplication(), settings)
+        }
+    }
+
+    /** Re-arms everything that depends on the cheat day or the schedules: the schedule alarm, Do Not Disturb, Bedtime. */
+    private fun reconcileAutomation() {
+        viewModelScope.launch {
+            val settings = repository.bedtimeSettingsFlow.first()
+            reconcileQuietNotifications(getApplication(), settings)
+            reconcileBedtimeSession(getApplication(), settings)
+        }
+    }
+
+    /** Returns false (and does nothing) when [dayStart] breaks the rules in [CheatDays.canSchedule]. */
+    fun scheduleCheatDay(dayStart: Long): Boolean {
+        val now = System.currentTimeMillis()
+        val zone = java.time.ZoneId.systemDefault()
+        if (!CheatDays.canSchedule(now, dayStart, cheatDay.value, zone)) return false
+        viewModelScope.launch {
+            repository.setCheatDay(CheatDays.forDay(dayStart, now, zone))
+            SessionNotifier.sync(getApplication())
+            reconcileAutomation()
+        }
+        return true
+    }
+
+    fun cancelCheatDay() {
+        val current = cheatDay.value ?: return
+        viewModelScope.launch {
+            repository.setCheatDay(CheatDays.cancel(current, System.currentTimeMillis()))
+            // A live cheat day ending early re-blocks at once: re-check the foreground and the notification.
+            SessionNotifier.sync(getApplication())
+            reconcileAutomation()
+        }
+    }
+
+    /** Sets [minutes] on [limit] (0 removes it). Tighter counts now, looser from midnight: see [AppLimit.withMinutes]. */
+    fun changeLimit(limit: AppLimit, minutes: Int) {
+        val now = System.currentTimeMillis()
+        val zone = java.time.ZoneId.systemDefault()
+        viewModelScope.launch {
+            repository.updateLimits { list ->
+                val isNew = list.none { it.packageName == limit.packageName }
+                val base = if (isNew) limit.copy(minutesPerDay = minutes) else list.first { it.packageName == limit.packageName }.withMinutes(minutes, now, zone)
+                // Fold due changes and drop removed limits while we're here.
+                (list.filterNot { it.packageName == limit.packageName } + base).mapNotNull { it.settled(now) }
+            }
+        }
+    }
+
+    fun addFrictionApp(app: AppRule) {
+        viewModelScope.launch { repository.updateFrictionApps { cur -> if (cur.none { it.packageName == app.packageName }) cur + app else cur } }
+    }
+
+    fun removeFrictionApp(pkg: String) {
+        viewModelScope.launch { repository.updateFrictionApps { l -> l.filterNot { it.packageName == pkg } } }
+    }
+
+    /**
+     * For the Stats insight "you try X most at 11 PM": a schedule that blocks [app] for that hour, every day. It
+     * uses a profile that already blocks the app, or makes one, so the schedule can't silently block nothing.
+     */
+    fun scheduleBlockFor(app: AppRule, hour: Int): Schedule {
+        val policy = policies.value.firstOrNull { p -> p.apps.any { it.packageName == app.packageName } }
+            ?: BlockPolicy(name = app.label, apps = listOf(app)).also { created -> viewModelScope.launch { repository.updatePolicies { it + created } } }
+        return Schedule(
+            name = "No ${app.label}", days = java.time.DayOfWeek.entries.toSet(),
+            startMinute = hour * 60, endMinute = (hour + 1) % 24 * 60, policyId = policy.id,
+        )
+    }
+
+    fun saveSchedule(schedule: Schedule) {
+        viewModelScope.launch {
+            repository.updateSchedules { list -> if (list.any { it.id == schedule.id }) list.map { if (it.id == schedule.id) schedule else it } else list + schedule }
+            reconcileAutomation()
+        }
+    }
+
+    fun deleteSchedule(id: String) {
+        viewModelScope.launch {
+            repository.updateSchedules { list -> list.filterNot { it.id == id } }
+            reconcileAutomation()
         }
     }
 

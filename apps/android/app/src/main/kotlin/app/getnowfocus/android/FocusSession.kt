@@ -28,4 +28,6 @@ data class FocusSession(
     // STRICT only: a note to yourself that must be played through before the
     // session can be ended early (see SessionEngine.canCancel and VoiceNote).
     val voiceNotePath: String? = null,
+    // Short per-app exceptions granted inside this session (see Passes). Device-local.
+    val passes: List<AppPass> = emptyList(),
 )

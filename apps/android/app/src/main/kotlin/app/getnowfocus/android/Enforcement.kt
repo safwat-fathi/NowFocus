@@ -14,14 +14,27 @@ import kotlinx.coroutines.launch
 
 enum class BlockSource { SESSION, COMMITMENT_SHIELD }
 
-/** One source's contribution: a manual session, or the Commitment Shield. Each expires on its own. */
+/**
+ * One source's contribution: a manual session, or the Commitment Shield. Each expires on its own.
+ * A window can also be switched off for a stretch without ending: by a cheat day ([pausedFrom] to
+ * [pausedUntil]) or, for one app, by a pass ([passes]). Only session windows are ever given either.
+ */
 data class RuleWindow(
     val endAt: Long,
     val domains: Set<String>,
     val packages: Set<String>,
     val source: BlockSource = BlockSource.SESSION,
     val partial: Set<PartialRule> = emptySet(),
-)
+    val passes: Map<String, Long> = emptyMap(),
+    val passesLeft: Int = 0,
+    val pausedFrom: Long = 0L,
+    val pausedUntil: Long = 0L,
+) {
+    fun paused(now: Long) = now >= pausedFrom && now < pausedUntil
+    fun passed(pkg: String, now: Long) = (passes[pkg] ?: 0L) > now
+    /** The moments after [now] when what this window blocks changes, so the services wake and re-check. */
+    fun changesAfter(now: Long): List<Long> = (listOf(endAt, pausedFrom, pausedUntil) + passes.values).filter { it > now }
+}
 
 /**
  * What's blocked right now, as however many windows are currently active. A
@@ -32,10 +45,12 @@ data class RuleWindow(
  */
 data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
     private fun liveWindows(now: Long) = windows.filter { it.endAt > now }
-    fun liveDomains(now: Long): Set<String> = liveWindows(now).flatMap { it.domains }.toSet()
-    fun livePackages(now: Long): Set<String> = liveWindows(now).flatMap { it.packages }.toSet()
-    fun livePartial(now: Long): Set<PartialRule> = liveWindows(now).flatMap { it.partial }.toSet()
-    fun nextExpiryAfter(now: Long): Long? = liveWindows(now).minOfOrNull { it.endAt }
+    /** Live and not paused by a cheat day: what is actually blocking. */
+    private fun blocking(now: Long) = liveWindows(now).filter { !it.paused(now) }
+    fun liveDomains(now: Long): Set<String> = blocking(now).flatMap { it.domains }.toSet()
+    fun livePackages(now: Long): Set<String> = blocking(now).flatMap { w -> w.packages.filter { !w.passed(it, now) } }.toSet()
+    fun livePartial(now: Long): Set<PartialRule> = blocking(now).flatMap { it.partial }.toSet()
+    fun nextExpiryAfter(now: Long): Long? = liveWindows(now).flatMap { it.changesAfter(now) }.minOrNull()
     fun hasLiveWindow(now: Long): Boolean = liveWindows(now).isNotEmpty()
 
     /**
@@ -44,7 +59,7 @@ data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
      * exists for it), so that's what the block screen must communicate, and
      * its endAt (not the session's, if any) is what "blocked until" means.
      */
-    fun windowsBlocking(pkg: String, now: Long): List<RuleWindow> = liveWindows(now).filter { pkg in it.packages }
+    fun windowsBlocking(pkg: String, now: Long): List<RuleWindow> = blocking(now).filter { pkg in it.packages && !it.passed(pkg, now) }
 }
 
 /**
@@ -58,11 +73,20 @@ data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
 object Enforcement {
 
     fun activeRulesFlow(repo: SessionRepository): Flow<ActiveRules> =
-        combine(repo.sessionFlow, repo.commitmentShieldFlow) { session, shield ->
+        combine(repo.sessionFlow, repo.commitmentShieldFlow, repo.cheatDayFlow) { session, shield, cheat ->
             val now = System.currentTimeMillis()
             val windows = buildList {
+                // Only the session window is ever paused or passed. The Shield window below never is.
                 session?.takeIf { SessionEngine.isActive(SessionEngine.evaluateState(it, now), now) }
-                    ?.let { add(RuleWindow(it.endAt, it.domains, it.packages, BlockSource.SESSION, it.partial)) }
+                    ?.let {
+                        add(RuleWindow(
+                            it.endAt, it.domains, it.packages, BlockSource.SESSION, it.partial,
+                            passes = it.passes.associate { p -> p.packageName to p.until },
+                            passesLeft = Passes.passesLeft(it),
+                            pausedFrom = cheat?.startAt ?: 0L,
+                            pausedUntil = cheat?.endAt ?: 0L,
+                        ))
+                    }
                 shield?.takeIf { it.endAt > now }
                     ?.let { add(RuleWindow(it.endAt, it.domains, it.packages, BlockSource.COMMITMENT_SHIELD, it.partial)) }
             }

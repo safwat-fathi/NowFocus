@@ -31,6 +31,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/** One more tappable row in Rules > Protections, for the features added after the original five. */
+data class ProtectionEntry(val title: String, val sub: String, val tag: String? = null, val onClick: () -> Unit)
+
 @Composable
 fun PolicyListScreen(
     policies: List<BlockPolicy>,
@@ -47,7 +50,20 @@ fun PolicyListScreen(
     onOpenPeople: () -> Unit,
     goalsCount: Int,
     onOpenGoals: () -> Unit,
+    extraRows: List<ProtectionEntry> = emptyList(),
 ) {
+    var removing by remember { mutableStateOf<BlockPolicy?>(null) }
+    removing?.let { policy ->
+        ConfirmDialog(
+            title = "Remove ${policy.name}?",
+            // Bedtime points at a profile by id, and a missing one means it blocks nothing.
+            message = "This deletes the profile." +
+                if (bedtime.policyId == policy.id) " Bedtime Wind-Down uses it and will stop blocking until you pick another." else "",
+            confirmLabel = "Remove",
+            onConfirm = { onDelete(policy.id); removing = null },
+            onDismiss = { removing = null },
+        )
+    }
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
@@ -67,7 +83,7 @@ fun PolicyListScreen(
                     Text(policy.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
                     Text("${policy.domains.size} sites · ${policy.apps.size} apps", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
                 }
-                GhostButton("Remove") { onDelete(policy.id) }
+                GhostButton("Remove") { removing = policy }
             }
             SectionRule()
         }
@@ -129,6 +145,20 @@ fun PolicyListScreen(
                 }
             }
             SectionRule()
+
+            extraRows.forEach { e ->
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = e.onClick).padding(vertical = NowFocusSpace.s3),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(e.title, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                        Text(e.sub, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
+                    }
+                    e.tag?.let { TagPill(it) }
+                }
+                SectionRule()
+            }
         }
     }
 }

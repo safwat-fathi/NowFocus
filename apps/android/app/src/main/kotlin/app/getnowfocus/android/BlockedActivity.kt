@@ -44,6 +44,11 @@ class BlockedActivity : ComponentActivity() {
     companion object {
         const val EXTRA_END_AT = "endAt"
         const val EXTRA_SOURCE = "source"
+        const val EXTRA_PACKAGE = "package"
+        const val EXTRA_LIMIT_MINUTES = "limitMinutes"
+        /** A [BlockSource] name, or this: the app's daily limit is used up. */
+        const val SOURCE_LIMIT = "LIMIT"
+        const val EXTRA_PASSES_LEFT = "passesLeft"
     }
 
     // Same "activity builds its own repository" pattern as FocusAccessibilityService.
@@ -89,7 +94,13 @@ class BlockedActivity : ComponentActivity() {
         // and a bare time ("3:45 PM") would read as today.
         val until = DateUtils.formatDateTime(this, endAt, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH)
         // Defaults to SESSION: absent only if this Activity is ever launched some other way.
-        val fromShield = intent.getStringExtra(EXTRA_SOURCE) == BlockSource.COMMITMENT_SHIELD.name
+        val source = intent.getStringExtra(EXTRA_SOURCE)
+        val fromShield = source == BlockSource.COMMITMENT_SHIELD.name
+        val fromLimit = source == SOURCE_LIMIT
+        // The pass offer: only a session window ever carries passesLeft > 0 (Normal and Strict, see Passes).
+        val pkg = intent.getStringExtra(EXTRA_PACKAGE)
+        val passesLeft = if (fromShield || fromLimit) 0 else intent.getIntExtra(EXTRA_PASSES_LEFT, 0)
+        val appLabel = pkg?.let { runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(it, 0)).toString() }.getOrNull() }
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
@@ -97,6 +108,7 @@ class BlockedActivity : ComponentActivity() {
                         until = until,
                         endAt = endAt,
                         fromShield = fromShield,
+                        limitMessage = if (fromLimit) "You've used your ${intent.getIntExtra(EXTRA_LIMIT_MINUTES, 0)} minutes of ${appLabel ?: "this app"} today. It's back at midnight." else null,
                         person = person,
                         goal = goal,
                         triesToday = triesToday,
@@ -104,6 +116,8 @@ class BlockedActivity : ComponentActivity() {
                         onText = { person?.let { reachOut(it, Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(it.phone)}"))) } },
                         onReturn = { goHome() },
                         onNeedIt = { goUnlock() },
+                        passLabel = if (pkg != null && passesLeft > 0) "Open ${appLabel ?: "it"} for 5 min ($passesLeft left)" else null,
+                        onPass = { pkg?.let { openWithPass(it) } },
                     )
                 }
             }
@@ -121,6 +135,17 @@ class BlockedActivity : ComponentActivity() {
             } catch (_: ActivityNotFoundException) {
                 // No dialer / SMS app installed: nothing to hand off to.
             }
+        }
+    }
+
+    // The pass is awaited and given a moment to reach the services before the app opens, or they would
+    // bounce it again on its first window event.
+    private fun openWithPass(pkg: String) {
+        lifecycleScope.launch {
+            if (!repository.grantPass(pkg, System.currentTimeMillis())) return@launch
+            delay(400)
+            packageManager.getLaunchIntentForPackage(pkg)?.let { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            finish()
         }
     }
 
@@ -146,6 +171,7 @@ private fun ShieldScreen(
     until: String,
     endAt: Long,
     fromShield: Boolean,
+    limitMessage: String?,
     person: Person?,
     goal: String?,
     triesToday: Int,
@@ -153,9 +179,14 @@ private fun ShieldScreen(
     onText: () -> Unit,
     onReturn: () -> Unit,
     onNeedIt: () -> Unit,
+    passLabel: String?,
+    onPass: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
-        Text(if (fromShield) "Always blocked by NowFocus" else "Shielded by NowFocus", style = kickerStyle(NowFocusColors.neutral400))
+        Text(
+            when { fromShield -> "Always blocked by NowFocus"; limitMessage != null -> "Daily limit"; else -> "Shielded by NowFocus" },
+            style = kickerStyle(NowFocusColors.neutral400),
+        )
         Spacer(Modifier.height(NowFocusSpace.s8))
         Text(
             "This can wait.",
@@ -163,14 +194,14 @@ private fun ShieldScreen(
         )
         Spacer(Modifier.height(NowFocusSpace.s3))
         Text(
-            if (fromShield) "Locked by your Commitment Shield until $until." else "You're in a focus session until $until.",
+            when { fromShield -> "Locked by your Commitment Shield until $until."; limitMessage != null -> limitMessage; else -> "You're in a focus session until $until." },
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 17.sp, color = NowFocusColors.neutral300),
         )
         Spacer(Modifier.height(NowFocusSpace.s4))
         // Ticks each half-minute: "1h 12m" doesn't need a per-second clock.
         var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
         LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
-        SideRow(if (fromShield) "Locked for" else "Left in session", DurationFormat.remaining(endAt - now))
+        SideRow(if (fromShield) "Locked for" else if (limitMessage != null) "Back in" else "Left in session", DurationFormat.remaining(endAt - now))
         SideRow("Tries today", "$triesToday")
         if (person != null) {
             Spacer(Modifier.height(NowFocusSpace.s8))
@@ -184,7 +215,12 @@ private fun ShieldScreen(
         Spacer(Modifier.weight(1f))
         PrimaryButton("Back to focus", onClick = onReturn)
         // The Commitment Shield has no exit at all - not even the friction of Unlock.
-        if (!fromShield) {
+        // The Commitment Shield and a used-up daily limit have no exit here; a limit lifts at midnight or on a cheat day.
+        if (!fromShield && limitMessage == null) {
+            if (passLabel != null) {
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                ReachButton(passLabel, Modifier.fillMaxWidth(), onPass)
+            }
             Spacer(Modifier.height(NowFocusSpace.s2))
             GhostButton("I really need it", onClick = onNeedIt)
         }

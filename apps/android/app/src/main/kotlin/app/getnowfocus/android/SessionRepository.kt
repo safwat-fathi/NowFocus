@@ -11,6 +11,8 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlinx.coroutines.flow.map
 import app.getnowfocus.android.sync.Local
 import app.getnowfocus.android.sync.SyncLogic
@@ -42,6 +44,14 @@ class SessionRepository(context: Context) {
         val SESSION_TYPE = stringPreferencesKey("sessionType")
         val CANCELLED_AT = longPreferencesKey("cancelledAt")
         val VOICE_NOTE_PATH = stringPreferencesKey("voiceNotePath")
+        val LIMITS = stringPreferencesKey("appLimits")
+        val FRICTION_APPS = stringPreferencesKey("frictionApps")
+        val SCHEDULES = stringPreferencesKey("schedules")
+        val SCHEDULE_RUNS = stringPreferencesKey("scheduleRuns")
+        val SESSION_PASSES = stringPreferencesKey("sessionPasses")
+        val CHEAT_START = longPreferencesKey("cheatStartAt")
+        val CHEAT_END = longPreferencesKey("cheatEndAt")
+        val CHEAT_CREATED = longPreferencesKey("cheatCreatedAt")
         val SHIELD_START_AT = longPreferencesKey("shieldStartAt")
         val SHIELD_END_AT = longPreferencesKey("shieldEndAt")
         val SHIELD_DOMAINS = stringSetPreferencesKey("shieldDomains")
@@ -65,14 +75,16 @@ class SessionRepository(context: Context) {
         val SYNC_STATE = stringPreferencesKey("syncState")
     }
 
-    val sessionFlow: Flow<FocusSession?> = store.data.map { p ->
-        FocusSession(
-            id = p[Keys.ID] ?: return@map null,
-            policyId = p[Keys.POLICY_ID] ?: return@map null,
-            startAt = p[Keys.START_AT] ?: return@map null,
-            endAt = p[Keys.END_AT] ?: return@map null,
-            status = p[Keys.STATUS]?.let { FocusSessionStatus.valueOf(it) } ?: return@map null,
-            createdAt = p[Keys.CREATED_AT] ?: return@map null,
+    val sessionFlow: Flow<FocusSession?> = store.data.map(::readSession)
+
+    private fun readSession(p: Preferences): FocusSession? {
+        return FocusSession(
+            id = p[Keys.ID] ?: return null,
+            policyId = p[Keys.POLICY_ID] ?: return null,
+            startAt = p[Keys.START_AT] ?: return null,
+            endAt = p[Keys.END_AT] ?: return null,
+            status = p[Keys.STATUS]?.let { FocusSessionStatus.valueOf(it) } ?: return null,
+            createdAt = p[Keys.CREATED_AT] ?: return null,
             domains = p[Keys.DOMAINS] ?: emptySet(),
             packages = p[Keys.PACKAGES] ?: emptySet(),
             partial = BlockPolicy.partialFromNames(p[Keys.PARTIAL] ?: emptySet()),
@@ -85,7 +97,79 @@ class SessionRepository(context: Context) {
             cancelledAt = p[Keys.CANCELLED_AT],
             // Null for any session written before this field existed.
             voiceNotePath = p[Keys.VOICE_NOTE_PATH],
+            passes = p[Keys.SESSION_PASSES]?.let { Passes.fromJson(it) } ?: emptyList(),
         )
+    }
+
+    /** Adds a pass for [pkg] to the running session if [Passes.grant] allows it. Awaited, so the services see it before the app opens. */
+    suspend fun grantPass(pkg: String, now: Long): Boolean {
+        var granted = false
+        store.edit { p ->
+            val session = readSession(p)?.let { SessionEngine.evaluateState(it, now) } ?: return@edit
+            val updated = Passes.grant(session, pkg, now) ?: return@edit
+            p[Keys.SESSION_PASSES] = Passes.toJson(updated.passes)
+            granted = true
+        }
+        return granted
+    }
+
+    /** Daily per-app time budgets. Device-local (usage is per phone). */
+    val limitsFlow: Flow<List<AppLimit>> = store.data.map { p -> p[Keys.LIMITS]?.let { AppLimit.listFromJson(it) } ?: emptyList() }
+
+    suspend fun updateLimits(transform: (List<AppLimit>) -> List<AppLimit>) {
+        store.edit { p -> p[Keys.LIMITS] = AppLimit.listToJson(transform(p[Keys.LIMITS]?.let { AppLimit.listFromJson(it) } ?: emptyList())) }
+    }
+
+    /** Apps that ask for a pause before opening (see FrictionGate). Device-local. */
+    val frictionAppsFlow: Flow<List<AppRule>> = store.data.map { p ->
+        p[Keys.FRICTION_APPS]?.let { j -> JSONArray(j).let { a -> (0 until a.length()).map { a.getJSONObject(it).let { o -> AppRule(o.getString("pkg"), o.getString("label")) } } } } ?: emptyList()
+    }
+
+    suspend fun updateFrictionApps(transform: (List<AppRule>) -> List<AppRule>) {
+        store.edit { p ->
+            val current = p[Keys.FRICTION_APPS]?.let { j -> JSONArray(j).let { a -> (0 until a.length()).map { a.getJSONObject(it).let { o -> AppRule(o.getString("pkg"), o.getString("label")) } } } } ?: emptyList()
+            p[Keys.FRICTION_APPS] = JSONArray().apply { transform(current).forEach { put(JSONObject().put("pkg", it.packageName).put("label", it.label)) } }.toString()
+        }
+    }
+
+    /** Recurring sessions. Device-local for now (not synced). */
+    val schedulesFlow: Flow<List<Schedule>> = store.data.map { p -> p[Keys.SCHEDULES]?.let { Schedule.listFromJson(it) } ?: emptyList() }
+
+    suspend fun updateSchedules(transform: (List<Schedule>) -> List<Schedule>) {
+        store.edit { p ->
+            val next = transform(p[Keys.SCHEDULES]?.let { Schedule.listFromJson(it) } ?: emptyList())
+            p[Keys.SCHEDULES] = Schedule.listToJson(next)
+            // Forget runs of schedules that no longer exist.
+            p[Keys.SCHEDULE_RUNS]?.let { r -> p[Keys.SCHEDULE_RUNS] = Schedule.runsToJson(Schedule.runsFromJson(r).filterKeys { id -> next.any { it.id == id } }) }
+        }
+    }
+
+    val scheduleRunsFlow: Flow<Map<String, Long>> = store.data.map { p -> p[Keys.SCHEDULE_RUNS]?.let { Schedule.runsFromJson(it) } ?: emptyMap() }
+
+    suspend fun noteScheduleRun(scheduleId: String, windowStart: Long) {
+        store.edit { p ->
+            val runs = p[Keys.SCHEDULE_RUNS]?.let { Schedule.runsFromJson(it) } ?: emptyMap()
+            p[Keys.SCHEDULE_RUNS] = Schedule.runsToJson(runs + (scheduleId to windowStart))
+        }
+    }
+
+    /** Device-local, never synced: a remote write must not be able to loosen blocking. Null if none was ever set. */
+    val cheatDayFlow: Flow<CheatDay?> = store.data.map { p ->
+        CheatDay(
+            startAt = p[Keys.CHEAT_START] ?: return@map null,
+            endAt = p[Keys.CHEAT_END] ?: return@map null,
+            createdAt = p[Keys.CHEAT_CREATED] ?: return@map null,
+        )
+    }
+
+    suspend fun setCheatDay(cheat: CheatDay?) {
+        store.edit { p ->
+            if (cheat == null) {
+                p.remove(Keys.CHEAT_START); p.remove(Keys.CHEAT_END); p.remove(Keys.CHEAT_CREATED)
+            } else {
+                p[Keys.CHEAT_START] = cheat.startAt; p[Keys.CHEAT_END] = cheat.endAt; p[Keys.CHEAT_CREATED] = cheat.createdAt
+            }
+        }
     }
 
     val policiesFlow: Flow<List<BlockPolicy>> = store.data.map { p ->
@@ -193,6 +277,7 @@ class SessionRepository(context: Context) {
             p[Keys.SESSION_TYPE] = session.sessionType.name
             if (session.cancelledAt != null) p[Keys.CANCELLED_AT] = session.cancelledAt else p.remove(Keys.CANCELLED_AT)
             if (session.voiceNotePath != null) p[Keys.VOICE_NOTE_PATH] = session.voiceNotePath else p.remove(Keys.VOICE_NOTE_PATH)
+            if (session.passes.isNotEmpty()) p[Keys.SESSION_PASSES] = Passes.toJson(session.passes) else p.remove(Keys.SESSION_PASSES)
         }
     }
 

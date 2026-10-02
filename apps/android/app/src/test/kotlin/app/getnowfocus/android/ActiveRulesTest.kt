@@ -100,4 +100,43 @@ class ActiveRulesTest {
         )
         assertEquals(setOf(PartialRule.FB_REELS), rules.livePartial(now = 3000))
     }
+
+    @Test
+    fun `a paused window blocks nothing inside the pause but is still live`() {
+        val rules = ActiveRules(listOf(RuleWindow(endAt = 9000, domains = setOf("x.com"), packages = setOf("com.x"), pausedFrom = 2000, pausedUntil = 4000)))
+        assertEquals(setOf("x.com"), rules.liveDomains(now = 1000))
+        assertTrue(rules.liveDomains(now = 3000).isEmpty())
+        assertTrue(rules.livePackages(now = 3000).isEmpty())
+        assertTrue(rules.windowsBlocking("com.x", now = 3000).isEmpty())
+        assertTrue(rules.hasLiveWindow(now = 3000))
+        assertEquals(setOf("x.com"), rules.liveDomains(now = 4000))
+    }
+
+    @Test
+    fun `the services wake at the start and end of a pause, not just at the window end`() {
+        val rules = ActiveRules(listOf(RuleWindow(endAt = 9000, domains = setOf("x.com"), packages = emptySet(), pausedFrom = 2000, pausedUntil = 4000)))
+        assertEquals(2000L, rules.nextExpiryAfter(now = 1000))
+        assertEquals(4000L, rules.nextExpiryAfter(now = 3000))
+        assertEquals(9000L, rules.nextExpiryAfter(now = 4000))
+    }
+
+    @Test
+    fun `a passed app is not blocked until its pass ends, the others still are`() {
+        val rules = ActiveRules(listOf(RuleWindow(endAt = 9000, domains = emptySet(), packages = setOf("com.chat", "com.video"), passes = mapOf("com.chat" to 5000L))))
+        assertEquals(setOf("com.video"), rules.livePackages(now = 1000))
+        assertTrue(rules.windowsBlocking("com.chat", now = 1000).isEmpty())
+        assertEquals(1, rules.windowsBlocking("com.video", now = 1000).size)
+        assertEquals(5000L, rules.nextExpiryAfter(now = 1000))
+        assertEquals(setOf("com.chat", "com.video"), rules.livePackages(now = 5000))
+    }
+
+    @Test
+    fun `a pause on the session window leaves the Shield window blocking`() {
+        val rules = ActiveRules(listOf(
+            RuleWindow(endAt = 9000, domains = setOf("x.com"), packages = setOf("com.x"), pausedFrom = 0, pausedUntil = 9000),
+            RuleWindow(endAt = 9000, domains = setOf("adult.com"), packages = setOf("com.adult"), source = BlockSource.COMMITMENT_SHIELD),
+        ))
+        assertEquals(setOf("adult.com"), rules.liveDomains(now = 1000))
+        assertEquals(setOf("com.adult"), rules.livePackages(now = 1000))
+    }
 }

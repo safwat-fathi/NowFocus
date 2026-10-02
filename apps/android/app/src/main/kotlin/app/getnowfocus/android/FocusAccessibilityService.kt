@@ -50,6 +50,13 @@ class FocusAccessibilityService : AccessibilityService() {
     private val lastBlockLogged = mutableMapOf<String, Long>()
     private val historyDao by lazy { HistoryDatabase.get(this).dao() }
 
+    // Device-local settings the service reads alongside the block rules (see limitApp and frictionApp).
+    @Volatile private var limits: List<AppLimit> = emptyList()
+    @Volatile private var frictionPackages: Set<String> = emptySet()
+    @Volatile private var cheat: CheatDay? = null
+    private val lastFriction = mutableMapOf<String, Long>()
+    private var limitJob: Job? = null
+
     private var checkJob: Job? = null
     private var expiryJob: Job? = null
     private var contentEventsOn = false
@@ -59,9 +66,11 @@ class FocusAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         instance = this
-        scope.launch {
-            Enforcement.activeRulesFlow(SessionRepository(this@FocusAccessibilityService)).collect { applyRules(it) }
-        }
+        val repo = SessionRepository(this)
+        scope.launch { Enforcement.activeRulesFlow(repo).collect { applyRules(it) } }
+        scope.launch { repo.limitsFlow.collect { limits = it } }
+        scope.launch { repo.frictionAppsFlow.collect { apps -> frictionPackages = apps.map { it.packageName }.toSet() } }
+        scope.launch { repo.cheatDayFlow.collect { cheat = it } }
     }
 
     /**
@@ -86,7 +95,14 @@ class FocusAccessibilityService : AccessibilityService() {
         }
         expiryJob?.cancel()
         r.nextExpiryAfter(now)?.let { end ->
-            expiryJob = scope.launch { delay(end - now + 50); applyRules(rules) }
+            expiryJob = scope.launch {
+                delay(end - now + 50)
+                applyRules(rules)
+                // A pass or a cheat day just ended: whatever is in front may be blocked again, and the
+                // notification's wording may have changed. No window event will say so.
+                SessionNotifier.sync(this@FocusAccessibilityService)
+                rootInActiveWindow?.packageName?.toString()?.takeIf { it != packageName }?.let { blockApp(it) }
+            }
         }
     }
 
@@ -96,6 +112,9 @@ class FocusAccessibilityService : AccessibilityService() {
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 if (blockApp(pkg)) return
+                // Not blocked by a session or the Shield: a daily limit may still stop it, or a pause may precede it.
+                if (limitApp(pkg)) return
+                frictionApp(pkg)
                 // The cover is a system-level window: drop it once the user is somewhere else.
                 if (pkg !in PartialSignatures.PACKAGES && pkg != SYSTEM_UI) { clearOverlay(); matchLog.clear() }
             }
@@ -123,8 +142,57 @@ class FocusAccessibilityService : AccessibilityService() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .putExtra(BlockedActivity.EXTRA_END_AT, blocking.endAt)
                 .putExtra(BlockedActivity.EXTRA_SOURCE, blocking.source.name)
+                .putExtra(BlockedActivity.EXTRA_PACKAGE, pkg)
+                .putExtra(BlockedActivity.EXTRA_PASSES_LEFT, blocking.passesLeft)
         )
         return true
+    }
+
+    /**
+     * Daily limit for [pkg]: true when it was bounced because today's time is used up. Otherwise, while the
+     * app is in front, a timer re-checks when the time would run out, since no window event marks that moment.
+     * Paused on a cheat day, and off without usage access (the screen says so).
+     */
+    private fun limitApp(pkg: String): Boolean {
+        limitJob?.cancel()
+        val limit = limits.find { it.packageName == pkg } ?: return false
+        val now = System.currentTimeMillis()
+        if (cheat?.isActive(now) == true || limit.minutesAt(now) == 0) return false
+        val used = UsageReader.foregroundToday(this, setOf(pkg), now)[pkg] ?: return false
+        val left = limit.limitMillisAt(now) - used
+        if (left <= 0) {
+            logBlock(pkg, now)
+            performGlobalAction(GLOBAL_ACTION_HOME)
+            startActivity(
+                Intent(this, BlockedActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .putExtra(BlockedActivity.EXTRA_END_AT, UsageMath.nextMidnight(now, java.time.ZoneId.systemDefault()))
+                    .putExtra(BlockedActivity.EXTRA_SOURCE, BlockedActivity.SOURCE_LIMIT)
+                    .putExtra(BlockedActivity.EXTRA_PACKAGE, pkg)
+                    .putExtra(BlockedActivity.EXTRA_LIMIT_MINUTES, limit.minutesAt(now))
+            )
+            return true
+        }
+        limitJob = scope.launch {
+            delay(left + 500)
+            val stillThere = rootInActiveWindow?.packageName?.toString() == pkg
+            if (stillThere && getSystemService(android.os.PowerManager::class.java)?.isInteractive == true) limitApp(pkg)
+        }
+        return false
+    }
+
+    /** An app you asked to pause for: show the breath and question first (see FrictionGate). */
+    private fun frictionApp(pkg: String) {
+        if (pkg !in frictionPackages) return
+        val now = System.currentTimeMillis()
+        if (cheat?.isActive(now) == true || FrictionGate.isAllowed(pkg, now)) return
+        if (now - (lastFriction[pkg] ?: 0L) < 2_000) return // one open fires several window events
+        lastFriction[pkg] = now
+        startActivity(
+            Intent(this, FrictionActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(FrictionActivity.EXTRA_PACKAGE, pkg)
+        )
     }
 
     private fun logBlock(pkg: String, now: Long) {

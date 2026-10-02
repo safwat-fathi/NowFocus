@@ -118,6 +118,9 @@ abstract class HistoryDatabase : RoomDatabase() {
 /** The local hour of day with the most blocked attempts, and the app tried most in that hour. */
 data class Urge(val hour: Int, val count: Int, val topPackage: String)
 
+/** One app's busiest hour of tries: [hourCount] of its [total] fell in [hour]. */
+data class AppUrge(val packageName: String, val hour: Int, val hourCount: Int, val total: Int)
+
 /** Pure aggregation over history rows - no Room/Context involved, so it's plain-JVM testable. */
 object HistoryStats {
 
@@ -142,6 +145,20 @@ object HistoryStats {
         val topPackage = peak.value.groupingBy { it.packageName }.eachCount().maxByOrNull { it.value }!!.key
         return Urge(hour = peak.key, count = peak.value.size, topPackage = topPackage)
     }
+
+    /**
+     * The apps tried most, each with the hour it was tried most (ties go to the earlier hour). Apps with fewer
+     * than [minTries] attempts are left out: two tries isn't a pattern worth offering to schedule against.
+     */
+    fun appUrges(events: List<BlockEventRow>, zone: ZoneId, minTries: Int = 3, limit: Int = 3): List<AppUrge> =
+        events.groupBy { it.packageName }
+            .filterValues { it.size >= minTries }
+            .map { (pkg, rows) ->
+                val peak = rows.groupBy { it.localHour(zone) }.entries.minWithOrNull(compareBy({ -it.value.size }, { it.key }))!!
+                AppUrge(pkg, peak.key, peak.value.size, rows.size)
+            }
+            .sortedWith(compareBy({ -it.total }, { it.packageName }))
+            .take(limit)
 
     fun totalFocusedMillis(rows: List<SessionHistoryRow>, from: Long, to: Long): Long =
         rows.filter { it.startAt in from until to }.sumOf { it.focusedMillis }
@@ -168,14 +185,18 @@ object HistoryStats {
         }
     }
 
+    /** A day counts toward the streak with at least this much real focused time, so opening and ending a session at once doesn't. */
+    const val STREAK_MIN_MILLIS = 10 * 60_000L
+
     /**
-     * Consecutive days with at least one session, walking back from the most
-     * recent active day. Grace of one day: if the most recent session was
+     * Consecutive days with at least [STREAK_MIN_MILLIS] of focused time, walking back from the most
+     * recent such day. Grace of one day: if the most recent one was
      * yesterday (not today), the streak still counts - it shouldn't zero out
      * the moment a new day starts, before today's session happens.
      */
     fun currentStreakDays(rows: List<SessionHistoryRow>, today: LocalDate, zone: ZoneId): Int {
-        val activeDays = rows.map { Instant.ofEpochMilli(it.startAt).atZone(zone).toLocalDate() }.toSet()
+        val activeDays = rows.groupBy { Instant.ofEpochMilli(it.startAt).atZone(zone).toLocalDate() }
+            .filterValues { day -> day.sumOf { it.focusedMillis } >= STREAK_MIN_MILLIS }.keys
         if (activeDays.isEmpty()) return 0
         val mostRecent = activeDays.max()
         if (mostRecent.isBefore(today.minusDays(1))) return 0
@@ -186,6 +207,34 @@ object HistoryStats {
             day = day.minusDays(1)
         }
         return streak
+    }
+
+    /**
+     * 0-100 for [from, to): half the completion rate, 30% focused time (five hours is full marks), 20% days
+     * with focused time (five is full marks). Null when there were no sessions, so a quiet week isn't a zero.
+     * The Windows app computes the same formula (core/src/history_stats.rs): keep them in step.
+     */
+    fun focusScore(rows: List<SessionHistoryRow>, from: Long, to: Long, zone: ZoneId): Int? {
+        if (sessionsCount(rows, from, to) == 0) return null
+        val minutes = totalFocusedMillis(rows, from, to) / 60_000
+        val days = rows.filter { it.startAt in from until to && it.focusedMillis > 0 }
+            .map { Instant.ofEpochMilli(it.startAt).atZone(zone).toLocalDate() }.toSet().size
+        val score = 0.5 * completionRate(rows, from, to) + 0.3 * minOf(minutes / 300.0, 1.0) + 0.2 * minOf(days / 5.0, 1.0)
+        return Math.round(score * 100).toInt()
+    }
+
+    /** The text the "Share this week" button sends. Counts only: no app names, sites or times of day leave the phone. */
+    fun weekSummaryText(rows: List<SessionHistoryRow>, events: List<BlockEventRow>, from: Long, to: Long, today: LocalDate, zone: ZoneId): String {
+        val minutes = totalFocusedMillis(rows, from, to) / 60_000
+        val sessions = sessionsCount(rows, from, to)
+        val streak = currentStreakDays(rows, today, zone)
+        return buildString {
+            append("My NowFocus week: ${minutes / 60}h ${minutes % 60}m focused")
+            append(" across $sessions ${if (sessions == 1) "session" else "sessions"} (${completedCount(rows, from, to)} completed).")
+            focusScore(rows, from, to, zone)?.let { append(" Focus score $it.") }
+            if (streak > 0) append(" $streak-day streak.")
+            append(" Turned away ${turnedAwayCount(events, from, to)} times.")
+        }
     }
 
     /** Every blocked attempt in [from, to) across all apps (the top-3 list alone would undercount). */

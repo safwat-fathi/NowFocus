@@ -165,6 +165,7 @@ class FocusVpnService : VpnService() {
             val name = DnsPacket.qname(query.dns)
             if (name != null && DomainValidation.matches(name, rules.liveDomains(System.currentTimeMillis()))) {
                 write(DnsPacket.wrapReply(query, DnsPacket.nxdomain(query.dns)))
+                BlockNotifier.blockedSite(this@FocusVpnService)
                 return
             }
             forwarder.execute { forward(query) }
