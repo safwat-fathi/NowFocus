@@ -30,6 +30,8 @@ class BootReceiver : BroadcastReceiver() {
                 // A reboot mid-window should re-arm the nightly locked session too.
                 reconcileBedtimeSession(context, settings)
                 if (Enforcement.shouldRun(repo)) Enforcement.start(context)
+                // Alarms don't survive a reboot: a signed-in phone resumes its background sync passes.
+                if (app.getnowfocus.android.sync.DataStoreAuthStore(context).load() != null) app.getnowfocus.android.sync.BackgroundSync.arm(context)
             } finally {
                 pending.finish()
             }

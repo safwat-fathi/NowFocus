@@ -24,6 +24,8 @@ data class SyncReport(val pulled: Int, val pushed: Int, val rejected: Int)
 class SyncEngine(
     private val store: SyncStore,
     private val api: SyncApiPort,
+    /** Cross-device sessions. Null leaves them out entirely (the tests that only cover profiles and bedtime). */
+    private val sessions: SessionSyncPort? = null,
     private val clock: () -> Long = { System.currentTimeMillis() },
 ) {
     private val lock = Mutex()
@@ -34,14 +36,18 @@ class SyncEngine(
 
         // 1. Pull until caught up. Each page and its cursor are applied in one atomic step.
         var guard = 0
+        val sessionRecords = ArrayList<ServerRecord>()
         while (guard++ < MAX_PAGES) {
             val cursor = store.transact { l -> l to l.state.cursor.takeIf { l.state.userId != null } } ?: return@withLock SyncReport(0, 0, 0)
             val page = api.pull(cursor)
             val applied = store.transact { l -> if (l.state.userId == null) l to null else SyncLogic.applyPulled(l, page.changes, page.cursor).let { it.local to it } }
             pulled += page.changes.size
+            sessionRecords += page.changes.filter { it.type == SessionWire.TYPE }
             if (applied?.bedtimeChanged == true) store.onBedtimeApplied(applied.local.bedtime)
             if (!page.hasMore || page.cursor <= cursor) break
         }
+        // Even with nothing new: a session that had to wait for the running one to end is joined now.
+        if (sessions != null && store.transact { l -> l to (l.state.userId != null) }) sessions.onPulled(sessionRecords)
 
         // 2. The first pull after linking is complete: decide what the account already has versus what only this phone has.
         val referenced = store.referencedPolicyIds()
@@ -49,11 +55,18 @@ class SyncEngine(
 
         // 3. Push. A stale answer can leave something new to send (a rebased edit), so look again, a few times at most.
         repeat(MAX_PUSH_ROUNDS) {
-            val plan = store.transact { l -> l to SyncLogic.planPush(l, clock()) }
+            val now = clock()
+            // Profiles go before the session that points at them.
+            val plan = store.transact { l -> l to SyncLogic.planPush(l, now) } +
+                (if (store.transact { l -> l to (l.state.userId != null && l.state.initialPullDone) }) sessions?.plan(now).orEmpty() else emptyList())
             if (plan.isEmpty()) return@repeat
             for (chunk in plan.chunked(MAX_CHANGES_PER_PUSH)) {
                 val results = api.push(chunk)
-                val applied = store.transact { l -> if (l.state.userId == null) l to null else SyncLogic.applyPushResults(l, chunk, results).let { it.local to it } }
+                // Sessions have their own bookkeeping: SyncLogic must never see their outcomes.
+                val (sessionSent, otherSent) = chunk.partition { it.type == SessionWire.TYPE }
+                val (sessionResults, otherResults) = results.partition { it.type == SessionWire.TYPE }
+                val applied = store.transact { l -> if (l.state.userId == null) l to null else SyncLogic.applyPushResults(l, otherSent, otherResults).let { it.local to it } }
+                if (sessionSent.isNotEmpty()) sessions?.onPushed(sessionSent, sessionResults)
                 pushed += chunk.size
                 if (applied?.bedtimeChanged == true) store.onBedtimeApplied(applied.local.bedtime)
             }

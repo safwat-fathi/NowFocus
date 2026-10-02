@@ -70,6 +70,8 @@ class SyncController(
     /** Emits whenever local profiles or bedtime change (the first emission starts the first pass). */
     private val localChanges: Flow<*>,
     private val deviceName: String,
+    /** True when the device is linked to an account and a background pass should be scheduled; false to cancel it. */
+    private val backgroundSync: (Boolean) -> Unit = {},
     private val clock: () -> Long = { System.currentTimeMillis() },
 ) {
     private val _status = MutableStateFlow(SyncStatus())
@@ -107,6 +109,7 @@ class SyncController(
 
     /** Local data and the Commitment Shield are never touched: signing out only forgets the tokens. */
     suspend fun signOut() {
+        backgroundSync(false)
         session?.cancel()
         api.logout()
         _status.update { SyncStatus(loaded = true) }
@@ -115,6 +118,7 @@ class SyncController(
     /** Deletes the account and its server data; this phone keeps everything it has. Returns an error message or null. */
     suspend fun deleteAccount(password: String): String? = try {
         api.deleteAccount(password)
+        backgroundSync(false)
         session?.cancel()
         store.transact { l -> l.copy(state = SyncLogic.unlink()) to Unit }
         _status.update { SyncStatus(loaded = true) }
@@ -128,6 +132,7 @@ class SyncController(
     // ----------------------------------------------------------------
 
     private fun begin() {
+        backgroundSync(true)
         session?.cancel()
         session = scope.launch {
             launch { localChanges.collect { trigger.trySend(Unit) } }
@@ -190,6 +195,7 @@ class SyncController(
     }
 
     private suspend fun expired() {
+        backgroundSync(false)
         api.forget()
         _status.update { SyncStatus(loaded = true, problem = "This device was signed out. Sign in again to keep syncing.") }
         session?.cancel()

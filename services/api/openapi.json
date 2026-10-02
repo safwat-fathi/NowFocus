@@ -999,7 +999,7 @@
           },
           "code": {
             "type": "string",
-            "description": "unknown_type | read_only | invalid_change | invalid_id | invalid_data | not_deletable | policy_in_use | invalid_transition | immutable_field | end_shortened | session_locked | too_early"
+            "description": "unknown_type | read_only | invalid_change | invalid_id | invalid_data | not_deletable | policy_in_use | invalid_transition | immutable_field | end_shortened | session_locked | too_early | too_long"
           },
           "message": {
             "type": "string"

@@ -136,6 +136,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val cheat by viewModel.cheatDay.collectAsStateWithLifecycle()
+    val joinRemote by viewModel.joinRemote.collectAsStateWithLifecycle()
     val limits by viewModel.limits.collectAsStateWithLifecycle()
     val frictionApps by viewModel.frictionApps.collectAsStateWithLifecycle()
     // A schedule suggested from Stats ("you try X most at 11 PM"), open in the editor but not saved yet.
@@ -331,6 +332,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                             if (on) (context as FragmentActivity).askFingerprint { viewModel.setAccountLock(true); accountUnlocked = true }
                             else viewModel.setAccountLock(false)
                         },
+                        joinRemote = joinRemote,
+                        onJoinRemote = viewModel::setJoinRemote,
                         onBack = { screen = Screen.Devices },
                     )
                 }

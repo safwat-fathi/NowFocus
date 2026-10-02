@@ -10,9 +10,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import app.getnowfocus.android.sync.BackgroundSync
 import app.getnowfocus.android.sync.DataStoreAuthStore
+import app.getnowfocus.android.sync.RepositorySessionSync
 import app.getnowfocus.android.sync.RepositorySyncStore
 import app.getnowfocus.android.sync.SyncApi
 import app.getnowfocus.android.sync.SyncController
@@ -52,6 +55,17 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val goals: StateFlow<List<Goal>> =
         repository.goalsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Whether this phone joins sessions started on the account's other devices. */
+    val joinRemote: StateFlow<Boolean> =
+        repository.joinRemoteFlow.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setJoinRemote(on: Boolean) {
+        viewModelScope.launch {
+            repository.setJoinRemote(on)
+            sync.syncNow() // turning it on picks up a session that is running now
+        }
+    }
+
     val cheatDay: StateFlow<CheatDay?> =
         repository.cheatDayFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -82,15 +96,22 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
      * enforcement never depends on it. See sync/ and services/api/WIRE_FORMAT.md.
      */
     val sync: SyncController = run {
-        val userAgent = "NowFocus-Android/${BuildConfig.VERSION_NAME}"
+        val userAgent = BackgroundSync.userAgent()
         val auth = DataStoreAuthStore(application)
         val api = SyncApi(BuildConfig.SYNC_BASE_URL, userAgent, auth)
         val store = RepositorySyncStore(application, repository)
         SyncController(
-            scope = viewModelScope, engine = SyncEngine(store, api), api = api, auth = auth, store = store,
+            scope = viewModelScope,
+            engine = SyncEngine(store, api, sessions = RepositorySessionSync(application, repository, BackgroundSync.deviceName())),
+            api = api, auth = auth, store = store,
             socket = SyncSocket(BuildConfig.SYNC_BASE_URL, userAgent),
-            localChanges = combine(repository.policiesFlow, repository.bedtimeSettingsFlow) { p, b -> p to b }.distinctUntilChanged(),
-            deviceName = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}".trim().take(100),
+            // A session starting or ending is a local change too: it has to reach the other devices.
+            localChanges = combine(
+                repository.policiesFlow, repository.bedtimeSettingsFlow,
+                repository.sessionFlow.map { s -> s?.let { Triple(it.id, it.status, it.endAt) } },
+            ) { p, b, s -> Triple(p, b, s) }.distinctUntilChanged(),
+            deviceName = BackgroundSync.deviceName(),
+            backgroundSync = { on -> if (on) BackgroundSync.arm(application) else BackgroundSync.cancel(application) },
         )
     }
 
@@ -112,6 +133,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
                 _sessionLoaded.value = true
                 if (evaluated != null && evaluated.status == FocusSessionStatus.COMPLETED && previousStatus != FocusSessionStatus.COMPLETED) {
                     historyDao.insertSession(evaluated.toHistoryRow())
+                    sync.syncNow() // tells the other devices, and joins a session that was waiting for this one to end
                     // A focus session that ended inside the bedtime window (so
                     // the wind-down alarm skipped it) should hand off to the
                     // nightly locked session now. No-ops outside the window.

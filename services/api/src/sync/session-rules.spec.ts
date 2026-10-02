@@ -81,3 +81,17 @@ describe('session state machine', () => {
     expect(code(checkSessionChange(session(), session({ status: 'completed' }), at(5)))).toBe('ok');
   });
 });
+
+describe('session length cap', () => {
+  it('refuses a session longer than 24 hours, locked or not, on create and on extension', () => {
+    expect(code(checkSessionChange(null, session({ endAt: iso(at(24 * 60 + 1)) }), T0))).toBe('too_long');
+    expect(code(checkSessionChange(null, session({ enforcementMode: 'locked', endAt: iso(at(60 * 24 * 365)) }), T0))).toBe('too_long');
+    const locked = session({ enforcementMode: 'locked' });
+    expect(code(checkSessionChange(locked, { ...locked, endAt: iso(at(24 * 60 + 1)) }, at(10)))).toBe('too_long');
+  });
+
+  it('allows exactly 24 hours, and a whole night of Bedtime', () => {
+    expect(code(checkSessionChange(null, session({ endAt: iso(at(24 * 60)) }), T0))).toBe('ok');
+    expect(code(checkSessionChange(null, session({ sessionType: 'bedtime_winddown', enforcementMode: 'locked', endAt: iso(at(9 * 60)) }), T0))).toBe('ok');
+  });
+});

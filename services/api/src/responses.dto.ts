@@ -51,7 +51,7 @@ export class PushResult {
   status!: 'applied' | 'stale' | 'rejected';
   /** The server's current record (applied and stale). */
   record?: SyncRecord;
-  /** unknown_type | read_only | invalid_change | invalid_id | invalid_data | not_deletable | policy_in_use | invalid_transition | immutable_field | end_shortened | session_locked | too_early */
+  /** unknown_type | read_only | invalid_change | invalid_id | invalid_data | not_deletable | policy_in_use | invalid_transition | immutable_field | end_shortened | session_locked | too_early | too_long */
   code?: string;
   message?: string;
 }

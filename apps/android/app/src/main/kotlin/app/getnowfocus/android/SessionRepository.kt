@@ -49,6 +49,10 @@ class SessionRepository(context: Context) {
         val SCHEDULES = stringPreferencesKey("schedules")
         val SCHEDULE_RUNS = stringPreferencesKey("scheduleRuns")
         val SESSION_PASSES = stringPreferencesKey("sessionPasses")
+        val SESSION_ORIGIN = stringPreferencesKey("sessionOrigin")
+        val SESSION_STARTED_ON = stringPreferencesKey("sessionStartedOn")
+        val SESSION_SYNC = stringPreferencesKey("sessionSync")
+        val JOIN_REMOTE = booleanPreferencesKey("joinRemoteSessions")
         val CHEAT_START = longPreferencesKey("cheatStartAt")
         val CHEAT_END = longPreferencesKey("cheatEndAt")
         val CHEAT_CREATED = longPreferencesKey("cheatCreatedAt")
@@ -98,6 +102,8 @@ class SessionRepository(context: Context) {
             // Null for any session written before this field existed.
             voiceNotePath = p[Keys.VOICE_NOTE_PATH],
             passes = p[Keys.SESSION_PASSES]?.let { Passes.fromJson(it) } ?: emptyList(),
+            origin = p[Keys.SESSION_ORIGIN]?.let { runCatching { SessionOrigin.valueOf(it) }.getOrNull() } ?: SessionOrigin.USER,
+            startedOn = p[Keys.SESSION_STARTED_ON],
         )
     }
 
@@ -151,6 +157,23 @@ class SessionRepository(context: Context) {
             val runs = p[Keys.SCHEDULE_RUNS]?.let { Schedule.runsFromJson(it) } ?: emptyMap()
             p[Keys.SCHEDULE_RUNS] = Schedule.runsToJson(runs + (scheduleId to windowStart))
         }
+    }
+
+    /** Whether this device joins sessions started on the account's other devices. On unless the user turns it off. */
+    val joinRemoteFlow: Flow<Boolean> = store.data.map { p -> p[Keys.JOIN_REMOTE] ?: true }
+
+    suspend fun setJoinRemote(on: Boolean) { store.edit { p -> p[Keys.JOIN_REMOTE] = on } }
+
+    /** Session-sync bookkeeping (see sync/SessionSync): one JSON text, edited atomically. */
+    suspend fun <R> editSessionSync(block: (String?) -> Pair<String?, R>): R {
+        var result: R? = null
+        store.edit { p ->
+            val (next, r) = block(p[Keys.SESSION_SYNC])
+            if (next == null) p.remove(Keys.SESSION_SYNC) else p[Keys.SESSION_SYNC] = next
+            result = r
+        }
+        @Suppress("UNCHECKED_CAST")
+        return result as R
     }
 
     /** Device-local, never synced: a remote write must not be able to loosen blocking. Null if none was ever set. */
@@ -278,6 +301,8 @@ class SessionRepository(context: Context) {
             if (session.cancelledAt != null) p[Keys.CANCELLED_AT] = session.cancelledAt else p.remove(Keys.CANCELLED_AT)
             if (session.voiceNotePath != null) p[Keys.VOICE_NOTE_PATH] = session.voiceNotePath else p.remove(Keys.VOICE_NOTE_PATH)
             if (session.passes.isNotEmpty()) p[Keys.SESSION_PASSES] = Passes.toJson(session.passes) else p.remove(Keys.SESSION_PASSES)
+            p[Keys.SESSION_ORIGIN] = session.origin.name
+            if (session.startedOn != null) p[Keys.SESSION_STARTED_ON] = session.startedOn else p.remove(Keys.SESSION_STARTED_ON)
         }
     }
 

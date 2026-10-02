@@ -42,6 +42,8 @@ fun AccountScreen(
     lockOffered: Boolean,
     lockOn: Boolean,
     onLock: (Boolean) -> Unit,
+    joinRemote: Boolean,
+    onJoinRemote: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
@@ -54,7 +56,7 @@ fun AccountScreen(
         Spacer(Modifier.height(NowFocusSpace.s4))
         when {
             !status.loaded -> Unit
-            status.signedIn -> SignedIn(sync, status, lockOffered || lockOn, lockOn, onLock)
+            status.signedIn -> SignedIn(sync, status, lockOffered || lockOn, lockOn, onLock, joinRemote, onJoinRemote)
             else -> SignedOut(sync, status)
         }
         Spacer(Modifier.height(NowFocusSpace.s6))
@@ -111,7 +113,10 @@ internal fun credentialsProblem(email: String, password: String): String? = when
 }
 
 @Composable
-private fun SignedIn(sync: SyncController, status: SyncStatus, showLock: Boolean, lockOn: Boolean, onLock: (Boolean) -> Unit) {
+private fun SignedIn(
+    sync: SyncController, status: SyncStatus, showLock: Boolean, lockOn: Boolean, onLock: (Boolean) -> Unit,
+    joinRemote: Boolean, onJoinRemote: (Boolean) -> Unit,
+) {
     val scope = rememberCoroutineScope()
     var devices by remember { mutableStateOf<List<DeviceInfo>?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -139,6 +144,12 @@ private fun SignedIn(sync: SyncController, status: SyncStatus, showLock: Boolean
     }
     Spacer(Modifier.height(NowFocusSpace.s3))
     SecondaryButton("Sync now", modifier = Modifier.fillMaxWidth()) { sync.syncNow() }
+    Spacer(Modifier.height(NowFocusSpace.s3))
+    ToggleRow(
+        "Join sessions from my other devices",
+        "A session you start on another device starts here too, up to 24 hours. Turn off to keep this phone separate.",
+        joinRemote, { onJoinRemote(!joinRemote) },
+    )
     if (showLock) {
         Spacer(Modifier.height(NowFocusSpace.s3))
         ToggleRow(

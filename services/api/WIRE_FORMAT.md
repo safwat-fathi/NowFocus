@@ -52,7 +52,7 @@ Per-change rejection codes and what to do:
 | `invalid_data` / `invalid_change` / `invalid_id` | The server's validation failed (for example an unsafe domain) | Do not retry the same payload. Log, surface "couldn't sync <name>", keep the local value. |
 | `policy_in_use` | A session is running on this policy and the edit would remove, disable or weaken a rule, change `mode`, or delete it | **Adopt the server record and restore it locally.** Additions are always accepted. |
 | `unknown_type` / `read_only` / `not_deletable` | You pushed something the server doesn't accept (`shield_item` is written only through `/v1/always-blocked`) | A bug in the adapter. Do not retry. |
-| session codes (`invalid_transition`, `immutable_field`, `end_shortened`, `session_locked`, `too_early`) | Slice 2 | See section 6. |
+| session codes (`invalid_transition`, `immutable_field`, `end_shortened`, `session_locked`, `too_early`, `too_long`) | Slice 2 | See section 6. |
 
 ## 4. `policy`
 
@@ -105,7 +105,7 @@ Server-enforced: `enabled`/`lockAtSleep` booleans; the three minutes are integer
 
 `{ id, policyId, sessionType: "focus"|"bedtime_winddown", source: "user"|"extension"|"schedule" (default "user"), status: "scheduled"|"active"|"completed"|"cancelled"|"expired"|"error", enforcementMode: "normal"|"strict"|"locked", startAt, endAt, … }`, extras such as `notificationMode`, `deviceId`, `policySnapshot` stored verbatim.
 
-State machine on the server: statuses only move forward, terminal sessions never change, `policyId`/`sessionType`/`startAt`/`source`/`enforcementMode` are immutable, `endAt` can only be extended on a non-`normal` session, cancelling a `locked` session before `endAt` is `session_locked`, completing a non-`normal` session more than 60 s before `endAt` is `too_early`. Several sessions may run at once: an adapter that keeps an "at most one active session" invariant must **union or queue** a second running session, never silently replace enforcement. Android's stored status can stay `ACTIVE` after `endAt`; evaluate the status from the clock before pushing.
+State machine on the server: statuses only move forward, terminal sessions never change, `policyId`/`sessionType`/`startAt`/`source`/`enforcementMode` are immutable, `endAt` can only be extended on a non-`normal` session, cancelling a `locked` session before `endAt` is `session_locked`, completing a non-`normal` session more than 60 s before `endAt` is `too_early`, and a session longer than 24 hours (at creation or after an extension) is `too_long`. Several sessions may run at once: an adapter that keeps an "at most one active session" invariant must **union or queue** a second running session, never silently replace enforcement. Android's stored status can stay `ACTIVE` after `endAt`; evaluate the status from the clock before pushing.
 
 ## 7. `shield_item` (slice 3, read-only)
 

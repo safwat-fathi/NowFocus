@@ -51,6 +51,7 @@ private suspend fun startDueSchedule(context: Context, repo: SessionRepository, 
             packages = policy.apps.map { it.packageName }.toSet(),
             partial = policy.partial,
             enforcementMode = due.schedule.mode,
+            origin = SessionOrigin.SCHEDULE,
         ),
         now,
     ))

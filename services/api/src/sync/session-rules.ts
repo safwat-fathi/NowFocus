@@ -15,7 +15,7 @@ export interface SessionData {
   [extra: string]: unknown; // the rest of the payload is stored verbatim
 }
 
-export type Verdict = { ok: true } | { ok: false; code: 'invalid_transition' | 'immutable_field' | 'end_shortened' | 'session_locked' | 'too_early'; message: string };
+export type Verdict = { ok: true } | { ok: false; code: 'invalid_transition' | 'immutable_field' | 'end_shortened' | 'session_locked' | 'too_early' | 'too_long'; message: string };
 
 const OK: Verdict = { ok: true };
 const no = (code: Extract<Verdict, { ok: false }>['code'], message: string): Verdict => ({ ok: false, code, message });
@@ -23,6 +23,12 @@ const no = (code: Extract<Verdict, { ok: false }>['code'], message: string): Ver
 const RANK = { scheduled: 0, active: 1, completed: 2, cancelled: 2, expired: 2, error: 2 } as const;
 const TERMINAL = 2;
 const EARLY_ALLOWANCE_MS = 60_000; // clock skew between a device and the server
+/**
+ * No session may run longer than this, however it is created or extended. A locked session cannot be cancelled
+ * or shortened, so without a cap one push (a buggy client, a stolen account) could lock every linked device
+ * for years and nothing could undo it. A day covers a long deep-work stretch and a full night's Bedtime.
+ */
+export const MAX_SESSION_MS = 24 * 3_600_000;
 const IMMUTABLE = ['policyId', 'sessionType', 'startAt', 'source', 'enforcementMode'] as const;
 
 /**
@@ -30,6 +36,9 @@ const IMMUTABLE = ['policyId', 'sessionType', 'startAt', 'source', 'enforcementM
  * `prev` is the stored session (null on create); `now` is server time. Pure — no I/O.
  */
 export function checkSessionChange(prev: SessionData | null, next: SessionData, now: Date): Verdict {
+  if (Date.parse(next.endAt) - Date.parse(next.startAt) > MAX_SESSION_MS) {
+    return no('too_long', 'a session can last at most 24 hours');
+  }
   if (prev) {
     for (const f of IMMUTABLE) {
       const same = f === 'startAt' ? Date.parse(prev.startAt) === Date.parse(next.startAt) : prev[f] === next[f];
