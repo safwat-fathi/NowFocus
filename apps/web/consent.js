@@ -3,6 +3,8 @@
 // The choice is kept in localStorage ("nf-consent"); the footer "Cookie settings" button reopens the banner.
 (() => {
   const ID = "G-MYM23S2Q8E", KEY = "nf-consent";
+  const AR = document.documentElement.lang === "ar";
+  const L = (en, ar) => (AR ? ar : en);
   const get = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
   const set = (v) => { try { localStorage.setItem(KEY, v); } catch {} };
   const state = (v) => ({ analytics_storage: v === "granted" ? "granted" : "denied" });
@@ -25,9 +27,9 @@
     if (banner) return;
     banner = document.createElement("aside");
     banner.className = "consent";
-    banner.setAttribute("aria-label", "Analytics consent");
-    banner.innerHTML = '<p>We use Google Analytics to count visits. If you accept, it sets cookies; if not, it sets none and only sends basic, cookieless pings. <a href="/privacy/#website">Details</a></p>' +
-      '<div class="consent-actions"><button type="button" class="btn btn-secondary" data-v="denied">Decline</button><button type="button" class="btn btn-primary" data-v="granted">Accept</button></div>';
+    banner.setAttribute("aria-label", L("Analytics consent", "موافقة التحليلات"));
+    banner.innerHTML = '<p>' + L("We use Google Analytics to count visits. If you accept, it sets cookies; if not, it sets none and only sends basic, cookieless pings.", "نستخدم Google Analytics لعدّ الزيارات. إن وافقت فسيضع ملفات تعريف ارتباط، وإن رفضت فلن يضع أيًّا منها وسيرسل إشارات أساسية فقط دون ملفات تعريف ارتباط.") + ' <a href="' + L("", "/ar") + '/privacy/#website">' + L("Details", "التفاصيل") + '</a></p>' +
+      '<div class="consent-actions"><button type="button" class="btn btn-secondary" data-v="denied">' + L("Decline", "رفض") + '</button><button type="button" class="btn btn-primary" data-v="granted">' + L("Accept", "موافقة") + '</button></div>';
     banner.addEventListener("click", (e) => {
       const v = e.target.closest("[data-v]")?.dataset.v;
       if (!v) return;

@@ -21,6 +21,17 @@ Status (2026-10-01): free, but not published to any store and no download links 
 
 - [Blog](https://nowfocus.online/blog/): essays, updates, and engineering notes
 - [Why NowFocus?](https://nowfocus.online/blog/why-nowfocus/): the problem with willpower, bypassable timers, and structural friction
+- [Freedom Alternative](https://nowfocus.online/blog/freedom-alternative/): why local-first focus beats VPN profiles, cloud surveillance, and subscriptions
+- [Cold Turkey for Mac and Mobile](https://nowfocus.online/blog/cold-turkey-mac-and-mobile/): closing the cross-device loophole left by desktop-only blockers
+- [Opal Alternative for Android](https://nowfocus.online/blog/opal-alternative-android/): native Android accessibility, feed blocking, and strict focus without the $99/year fee
+- [Forest Alternative](https://nowfocus.online/blog/forest-alternative/): why structural friction beats cartoon trees for serious deep work
+
+## Arabic (العربية)
+
+- [الصفحة الرئيسية](https://nowfocus.online/ar/): NowFocus تطبيق تركيز يحترم الخصوصية على أندرويد وmacOS وويندوز
+- [التحميل](https://nowfocus.online/ar/download/): حالة كل منصة والمتطلبات ومقارنة الميزات
+- [أندرويد](https://nowfocus.online/ar/download/android/), [macOS](https://nowfocus.online/ar/download/macos/), [ويندوز](https://nowfocus.online/ar/download/windows/): أدلة التثبيت والإعداد
+- [الخصوصية](https://nowfocus.online/ar/privacy/), [الشروط](https://nowfocus.online/ar/terms/), [المدوّنة](https://nowfocus.online/ar/blog/)
 
 ## Optional
 

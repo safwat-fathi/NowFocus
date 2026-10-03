@@ -42,4 +42,8 @@ It is a self-control tool, not a lock. Someone who owns the device can uninstall
 - https://nowfocus.online/terms/
 - https://nowfocus.online/blog/
 - https://nowfocus.online/blog/why-nowfocus/
+- https://nowfocus.online/blog/freedom-alternative/
+- https://nowfocus.online/blog/cold-turkey-mac-and-mobile/
+- https://nowfocus.online/blog/opal-alternative-android/
+- https://nowfocus.online/blog/forest-alternative/
 

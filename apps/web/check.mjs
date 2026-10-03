@@ -104,10 +104,28 @@ for (const m of readFileSync(join(ROOT, "llms.txt"), "utf8").matchAll(/\(https:\
   if (!existsSync(join(ROOT, m[1].endsWith("/") ? m[1] + "index.html" : m[1]))) fail("llms.txt", `broken link ${m[1]}`);
 
 // nav and footer are identical on every page (apart from aria-current)
-const shared = (p, re) => p.html.match(re)?.[0].replace(/ aria-current="page"/g, "");
+const shared = (p, re) => p.html.match(re)?.[0].replace(/ aria-current="page"/g, "").replace(/\s*<a class="nav-link nav-lang"[^>]*>[^<]*<\/a>/, "");
+const isAr = (p) => p.path.startsWith("/ar/");
 for (const [label, re] of [["nav", /<nav class="nav"[\s\S]*?<\/nav>/], ["footer", /<footer class="foot">[\s\S]*?<\/footer>/]]) {
-  const ref = shared(pages[0], re);
-  for (const p of pages) if (shared(p, re) !== ref) fail(p.name, `${label} differs from ${pages[0].name}`);
+  for (const group of [pages.filter((p) => !isAr(p)), pages.filter(isAr)]) {
+    const ref = shared(group[0], re);
+    for (const p of group) if (shared(p, re) !== ref) fail(p.name, `${label} differs from ${group[0].name}`);
+  }
+}
+
+// Arabic pages: rtl, and every hreflang pair is reciprocal and resolves
+for (const p of pages) {
+  const alts = [...p.html.matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)">/g)].map((m) => [m[1], m[2]]);
+  if (isAr(p) && !/<html lang="ar" dir="rtl">/.test(p.html)) fail(p.name, 'Arabic page without <html lang="ar" dir="rtl">');
+  if (!alts.length) continue;
+  const self = BASE + p.path;
+  if (!alts.some(([, h]) => h === self)) fail(p.name, "hreflang set doesn't include the page itself");
+  for (const [, h] of alts) {
+    const twin = byPath.get(h.slice(BASE.length));
+    if (!twin) { fail(p.name, `hreflang points at a missing page ${h}`); continue; }
+    const back = [...twin.html.matchAll(/<link rel="alternate" hreflang="[^"]+" href="([^"]+)">/g)].map((m) => m[1]);
+    if (!back.includes(self)) fail(p.name, `hreflang to ${h} is not reciprocal`);
+  }
 }
 
 if (errors.length) { console.error(errors.join("\n")); console.error(`\n${errors.length} problem(s)`); process.exit(1); }
