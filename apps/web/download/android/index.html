@@ -155,7 +155,7 @@
           "name": "Why does NowFocus need the Accessibility permission?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It lets NowFocus see which app comes to the foreground so it can block the apps you chose and, only if you turn on partial blocking, read the YouTube and Facebook screens during a session. Nothing else on screen is read, and nothing is stored or leaves your phone."
+            "text": "It lets NowFocus see which app comes to the foreground so it can block the apps you chose and, only if you turn on partial blocking, read the YouTube and Facebook screens during a session. If you add a daily limit for a website, it also reads your browser’s address bar, only while that browser is in front, to count the minutes on the sites you limited. Nothing else on screen is read, and nothing but those minutes is stored; nothing leaves your phone."
           }
         },
         {
@@ -317,7 +317,7 @@
   <h2>First-run setup</h2>
   <p class="lead">On the fourth onboarding step (Permissions) NowFocus asks for three permissions, in this order. Each has an <strong>Allow</strong> button that turns into an <strong>Allowed</strong> pill. <strong>Continue</strong> is always enabled, so none are forced, but without Accessibility apps aren’t blocked and without the VPN sites aren’t. The fifth step won’t start your first session until Accessibility is on.</p>
   <ol>
-  <li><strong>App blocking (Accessibility).</strong> Lets NowFocus see which app comes to the foreground so it can block the ones you chose. If you turn on partial blocking, it also reads the YouTube and Facebook screens during a session. Tap Allow, find NowFocus in Accessibility settings and switch it on.</li>
+  <li><strong>App blocking (Accessibility).</strong> Lets NowFocus see which app comes to the foreground so it can block the ones you chose. If you turn on partial blocking, it also reads the YouTube and Facebook screens during a session, and if you add a daily limit for a website it reads your browser’s address bar to count that time. Tap Allow, find NowFocus in Accessibility settings and switch it on.</li>
   <li><strong>Website filter (VPN).</strong> Blocks sites on your phone by answering DNS lookups. Only DNS goes through it. Tap Allow and accept Android’s VPN prompt. Android allows one VPN at a time.</li>
   <li><strong>Notification access (Do Not Disturb).</strong> Lets Bedtime Wind-Down quiet notifications. Optional.</li>
 </ol>
@@ -575,6 +575,7 @@
   <li>Turning off Accessibility, revoking the VPN permission or uninstalling NowFocus defeats Normal, Strict, Locked, Bedtime and the Commitment Shield alike.</li>
   <li>Website blocking works at the DNS level. Blocked sites fail to load (there’s no block page). While the screen is on, NowFocus posts a short “NowFocus blocked a site” notification, at most once a minute, that doesn’t name the site and stays off the lock screen, and the session notification says blocked sites won’t load until the timer ends. Apps that use their own encrypted DNS or a strict Private DNS setting can bypass it, and only one VPN can run at a time.</li>
   <li>Partial blocking is experimental (see above).</li>
+  <li>Daily limits count an app’s time from Android’s usage access, and a website’s time by reading your browser’s address bar through Accessibility while that browser is in front. Only the minutes on the sites you limited are kept. That works for Chrome, Brave, Edge, Samsung Internet, Firefox, Opera and Vivaldi, but not in other browsers or in-app browsers, and a browser update can break it. When a site’s time is used up NowFocus steps back out of the page; it doesn’t block the site everywhere. Everything resets at your phone’s local midnight.</li>
   <li>Bedtime alarms can be a few minutes off, and “lock at sleep time” is skipped when Accessibility is off or on Android 8.</li>
   <li>We’ve tested NowFocus on a Samsung Galaxy M52 5G running Android 13 (One UI 5.1), where focus sessions and Bedtime Wind-Down kept working. Other makers’ battery savers (Xiaomi, Huawei, Oppo and similar) haven’t been tested.</li>
   <li>Cross-device sync isn’t available. Each phone is on its own.</li>
@@ -592,7 +593,7 @@
   <div class="faq">
   <details>
     <summary>Why does NowFocus need the Accessibility permission?</summary>
-    <p>It lets NowFocus see which app comes to the foreground so it can block the apps you chose and, only if you turn on partial blocking, read the YouTube and Facebook screens during a session. Nothing else on screen is read, and nothing is stored or leaves your phone.</p>
+    <p>It lets NowFocus see which app comes to the foreground so it can block the apps you chose and, only if you turn on partial blocking, read the YouTube and Facebook screens during a session. If you add a daily limit for a website, it also reads your browser’s address bar, only while that browser is in front, to count the minutes on the sites you limited. Nothing else on screen is read, and nothing but those minutes is stored; nothing leaves your phone.</p>
   </details>
   <details>
     <summary>Why does it use a VPN?</summary>
