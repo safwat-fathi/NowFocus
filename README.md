@@ -785,3 +785,9 @@ The first version, however, should remain deliberately narrow.
 The initial objective is to build the best possible experience for one fundamental problem:
 
 > **When I choose to focus, help me stay focused.**
+
+## License
+
+NowFocus is **source-available** under the [Functional Source License (FSL-1.1-ALv2)](LICENSE), not open source. Read, audit, build and run it, and use it for your own purposes. You may not use it to offer a competing product or service. Each version becomes Apache 2.0 two years after its release.
+
+The Android app, Windows app, website and sync API (`services/api`) are all in this repository, so you can check for yourself what happens to your data.
