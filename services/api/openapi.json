@@ -1167,12 +1167,20 @@
         "properties": {
           "email": {
             "type": "string",
+            "maxLength": 254,
             "format": "email"
           },
           "platforms": {
             "type": "array",
+            "maxItems": 4,
             "items": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "android",
+                "windows",
+                "macos",
+                "ios"
+              ]
             }
           },
           "featureRequest": {
