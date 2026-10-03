@@ -6,6 +6,8 @@ export class Config {
   host!: string;
   /** How many proxy hops to trust for `req.ip` (see setup.ts). 1 = nginx, which overwrites X-Forwarded-For. */
   trustProxy!: number;
+  githubToken?: string;
+  githubRepo?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -24,5 +26,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: Number(env.PORT ?? 3000),
     host: env.HOST ?? '127.0.0.1',
     trustProxy,
+    githubToken: env.GITHUB_TOKEN,
+    githubRepo: env.GITHUB_REPO ?? 'safwat-fathi/NowFocus',
   };
 }

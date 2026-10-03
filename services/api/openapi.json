@@ -594,6 +594,31 @@
           "shield"
         ]
       }
+    },
+    "/v1/waitlist": {
+      "post": {
+        "operationId": "WaitlistController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successfully added to waitlist"
+          }
+        },
+        "summary": "Join the product waitlist and optionally submit a feature request",
+        "tags": [
+          "waitlist"
+        ]
+      }
     }
   },
   "info": {
@@ -1135,6 +1160,28 @@
         "required": [
           "batchId",
           "items"
+        ]
+      },
+      "WaitlistDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "featureRequest": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "required": [
+          "email"
         ]
       }
     }

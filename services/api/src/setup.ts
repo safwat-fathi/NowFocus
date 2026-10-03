@@ -10,5 +10,6 @@ export function configureApp(app: INestApplication) {
   const http = app as NestExpressApplication;
   http.useBodyParser('json', { limit: '1mb' });
   // Behind nginx every socket peer is the proxy, so rate limits key on the forwarded client IP (X-Forwarded-For).
+  http.enableCors({ origin: ['https://nowfocus.online'], methods: ['POST'] }); // the waitlist form on the marketing site
   http.set('trust proxy', app.get(Config).trustProxy);
 }

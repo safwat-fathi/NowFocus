@@ -1,6 +1,7 @@
 import { DataSourceOptions, DefaultNamingStrategy } from 'typeorm';
 import { Init1759000000000 } from '../migrations/1759000000000-init.js';
-import { Device, User } from './entities.js';
+import { Waitlist1759500000000 } from '../migrations/1759500000000-waitlist.js';
+import { Device, User, WaitlistEntry } from './entities.js';
 
 class SnakeNaming extends DefaultNamingStrategy {
   columnName(prop: string, custom: string | undefined) {
@@ -12,7 +13,7 @@ class SnakeNaming extends DefaultNamingStrategy {
 export const dataSourceOptions = (url: string): DataSourceOptions => ({
   type: 'postgres',
   url,
-  entities: [User, Device],
-  migrations: [Init1759000000000],
+  entities: [User, Device, WaitlistEntry],
+  migrations: [Init1759000000000, Waitlist1759500000000],
   namingStrategy: new SnakeNaming(),
 });

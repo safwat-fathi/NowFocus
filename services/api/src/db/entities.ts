@@ -24,3 +24,14 @@ export class Device {
   @Column({ type: 'timestamptz', nullable: true }) lastSeenAt!: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) revokedAt!: Date | null;
 }
+
+@Entity('waitlist')
+export class WaitlistEntry {
+  @PrimaryColumn('uuid') id!: string;
+  @Column({ type: 'text' }) email!: string;
+  @Column({ type: 'text', array: true, default: '{}' }) platforms!: string[];
+  @Column({ type: 'text', nullable: true }) featureRequest!: string | null;
+  @Column({ type: 'text', nullable: true }) githubIssueUrl!: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) createdAt!: Date;
+}
+
