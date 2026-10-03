@@ -51,3 +51,41 @@ jobs:
         run: |
           pnpm run openapi
           git diff --exit-code openapi.json
+
+  # Releases the commit that just passed the tests: deploy/release.sh on the VPS is the forced command of
+  # API_DEPLOY_SSH_KEY, so this key can run that script and nothing else (the web key is a separate, rsync-only key).
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-api
+      cancel-in-progress: false
+    steps:
+      - name: Release on the VPS
+        env:
+          DEPLOY_KEY: ${{ secrets.API_DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          for v in DEPLOY_KEY DEPLOY_HOST DEPLOY_KNOWN_HOSTS; do
+            [ -n "${!v}" ] || { echo "::error::secret $v is empty or not visible to this job"; exit 1; }
+          done
+          printf '%s' "$DEPLOY_HOST" | grep -Eq '^[A-Za-z0-9.-]+$' || { echo "::error::DEPLOY_HOST is not a bare hostname or IP"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null || { echo "::error::API_DEPLOY_SSH_KEY is not a valid private key"; exit 1; }
+          ssh-keygen -lf ~/.ssh/deploy_key
+          # The sha is the whole command line; the server-side forced command accepts nothing but a 40-hex sha.
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes "safwat@${DEPLOY_HOST}" "$GITHUB_SHA"
+
+      # /healthz reports the sha from REVISION, so this proves the new build is the one serving traffic.
+      - name: Wait for the new build
+        run: |
+          for i in $(seq 1 15); do
+            sha=$(curl -fsS https://api.nowfocus.online/healthz | jq -r .sha || true)
+            [ "$sha" = "$GITHUB_SHA" ] && { echo "live: $sha"; exit 0; }
+            sleep 2
+          done
+          echo "::error::/healthz reports '${sha:-nothing}', expected $GITHUB_SHA"; exit 1

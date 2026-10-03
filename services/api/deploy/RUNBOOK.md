@@ -4,7 +4,13 @@ Production: `https://api.nowfocus.online` (Cloudflare, then nginx, then pm2 app 
 
 ## Release
 
-On the VPS, in the checkout:
+**Automatic:** every push to `main` that touches `services/api/` runs the `deploy` job in `.github/workflows/api.yml` after the tests pass. It SSHes in with `API_DEPLOY_SSH_KEY`, whose `authorized_keys` line forces `deploy/release.sh` (it accepts only a 40-char commit sha), then polls `/healthz` until `sha` matches. One-time setup:
+
+1. `ssh-keygen -t ed25519 -N '' -C nowfocus-api-deploy -f ~/nf-api-deploy` on your laptop.
+2. On the VPS, `git pull` once so `release.sh` exists, then append to `~/.ssh/authorized_keys`: `restrict,command="<repo>/services/api/deploy/release.sh" <contents of nf-api-deploy.pub>`. Check `command -v git node pnpm pm2 flock` works over a non-interactive ssh (`ssh host 'command -v pnpm'` goes through the same minimal PATH; extend the `PATH` line in `release.sh` if not).
+3. `gh secret set API_DEPLOY_SSH_KEY < ~/nf-api-deploy && rm ~/nf-api-deploy ~/nf-api-deploy.pub`. `DEPLOY_HOST` and `DEPLOY_KNOWN_HOSTS` are shared with the web deploy.
+
+By hand, same script: `deploy/release.sh <full sha>` on the VPS. Or step by step, in the checkout:
 
 ```sh
 git pull
