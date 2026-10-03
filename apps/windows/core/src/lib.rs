@@ -8,6 +8,7 @@ pub mod bedtime_schedule;
 pub mod block_policy;
 pub mod cheat_day;
 pub mod commitment;
+pub mod daily_limit;
 pub mod domain_validation;
 pub mod enforcement_health;
 pub mod focus_session;

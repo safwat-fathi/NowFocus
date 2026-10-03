@@ -310,6 +310,20 @@ pub fn save_schedule(
 }
 
 #[tauri::command]
+pub fn set_limit(
+    state: State<SharedState>,
+    key: String,
+    label: String,
+    minutes: u32,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .set_limit(&key, &label, minutes)?;
+    changed(&state)
+}
+
+#[tauri::command]
 pub fn delete_schedule(state: State<SharedState>, id: String) -> Result<AppStateDto, String> {
     state
         .lock()

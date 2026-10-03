@@ -6,6 +6,7 @@ import { api } from "./lib/api";
 import type { AppState, ScreenId } from "./types";
 
 import { CheatDay } from "./screens/CheatDay";
+import { Limits } from "./screens/Limits";
 import { Onboarding } from "./screens/Onboarding";
 import { Schedules } from "./screens/Schedules";
 import { Focus } from "./screens/Focus";
@@ -79,6 +80,7 @@ export default function App() {
           {view === "commitment" && <Commitment state={state} onState={refresh} />}
           {view === "bedtime" && <Bedtime state={state} onState={refresh} />}
           {view === "schedules" && <Schedules state={state} onState={refresh} />}
+          {view === "limits" && <Limits state={state} onState={refresh} />}
           {view === "cheatday" && <CheatDay state={state} onState={refresh} />}
           {view === "tray" && <Tray state={state} onState={refresh} onOpen={() => navigate(state.session ? "active" : "focus")} />}
           {view === "shield" && <Shield state={state} onState={refresh} />}

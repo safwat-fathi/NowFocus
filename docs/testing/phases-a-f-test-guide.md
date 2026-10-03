@@ -8,7 +8,7 @@ Branch `feat/phases-a-f`. This guide is for you to run on your own devices and w
 
 | Area | Checked automatically | NOT checked by anyone yet |
 |---|---|---|
-| Android logic (passes, cheat day, schedules, limits, streak, score, session sync rules) | 258 unit tests pass, including live sync tests against a local API | Every screen and flow on a real phone, except installing it |
+| Android logic (passes, cheat day, schedules, limits, streak, score, session sync rules) | 269 unit tests pass, including live sync tests against a local API | Every screen and flow on a real phone, except installing it |
 | Android service behaviour (Accessibility, VPN, notifications, alarms) | nothing | all of it |
 | Windows logic (cheat day, passes, schedules, streak, sync rules) | 100+ Rust tests; two Windows sync engines converged through the real API (profiles, bedtime, a session started on one and joined and ended on the other) | The app has **never run on a real Windows PC**. Install, the service, the hosts file, the overlay, the tray, the credential store: all untested |
 | Server | 64 end-to-end tests pass locally, including the new 24-hour session cap | **Not deployed.** `api.nowfocus.online` does not have the cap yet |
@@ -281,19 +281,45 @@ Reboot the phone (Android) / restart the PC app (Windows) before a schedule's st
 
 ---
 
-# D. Daily limits, opening friction, insights (Android only)
+# D. Daily limits, opening friction, insights (Android only; Windows has app daily limits, unverified on a real PC)
 
 ### D1. Daily limit
 1. Rules, **Daily limits**. Tap **Allow usage access** and switch NowFocus on.
 2. **+ Add a limit…**, pick an app, choose 15 minutes.
 3. Use that app for 15 minutes in total (spread out is fine). Keep checking the screen's "N of 15 min today".
 4. Open it again after it is used up.
-5. Try to raise the limit to 60 or remove it.
+5. On the "Daily limit" screen tap **Open <app> for 5 min (2 left)**. Use the app, and see it blocked again when the 5 minutes end. Do it a second time, then check the third is not offered.
+6. Raise the limit to 60. Then, on another app that still has time left, remove its limit. Then remove the limit of the used-up app.
 
-**Expect:** usage shown on the screen is roughly right. When used up you get a "Daily limit" screen saying you've used your 15 minutes and it is back at midnight (no "I really need it"). Raising or removing says it counts from midnight; lowering a limit counts at once. A cheat day pauses limits.
+**Expect:** usage shown on the screen is roughly right. When used up you get a "Daily limit" screen saying you've used your 15 minutes and it is back at midnight, with the 5-minute pass (two per app per day, back at midnight) and no "I really need it". Raising a limit counts from midnight; lowering one counts at once; **removing one with time left counts at once (the app opens straight away)**, while removing a used-up one says "removed at midnight". A cheat day pauses limits. The 5-minute pass is offered on Normal/Strict session blocks and on daily limits, never in Locked sessions, Bedtime or the Commitment Shield. The buttons stay on screen on a small phone even with a reach-out card shown.
 
 **Result:** [ ] pass  [ ] fail  [ ] skipped
 **Notes (does the app get stopped while open at the 15-minute mark?):**
+
+### D1b. Website daily limit (Android; Windows has app limits only)
+1. Rules, **Daily limits**, **+ Add a website limit…**, type `youtube.com`, choose 15 minutes. Switch NowFocus Accessibility on if the screen says it isn't.
+2. In Chrome, open youtube.com and watch for a few minutes. Switch tabs to another site, and to a search box, for a minute each. Repeat in each other browser you use (Brave, Samsung Internet, Firefox, Edge).
+3. Keep checking "N of 15 min today". Once used up, keep browsing youtube.com (and m.youtube.com).
+4. After midnight (or move the phone clock and timezone past it), open youtube.com again.
+
+5. Pull the notification shade down and back up mid-page; lock and unlock the phone; watch a video fullscreen (toolbar hidden) for a few minutes.
+
+**Expect:** minutes count only while a youtube.com page is showing, not on other sites or while typing in the address bar. Once used up you are stepped back out of the page and get the "Daily limit" screen naming youtube.com. After midnight it works again, and the Limits screen and block screen clear themselves. A cheat day pauses it. **Check per browser:** the address-bar view ids are unverified; a browser that never counts needs its id added to `FocusAccessibilityService.BROWSER_BARS`.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+Also expect counting to carry on after the shade/lock steps and during fullscreen video.
+**Notes (which browsers counted? did a limit stay "used up" after midnight?):**
+
+### D1c. Daily limit on Windows (apps only, never run on a real PC)
+1. Daily limits (sidebar), **Add application…**, pick an `.exe`, it starts at 30 minutes; choose 15.
+2. Keep that app in front for 15 minutes in total. Watch "N of 15 min today".
+3. Keep it open past 15 minutes without switching away; then reopen it.
+4. Raise it to 60 and remove it.
+
+**Expect:** the count is roughly right. Within about 30 seconds of 15 minutes the app is closed and a "daily limit" overlay appears (no "I really need it"); reopening shows it again. Raising or removing says it counts from midnight; lowering is at once. A cheat day pauses it. **Check:** does a blocked app behind a "save changes?" dialog get the overlay re-shown every 30 seconds?
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
 
 ### D2. Opening friction
 1. Rules, **Opening friction**, **+ Add an app…**, pick an app.

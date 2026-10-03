@@ -138,6 +138,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     val cheat by viewModel.cheatDay.collectAsStateWithLifecycle()
     val joinRemote by viewModel.joinRemote.collectAsStateWithLifecycle()
     val limits by viewModel.limits.collectAsStateWithLifecycle()
+    val siteUsage by viewModel.siteUsage.collectAsStateWithLifecycle()
     val frictionApps by viewModel.frictionApps.collectAsStateWithLifecycle()
     // A schedule suggested from Stats ("you try X most at 11 PM"), open in the editor but not saved yet.
     var schedulePrefill by remember { mutableStateOf<Schedule?>(null) }
@@ -274,7 +275,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                             ),
                             ProtectionEntry(
                                 "Daily limits",
-                                if (limits.isEmpty()) "Not set up" else "${limits.size} ${if (limits.size == 1) "app" else "apps"}",
+                                if (limits.isEmpty()) "Not set up" else "${limits.size} ${if (limits.size == 1) "limit" else "limits"}",
                                 onClick = { screen = Screen.Limits },
                             ),
                             ProtectionEntry(
@@ -373,6 +374,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                 )
                 Screen.Limits -> LimitsScreen(
                     limits = limits,
+                    siteUsage = siteUsage,
                     resumeKey = resumeCount,
                     onChange = viewModel::changeLimit,
                     onBack = { screen = Screen.Policies },

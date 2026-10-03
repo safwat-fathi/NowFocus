@@ -18,6 +18,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
@@ -27,6 +28,9 @@ import kotlinx.coroutines.launch
  *    Facebook, Instagram or X is in front, read that app's screen to spot Shorts / Reels /
  *    recommendation lists. Experimental: the screen signatures are unverified (see PartialSignatures).
  * Screen content is read only in that case, is matched in memory and never stored or sent anywhere.
+ *  - website daily limits: while a listed browser is in front and a site limit exists, read its address bar
+ *    every few seconds and count the time on limited domains (see [SiteLimits]). Only the time per limited
+ *    domain is stored; what else you browse is dropped from memory at once.
  */
 class FocusAccessibilityService : AccessibilityService() {
 
@@ -41,6 +45,26 @@ class FocusAccessibilityService : AccessibilityService() {
         private const val MAX_NODES = 400
         private const val MAX_DEPTH = 30
         private const val SYSTEM_UI = "com.android.systemui"
+        private const val SITE_TICK_MS = 2_500L
+        private const val SITE_FLUSH_MS = 15_000L
+        /** How long the browser may be out of front (shade pulled down, a dialog) before the heartbeat stops. */
+        private const val SITE_AWAY_MS = 60_000L
+
+        /**
+         * Address-bar view id per browser. UNVERIFIED on real devices and browsers rename these between
+         * releases: a browser missing here, or whose id changed, simply isn't counted.
+         */
+        val BROWSER_BARS = mapOf(
+            "com.android.chrome" to "com.android.chrome:id/url_bar",
+            "com.chrome.beta" to "com.chrome.beta:id/url_bar",
+            "com.chrome.dev" to "com.chrome.dev:id/url_bar",
+            "com.brave.browser" to "com.brave.browser:id/url_bar",
+            "com.microsoft.emmx" to "com.microsoft.emmx:id/url_bar",
+            "com.sec.android.app.sbrowser" to "com.sec.android.app.sbrowser:id/location_bar_edit_text",
+            "org.mozilla.firefox" to "org.mozilla.firefox:id/mozac_browser_toolbar_url_view",
+            "com.opera.browser" to "com.opera.browser:id/url_field",
+            "com.vivaldi.browser" to "com.vivaldi.browser:id/url_bar",
+        )
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -56,6 +80,17 @@ class FocusAccessibilityService : AccessibilityService() {
     @Volatile private var cheat: CheatDay? = null
     private val lastFriction = mutableMapOf<String, Long>()
     private var limitJob: Job? = null
+    private lateinit var repo: SessionRepository
+
+    // Website limits: today's saved usage plus what the heartbeat has counted but not saved yet.
+    @Volatile private var siteUsage = SiteUsage()
+    @Volatile private var limitPasses = LimitPassState()
+    private val pendingSite = mutableMapOf<String, Long>()
+    private var lastSiteFlush = 0L
+    private var siteJob: Job? = null
+    private var siteBrowser: String? = null
+    private var siteAwaySince = 0L
+    private var viewIdsOn = false
 
     private var checkJob: Job? = null
     private var expiryJob: Job? = null
@@ -66,9 +101,11 @@ class FocusAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         instance = this
-        val repo = SessionRepository(this)
+        val repo = SessionRepository(this).also { this.repo = it }
         scope.launch { Enforcement.activeRulesFlow(repo).collect { applyRules(it) } }
-        scope.launch { repo.limitsFlow.collect { limits = it } }
+        scope.launch { repo.limitsFlow.collect { limits = it; syncServiceInfo() } }
+        scope.launch { repo.siteUsageFlow.collect { siteUsage = it } }
+        scope.launch { repo.limitPassesFlow.collect { limitPasses = it } }
         scope.launch { repo.frictionAppsFlow.collect { apps -> frictionPackages = apps.map { it.packageName }.toSet() } }
         scope.launch { repo.cheatDayFlow.collect { cheat = it } }
     }
@@ -79,20 +116,26 @@ class FocusAccessibilityService : AccessibilityService() {
      * (the XML declares just window-state events). Re-evaluated at each window's expiry, which also
      * drops the cover when a session ends without any further event arriving.
      */
+    private fun syncServiceInfo() {
+        val partialLive = rules.livePartial(System.currentTimeMillis()).isNotEmpty()
+        val wantIds = partialLive || limits.any { SiteLimits.isSite(it) } // site limits need view ids to find the address bar
+        if (partialLive == contentEventsOn && wantIds == viewIdsOn) return
+        serviceInfo = serviceInfo?.apply {
+            eventTypes = if (partialLive) eventTypes or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+                else eventTypes and AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED.inv()
+            flags = if (wantIds) flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+                else flags and AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS.inv()
+        }
+        contentEventsOn = partialLive
+        viewIdsOn = wantIds
+    }
+
     private fun applyRules(r: ActiveRules) {
         rules = r
         val now = System.currentTimeMillis()
         val partialLive = r.livePartial(now).isNotEmpty()
         if (!partialLive) { clearOverlay(); matchLog.clear() }
-        if (partialLive != contentEventsOn) {
-            serviceInfo = serviceInfo?.apply {
-                eventTypes = if (partialLive) eventTypes or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-                    else eventTypes and AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED.inv()
-                flags = if (partialLive) flags or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-                    else flags and AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS.inv()
-            }
-            contentEventsOn = partialLive
-        }
+        syncServiceInfo()
         expiryJob?.cancel()
         r.nextExpiryAfter(now)?.let { end ->
             expiryJob = scope.launch {
@@ -114,6 +157,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 if (blockApp(pkg)) return
                 // Not blocked by a session or the Shield: a daily limit may still stop it, or a pause may precede it.
                 if (limitApp(pkg)) return
+                watchSites(pkg)
                 frictionApp(pkg)
                 // The cover is a system-level window: drop it once the user is somewhere else.
                 if (pkg !in PartialSignatures.PACKAGES && pkg != SYSTEM_UI) { clearOverlay(); matchLog.clear() }
@@ -160,7 +204,11 @@ class FocusAccessibilityService : AccessibilityService() {
         if (cheat?.isActive(now) == true || limit.minutesAt(now) == 0) return false
         val used = UsageReader.foregroundToday(this, setOf(pkg), now)[pkg] ?: return false
         val left = limit.limitMillisAt(now) - used
+        val day = SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())
         if (left <= 0) {
+            // A five-minute pass keeps it open: look again when the pass ends.
+            val passUntil = LimitPasses.activeUntil(limitPasses, pkg, now, day)
+            if (passUntil > now) { recheckLimitAfter(pkg, passUntil - now); return false }
             logBlock(pkg, now)
             performGlobalAction(GLOBAL_ACTION_HOME)
             startActivity(
@@ -169,16 +217,106 @@ class FocusAccessibilityService : AccessibilityService() {
                     .putExtra(BlockedActivity.EXTRA_END_AT, UsageMath.nextMidnight(now, java.time.ZoneId.systemDefault()))
                     .putExtra(BlockedActivity.EXTRA_SOURCE, BlockedActivity.SOURCE_LIMIT)
                     .putExtra(BlockedActivity.EXTRA_PACKAGE, pkg)
+                    .putExtra(BlockedActivity.EXTRA_PASS_KEY, pkg)
+                    .putExtra(BlockedActivity.EXTRA_PASSES_LEFT, LimitPasses.passesLeft(limitPasses, pkg, day))
                     .putExtra(BlockedActivity.EXTRA_LIMIT_MINUTES, limit.minutesAt(now))
             )
             return true
         }
+        recheckLimitAfter(pkg, left)
+        return false
+    }
+
+    /** No window event marks the moment time (or a pass) runs out, so look again then if [pkg] is still in front. */
+    private fun recheckLimitAfter(pkg: String, millis: Long) {
         limitJob = scope.launch {
-            delay(left + 500)
+            delay(millis + 500)
             val stillThere = rootInActiveWindow?.packageName?.toString() == pkg
             if (stillThere && getSystemService(android.os.PowerManager::class.java)?.isInteractive == true) limitApp(pkg)
         }
-        return false
+    }
+
+    /** Starts the address-bar heartbeat when a listed browser comes to the front and a site limit exists. */
+    private fun watchSites(pkg: String) {
+        val barId = BROWSER_BARS[pkg] ?: return
+        if (limits.none { SiteLimits.isSite(it) }) return
+        if (siteJob?.isActive == true && siteBrowser == pkg) return
+        siteJob?.cancel()
+        siteBrowser = pkg
+        siteAwaySince = 0L
+        siteJob = scope.launch {
+            var tick: SiteTick? = null
+            while (isActive) {
+                delay(SITE_TICK_MS)
+                tick = siteTick(pkg, barId, tick) ?: break
+            }
+            flushSites()
+        }
+    }
+
+    /**
+     * The limit key of the site the address bar shows, or null when unknown (typing, search box). A bar that
+     * isn't on screen at all (fullscreen video, a scrolled-away toolbar) keeps [prevKey]: the page hasn't changed.
+     */
+    private fun siteKeyInFront(barId: String, prevKey: String?): String? {
+        val root = rootInActiveWindow ?: return null
+        val bar = root.findAccessibilityNodeInfosByViewId(barId).firstOrNull() ?: return prevKey
+        val host = if (bar.isFocused) null else SiteLimits.hostOf(bar.text?.toString())
+        return host?.let { SiteLimits.keyFor(it, limits) }
+    }
+
+    /** One heartbeat: credits the time since the last one, then bounces if the day's budget is spent. Null ends the loop. */
+    private suspend fun siteTick(pkg: String, barId: String, prev: SiteTick?): SiteTick? {
+        val now = System.currentTimeMillis()
+        if (limits.none { SiteLimits.isSite(it) }) return null
+        val awake = getSystemService(android.os.PowerManager::class.java)?.isInteractive == true
+        if (!awake || rootInActiveWindow?.packageName?.toString() != pkg) {
+            // Not in front right now: credit nothing, but keep polling a while, since coming back may send no window event.
+            if (siteAwaySince == 0L) siteAwaySince = now
+            return if (now - siteAwaySince > SITE_AWAY_MS) null else SiteTick(null, now)
+        }
+        siteAwaySince = 0L
+        val credit = SiteTimer.credit(prev, now, SITE_TICK_MS * 4)
+        if (credit > 0) pendingSite.merge(prev!!.key!!, credit, Long::plus)
+        if (now - lastSiteFlush > SITE_FLUSH_MS) flushSites()
+
+        val key = siteKeyInFront(barId, prev?.key)
+        val limit = key?.let { k -> limits.find { it.packageName == k } }
+        if (limit == null || cheat?.isActive(now) == true || limit.minutesAt(now) == 0) return SiteTick(key, now)
+        val used = siteUsage.usedMs(key, SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())) + (pendingSite[key] ?: 0L)
+        if (used < limit.limitMillisAt(now)) return SiteTick(key, now)
+        val day = SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())
+        // A five-minute pass keeps the site open; the next tick after it ends bounces again.
+        if (LimitPasses.activeUntil(limitPasses, key, now, day) > now) return SiteTick(key, now)
+
+        // Used up. BACK first (twice at most) so the tab isn't left parked on the blocked page, then HOME.
+        logBlock(pkg, now)
+        for (i in 0 until 3) {
+            if (siteKeyInFront(barId, null) != key) break
+            performGlobalAction(if (i < 2) GLOBAL_ACTION_BACK else GLOBAL_ACTION_HOME)
+            delay(700)
+        }
+        startActivity(
+            Intent(this, BlockedActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(BlockedActivity.EXTRA_END_AT, UsageMath.nextMidnight(now, java.time.ZoneId.systemDefault()))
+                .putExtra(BlockedActivity.EXTRA_SOURCE, BlockedActivity.SOURCE_LIMIT)
+                .putExtra(BlockedActivity.EXTRA_PACKAGE, pkg)
+                .putExtra(BlockedActivity.EXTRA_SITE, SiteLimits.domain(limit))
+                .putExtra(BlockedActivity.EXTRA_PASS_KEY, key)
+                .putExtra(BlockedActivity.EXTRA_PASSES_LEFT, LimitPasses.passesLeft(limitPasses, key, day))
+                .putExtra(BlockedActivity.EXTRA_LIMIT_MINUTES, limit.minutesAt(now))
+        )
+        return null
+    }
+
+    private fun flushSites() {
+        lastSiteFlush = System.currentTimeMillis()
+        if (pendingSite.isEmpty()) return
+        val credits = pendingSite.toMap()
+        pendingSite.clear()
+        val day = SiteLimits.dayOf(lastSiteFlush, java.time.ZoneId.systemDefault())
+        scope.launch { repo.addSiteUsage(day, credits) }
     }
 
     /** An app you asked to pause for: show the breath and question first (see FrictionGate). */

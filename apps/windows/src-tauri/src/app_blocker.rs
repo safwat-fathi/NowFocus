@@ -25,7 +25,7 @@ use windows_sys::Win32::System::Threading::{
 };
 use windows_sys::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetWindowThreadProcessId, PostMessageW, EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT,
+    GetForegroundWindow, GetWindowThreadProcessId, PostMessageW, EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT,
     WM_CLOSE,
 };
 
@@ -86,11 +86,25 @@ unsafe extern "system" fn win_event_proc(
     if event != EVENT_SYSTEM_FOREGROUND || hwnd.is_null() || id_object != OBJID_WINDOW {
         return;
     }
+    let Some(app) = APP_HANDLE.get() else { return };
+    handle_foreground(app, hwnd);
+}
+
+/// Re-checks whatever is in front right now. The 30s tick calls this so an app that is already open when its
+/// daily limit runs out gets closed, and so its time keeps being counted: no foreground event marks either.
+pub fn recheck_foreground() {
+    let Some(app) = APP_HANDLE.get() else { return };
+    // SAFETY: no arguments; returns the current foreground window handle, or null.
+    let hwnd = unsafe { GetForegroundWindow() };
+    if !hwnd.is_null() {
+        handle_foreground(app, hwnd);
+    }
+}
+
+fn handle_foreground(app: &AppHandle, hwnd: HWND) {
     let Some(exe_path) = foreground_process_path(hwnd) else {
         return;
     };
-    let Some(app) = APP_HANDLE.get() else { return };
-
     let blocked_name = {
         let state = app.state::<SharedState>();
         let Ok(mut guard) = state.lock() else { return };

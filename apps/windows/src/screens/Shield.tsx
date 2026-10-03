@@ -10,6 +10,7 @@ import { ArrowRightIcon } from "../components/Icons";
 export function Shield({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
   const shield = state.shield!;
   const session = state.session;
+  const isLimit = shield.targetKind === "limit";
 
   async function backToWork() {
     onState(await api.dismissShield());
@@ -36,21 +37,25 @@ export function Shield({ state, onState }: { state: AppState; onState: (s: AppSt
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div className="shield-kicker">
           <span className="shield-kicker__dot" />
-          {shield.targetKind === "app" ? `${shield.targetName} · closed by NowFocus` : `${shield.targetName} · blocked by NowFocus`}
+          {isLimit ? `${shield.targetName} · daily limit` : shield.targetKind === "app" ? `${shield.targetName} · closed by NowFocus` : `${shield.targetName} · blocked by NowFocus`}
         </div>
         <div style={{ marginTop: "auto" }}>
           <h1 className="shield-title">{shield.targetName} can wait.</h1>
           <p className="shield-body">
-            {session ? `You're in ${session.profileName}, with ${session.remainingLabel} to go.` : ""} Focus protects what you said mattered.
+            {isLimit
+              ? "You've used today's time. It's back at midnight."
+              : <>{session ? `You're in ${session.profileName}, with ${session.remainingLabel} to go.` : ""} Focus protects what you said mattered.</>}
           </p>
         </div>
       </div>
       <div className="shield-side">
         <div className="shield-side-list">
-          <div className="shield-side-row">
-            <span className="shield-side-row__label">Left in session</span>
-            <span className="shield-side-row__value">{session?.remainingLabel ?? "—"}</span>
-          </div>
+          {!isLimit && (
+            <div className="shield-side-row">
+              <span className="shield-side-row__label">Left in session</span>
+              <span className="shield-side-row__value">{session?.remainingLabel ?? "—"}</span>
+            </div>
+          )}
           <div className="shield-side-row" style={{ borderBottom: "2px solid var(--color-neutral-600)" }}>
             <span className="shield-side-row__label">Tries today</span>
             <span className="shield-side-row__value">{state.stats.blockAttemptsToday}</span>
@@ -68,9 +73,9 @@ export function Shield({ state, onState }: { state: AppState; onState: (s: AppSt
         {shield.passesLeft > 0 && (
           <p style={{ fontSize: 12, color: "var(--color-neutral-400)", margin: "6px 0 0" }}>Open it again after this closes. Only that app is let through.</p>
         )}
-        <button className="btn" onClick={endEarly} style={{ minHeight: 48, justifyContent: "flex-start", color: "var(--color-neutral-300)", fontSize: 15, marginTop: 6, paddingLeft: 0 }}>
+        {!isLimit && <button className="btn" onClick={endEarly} style={{ minHeight: 48, justifyContent: "flex-start", color: "var(--color-neutral-300)", fontSize: 15, marginTop: 6, paddingLeft: 0 }}>
           I really need it
-        </button>
+        </button>}
       </div>
     </div>
   );

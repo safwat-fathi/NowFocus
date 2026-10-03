@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -27,9 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
 
@@ -42,6 +46,7 @@ private val body = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, colo
 @Composable
 fun LimitsScreen(
     limits: List<AppLimit>,
+    siteUsage: SiteUsage,
     resumeKey: Int,
     onChange: (AppLimit, Int) -> Unit,
     onBack: () -> Unit,
@@ -50,19 +55,26 @@ fun LimitsScreen(
     val context = LocalContext.current
     val granted = remember(resumeKey) { UsageAccess.isGranted(context) }
     var used by remember { mutableStateOf<Map<String, Long>>(emptyMap()) }
+    // Re-read every 30s so the screen doesn't keep saying "Used up" after midnight when left open.
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(limits, resumeKey) {
-        used = withContext(Dispatchers.Default) { UsageReader.foregroundToday(context, limits.map { it.packageName }.toSet()) }
+        while (true) {
+            now = System.currentTimeMillis()
+            used = withContext(Dispatchers.Default) { UsageReader.foregroundToday(context, limits.filterNot { SiteLimits.isSite(it) }.map { it.packageName }.toSet(), now) }
+            delay(30_000)
+        }
     }
     var picking by remember { mutableStateOf(false) }
+    var pickingSite by remember { mutableStateOf(false) }
+    val siteWatching = remember(resumeKey) { FocusAccessibilityService.instance != null }
     var editing by remember { mutableStateOf<AppLimit?>(null) }
-    val now = System.currentTimeMillis()
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         GhostButton("‹ Back", onClick = onBack)
         Text("Daily limits", style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
-        Text("\"30 minutes of Instagram a day.\" Past it, the app is blocked until midnight. Lowering a limit counts at once; raising or removing one only counts from midnight.", style = body)
+        Text("\"30 minutes of Instagram a day.\" Past it, the app or website is blocked until midnight. Website time is counted from your browser's address bar. Lowering or removing a limit counts at once, unless it is already used up; raising one only counts from midnight.", style = body)
         if (!granted) {
             Spacer(Modifier.height(NowFocusSpace.s4))
             Text("Limits need usage access to see how long an app was open. Until you allow it, they aren't enforced.", style = body.copy(color = NowFocusColors.accent700))
@@ -73,10 +85,11 @@ fun LimitsScreen(
         SectionRule(thick = true)
         limits.forEach { l ->
             val minutes = l.minutesAt(now)
+            val usedMs = if (SiteLimits.isSite(l)) siteUsage.usedMs(l.packageName, SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())) else used[l.packageName] ?: 0L
             Row(Modifier.fillMaxWidth().clickable { editing = l }.padding(vertical = NowFocusSpace.s3), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(l.label, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
-                    val usedMin = (used[l.packageName] ?: 0L) / 60_000
+                    val usedMin = usedMs / 60_000
                     val pending = l.pendingMinutes?.takeIf { l.pendingFrom > now }
                     Text(
                         buildString {
@@ -86,12 +99,16 @@ fun LimitsScreen(
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                     )
                 }
-                if (minutes > 0 && (used[l.packageName] ?: 0L) >= minutes * 60_000L) TagPill("Used up")
+                if (minutes > 0 && usedMs >= minutes * 60_000L) TagPill("Used up")
             }
             SectionRule()
         }
         Spacer(Modifier.height(NowFocusSpace.s2))
         GhostButton("+ Add a limit…") { picking = true }
+        GhostButton("+ Add a website limit…") { pickingSite = true }
+        if (!siteWatching && limits.any { SiteLimits.isSite(it) }) {
+            Text("Website limits need NowFocus's accessibility service switched on. Until then they aren't counted.", style = body.copy(color = NowFocusColors.accent700))
+        }
         Spacer(Modifier.height(NowFocusSpace.s4))
     }
 
@@ -102,6 +119,16 @@ fun LimitsScreen(
             onDismiss = { picking = false },
         )
     }
+    if (pickingSite) {
+        DomainDialog(
+            onPick = { domain ->
+                pickingSite = false
+                val key = SiteLimits.key(domain)
+                editing = limits.find { it.packageName == key } ?: AppLimit(key, domain, minutesPerDay = 0)
+            },
+            onDismiss = { pickingSite = false },
+        )
+    }
     editing?.let { l ->
         MinutesDialog(
             title = l.label,
@@ -110,6 +137,30 @@ fun LimitsScreen(
             onDismiss = { editing = null },
         )
     }
+}
+
+@Composable
+private fun DomainDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf("") }
+    val domain = DomainValidation.normalize(text)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Website", style = headingStyle(20.sp)) },
+        text = {
+            NowFocusTextField(
+                value = text,
+                onValueChange = { text = it },
+                placeholder = "e.g. youtube.com",
+                singleLine = true,
+                isError = text.isNotBlank() && domain == null,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { domain?.let(onPick) }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = { if (domain != null) SecondaryButton("Next") { onPick(domain) } },
+        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
+    )
 }
 
 @Composable

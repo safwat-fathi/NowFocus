@@ -47,10 +47,34 @@ class UsageLimitsTest {
     }
 
     @Test
-    fun `a stray extra pause does not go negative or count twice`() {
-        val events = listOf(resume("ig", at(9)), pause("ig", at(9, 10)), pause("ig", at(9, 20)))
-        // The second pause has no resume: read as "was open since the window opened", the safe over-count.
-        assertTrue(UsageMath.foregroundMillis(events, "ig", from, now = at(10)) >= min(10))
+    fun `a stray extra pause credits nothing`() {
+        val events = listOf(resume("ig", at(9)), pause("ig", at(9, 5)), pause("ig", at(9, 6)))
+        // Not ten hours "since midnight": that stuck a limit as used up until the next day.
+        assertEquals(min(5), UsageMath.foregroundMillis(events, "ig", from, now = at(10)))
+    }
+
+    @Test
+    fun `a screen-off ends a stretch that never got its pause`() {
+        val events = listOf(resume("ig", at(9)), UsageEvt("ig", false, at(9, 20), hardStop = true))
+        assertEquals(min(20), UsageMath.foregroundMillis(events, "ig", from, now = at(15)))
+    }
+
+    @Test
+    fun `a hard stop with nothing open credits nothing`() {
+        assertEquals(0L, UsageMath.foregroundMillis(listOf(UsageEvt("ig", false, at(9), hardStop = true)), "ig", from, now = at(15)))
+    }
+
+    @Test
+    fun `yesterday's usage does not count today`() {
+        val events = listOf(resume("ig", at(9)), pause("ig", at(10)))
+        assertEquals(0L, UsageMath.foregroundMillis(events, "ig", at(0, d = 3), now = at(8, d = 3)))
+    }
+
+    @Test
+    fun `a raised limit takes effect at midnight`() {
+        val raised = ig.withMinutes(60, at(10), zone)
+        assertEquals(30, raised.minutesAt(at(23, 59)))
+        assertEquals(60, raised.minutesAt(at(0, d = 3)))
     }
 
     @Test
@@ -78,8 +102,15 @@ class UsageLimitsTest {
     }
 
     @Test
-    fun `removing a limit also waits for midnight, then it is gone`() {
-        val removed = ig.withMinutes(0, at(10), zone)
+    fun `removing a limit with time left counts at once`() {
+        val removed = ig.withMinutes(0, at(10), zone, usedMs = min(10))
+        assertEquals(0, removed.minutesAt(at(10)))
+        assertNull(removed.settled(at(10)))
+    }
+
+    @Test
+    fun `removing a used-up limit waits for midnight, then it is gone`() {
+        val removed = ig.withMinutes(0, at(10), zone, usedMs = min(30))
         assertEquals(30, removed.minutesAt(at(10)))
         assertEquals(0, removed.minutesAt(at(0, d = 3)))
         assertNull(removed.settled(at(0, d = 3)))

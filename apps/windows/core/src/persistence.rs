@@ -8,6 +8,7 @@ use crate::block_policy::{
     ApplicationRule, BlockPolicy, DomainRule, FeedRule, NotificationMode, PolicyMode, Profile,
 };
 use crate::cheat_day::CheatDay;
+use crate::daily_limit::DailyLimit;
 use crate::focus_session::{
     EnforcementMode, FocusSession, FocusSessionStatus, NotificationMode as SessionNotificationMode,
     SessionOrigin, SessionType,
@@ -125,6 +126,15 @@ impl Database {
             CREATE TABLE IF NOT EXISTS schedule_runs (
                 schedule_id TEXT PRIMARY KEY,
                 window_start TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS limits (
+                key TEXT PRIMARY KEY,
+                data_json TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS limit_usage (
+                key TEXT PRIMARY KEY,
+                day TEXT NOT NULL,
+                ms INTEGER NOT NULL
             );
             CREATE TABLE IF NOT EXISTS sync_kv (
                 key TEXT PRIMARY KEY,
@@ -651,6 +661,66 @@ impl Database {
         Ok(())
     }
 
+    // ---- Daily limits -----------------------------------------------------
+
+    pub fn list_limits(&self) -> Result<Vec<DailyLimit>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT data_json FROM limits ORDER BY rowid ASC")?;
+        let rows = stmt
+            .query_map([], |r| r.get::<_, String>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows
+            .iter()
+            .filter_map(|j| serde_json::from_str(j).ok())
+            .collect())
+    }
+
+    pub fn save_limit(&self, l: &DailyLimit) -> Result<()> {
+        let json = serde_json::to_string(l).unwrap_or_default();
+        self.conn.execute(
+            "INSERT INTO limits (key, data_json) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET data_json = excluded.data_json",
+            params![l.key, json],
+        )?;
+        Ok(())
+    }
+
+    /// Removes the limit and its usage counter.
+    pub fn delete_limit(&self, key: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM limits WHERE key = ?1", params![key])?;
+        self.conn
+            .execute("DELETE FROM limit_usage WHERE key = ?1", params![key])?;
+        Ok(())
+    }
+
+    /// Milliseconds counted for `key` on local day `day` (see `daily_limit::day_key`); another day reads as 0.
+    pub fn limit_used_ms(&self, key: &str, day: &str) -> Result<i64> {
+        let row = self.conn.query_row(
+            "SELECT ms FROM limit_usage WHERE key = ?1 AND day = ?2",
+            params![key, day],
+            |r| r.get::<_, i64>(0),
+        );
+        match row {
+            Ok(ms) => Ok(ms),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(0),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Adds to today's counter; the first credit of a new day starts it again from zero.
+    pub fn add_limit_usage(&self, key: &str, day: &str, ms: i64) -> Result<()> {
+        self.conn.execute(
+            "INSERT INTO limit_usage (key, day, ms) VALUES (?1, ?2, ?3)
+             ON CONFLICT(key) DO UPDATE SET
+               ms = CASE WHEN day = excluded.day THEN ms + excluded.ms ELSE excluded.ms END,
+               day = excluded.day",
+            params![key, day, ms],
+        )?;
+        Ok(())
+    }
+
     // ---- Key/value (sync bookkeeping) ------------------------------------
 
     pub fn kv_get(&self, key: &str) -> Result<Option<String>> {
@@ -1076,6 +1146,32 @@ mod tests {
         db.delete_schedule("s1").unwrap();
         assert!(db.list_schedules().unwrap().is_empty());
         assert!(db.schedule_run("s1").unwrap().is_none());
+    }
+
+    #[test]
+    fn limits_round_trip_and_delete_with_their_usage() {
+        let db = Database::open_in_memory().unwrap();
+        let l = DailyLimit::new("site:youtube.com", "youtube.com", 30);
+        db.save_limit(&l).unwrap();
+        db.save_limit(&DailyLimit { minutes_per_day: 45, ..l.clone() }).unwrap(); // upsert
+        assert_eq!(db.list_limits().unwrap().len(), 1);
+        assert_eq!(db.list_limits().unwrap()[0].minutes_per_day, 45);
+        db.add_limit_usage(&l.key, "2026-10-02", 5_000).unwrap();
+        db.delete_limit(&l.key).unwrap();
+        assert!(db.list_limits().unwrap().is_empty());
+        assert_eq!(db.limit_used_ms(&l.key, "2026-10-02").unwrap(), 0);
+    }
+
+    #[test]
+    fn limit_usage_adds_within_a_day_and_restarts_on_the_next() {
+        let db = Database::open_in_memory().unwrap();
+        db.add_limit_usage("a", "2026-10-02", 60_000).unwrap();
+        db.add_limit_usage("a", "2026-10-02", 30_000).unwrap();
+        assert_eq!(db.limit_used_ms("a", "2026-10-02").unwrap(), 90_000);
+        assert_eq!(db.limit_used_ms("a", "2026-10-03").unwrap(), 0);
+        db.add_limit_usage("a", "2026-10-03", 5_000).unwrap();
+        assert_eq!(db.limit_used_ms("a", "2026-10-03").unwrap(), 5_000);
+        assert_eq!(db.limit_used_ms("a", "2026-10-02").unwrap(), 0);
     }
 
     #[test]

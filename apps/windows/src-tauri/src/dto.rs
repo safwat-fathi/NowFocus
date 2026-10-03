@@ -40,6 +40,21 @@ pub struct ProfileDto {
     pub feeds: Vec<FeedRuleDto>,
 }
 
+/// One daily limit as the Limits screen shows it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LimitDto {
+    pub key: String,
+    pub label: String,
+    pub is_site: bool,
+    /// Minutes in force now; 0 = none.
+    pub minutes: u32,
+    pub used_minutes: i64,
+    pub used_up: bool,
+    /// "removed at midnight" / "60 min from midnight" while a change waits.
+    pub pending: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionDto {
@@ -203,6 +218,7 @@ pub struct AppStateDto {
     pub bedtime: BedtimeDto,
     pub schedules: Vec<ScheduleDto>,
     pub cheat_day: Option<CheatDayDto>,
+    pub limits: Vec<LimitDto>,
     /// Day starts (RFC3339) a cheat day can still be planned for.
     pub cheat_options: Vec<String>,
     pub sync: SyncStatusDto,

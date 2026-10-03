@@ -45,6 +45,8 @@ class SessionRepository(context: Context) {
         val CANCELLED_AT = longPreferencesKey("cancelledAt")
         val VOICE_NOTE_PATH = stringPreferencesKey("voiceNotePath")
         val LIMITS = stringPreferencesKey("appLimits")
+        val SITE_USAGE = stringPreferencesKey("siteUsage")
+        val LIMIT_PASSES = stringPreferencesKey("limitPasses")
         val FRICTION_APPS = stringPreferencesKey("frictionApps")
         val SCHEDULES = stringPreferencesKey("schedules")
         val SCHEDULE_RUNS = stringPreferencesKey("scheduleRuns")
@@ -124,6 +126,33 @@ class SessionRepository(context: Context) {
 
     suspend fun updateLimits(transform: (List<AppLimit>) -> List<AppLimit>) {
         store.edit { p -> p[Keys.LIMITS] = AppLimit.listToJson(transform(p[Keys.LIMITS]?.let { AppLimit.listFromJson(it) } ?: emptyList())) }
+    }
+
+    /** Today's time per limited website ([SiteUsage]); only limited domains are ever stored, never what was browsed. */
+    val siteUsageFlow: Flow<SiteUsage> = store.data.map { p -> p[Keys.SITE_USAGE]?.let { SiteUsage.fromJson(it) } ?: SiteUsage() }
+
+    suspend fun addSiteUsage(today: String, credits: Map<String, Long>) {
+        store.edit { p ->
+            var u = p[Keys.SITE_USAGE]?.let { SiteUsage.fromJson(it) } ?: SiteUsage()
+            credits.forEach { (key, ms) -> u = u.plus(today, key, ms) }
+            p[Keys.SITE_USAGE] = u.toJson()
+        }
+    }
+
+    /** Today's five-minute passes on used-up daily limits ([LimitPasses]). Device-local. */
+    val limitPassesFlow: Flow<LimitPassState> = store.data.map { p -> p[Keys.LIMIT_PASSES]?.let { LimitPasses.fromJson(it) } ?: LimitPassState() }
+
+    /** Grants a pass on the limit [key] if one may be given; true when it was. */
+    suspend fun grantLimitPass(key: String, now: Long): Boolean {
+        var granted = false
+        val day = SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())
+        store.edit { p ->
+            val current = p[Keys.LIMIT_PASSES]?.let { LimitPasses.fromJson(it) } ?: LimitPassState()
+            val updated = LimitPasses.grant(current, key, now, day) ?: return@edit
+            p[Keys.LIMIT_PASSES] = LimitPasses.toJson(updated)
+            granted = true
+        }
+        return granted
     }
 
     /** Apps that ask for a pause before opening (see FrictionGate). Device-local. */

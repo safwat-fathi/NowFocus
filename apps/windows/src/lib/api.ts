@@ -49,6 +49,7 @@ export const api = {
   scheduleCheatDay: (dayStart: string) => invoke<AppState>("schedule_cheat_day", { dayStart }),
   cancelCheatDay: () => invoke<AppState>("cancel_cheat_day"),
   saveSchedule: (schedule: Schedule) => invoke<AppState>("save_schedule", { schedule }),
+  setLimit: (key: string, label: string, minutes: number) => invoke<AppState>("set_limit", { key, label, minutes }),
   deleteSchedule: (id: string) => invoke<AppState>("delete_schedule", { id }),
 
   startCommitment: (domains: string[]) => invoke<AppState>("start_commitment", { domains }),

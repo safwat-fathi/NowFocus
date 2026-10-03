@@ -139,6 +139,7 @@ pub fn run() {
             commands::cancel_cheat_day,
             commands::save_schedule,
             commands::delete_schedule,
+            commands::set_limit,
             commands::sync_sign_in,
             commands::sync_sign_out,
             commands::sync_now,
@@ -313,6 +314,8 @@ fn periodic_tick() {
             lock_workstation();
         }
     }
+    #[cfg(windows)]
+    app_blocker::recheck_foreground();
     refresh_tray();
 }
 

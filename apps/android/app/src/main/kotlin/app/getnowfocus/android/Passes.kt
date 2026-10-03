@@ -35,3 +35,31 @@ object Passes {
         return (0 until a.length()).map { a.getJSONObject(it).let { o -> AppPass(o.getString("pkg"), o.getLong("until")) } }
     }
 }
+
+/** Today's passes on daily-limit blocks, keyed by the limit (an app's package, or "site:<domain>"). */
+data class LimitPassState(val day: String = "", val passes: List<AppPass> = emptyList())
+
+/**
+ * The same five-minute pass for a used-up daily limit: [Passes.MAX_PER_SESSION] per limit per local day. It is
+ * its own allowance, separate from a session's, and resets at midnight along with the limit itself.
+ */
+object LimitPasses {
+    private fun today(state: LimitPassState, day: String) = if (state.day == day) state.passes else emptyList()
+
+    fun passesLeft(state: LimitPassState, key: String, day: String): Int =
+        (Passes.MAX_PER_SESSION - today(state, day).count { it.packageName == key }).coerceAtLeast(0)
+
+    /** When the open pass for [key] ends, or 0 if there is none. */
+    fun activeUntil(state: LimitPassState, key: String, now: Long, day: String): Long =
+        today(state, day).filter { it.packageName == key && it.until > now }.maxOfOrNull { it.until } ?: 0L
+
+    /** The state with a pass for [key] added, or null when none may be given (none left, or one is still open). */
+    fun grant(state: LimitPassState, key: String, now: Long, day: String): LimitPassState? {
+        if (passesLeft(state, key, day) == 0 || activeUntil(state, key, now, day) > now) return null
+        return LimitPassState(day, today(state, day) + AppPass(key, now + Passes.DURATION_MS))
+    }
+
+    fun toJson(s: LimitPassState): String = JSONObject().put("day", s.day).put("passes", JSONArray(Passes.toJson(s.passes))).toString()
+
+    fun fromJson(json: String): LimitPassState = JSONObject(json).let { LimitPassState(it.optString("day"), Passes.fromJson(it.optJSONArray("passes")?.toString() ?: "[]")) }
+}

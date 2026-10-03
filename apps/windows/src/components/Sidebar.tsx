@@ -43,6 +43,11 @@ export function Sidebar({ state, screen, onNavigate }: { state: AppState; screen
         <span className="nav-item__label">Schedules</span>
         {state.schedules.some((s) => s.enabled) && <span className="nav-item__dot" />}
       </button>
+      <button className="nav-item" data-active={screen === "limits"} onClick={() => onNavigate("limits")}>
+        <StatsIcon />
+        <span className="nav-item__label">Daily limits</span>
+        {state.limits.some((l) => l.usedUp) && <span className="nav-item__dot" />}
+      </button>
       <button className="nav-item" data-active={screen === "cheatday"} onClick={() => onNavigate("cheatday")}>
         <StatsIcon />
         <span className="nav-item__label">Cheat day</span>

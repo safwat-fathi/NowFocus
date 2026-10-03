@@ -12,7 +12,9 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import app.getnowfocus.android.sync.BackgroundSync
 import app.getnowfocus.android.sync.DataStoreAuthStore
 import app.getnowfocus.android.sync.RepositorySessionSync
@@ -71,6 +73,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     val limits: StateFlow<List<AppLimit>> =
         repository.limitsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val siteUsage: StateFlow<SiteUsage> =
+        repository.siteUsageFlow.stateIn(viewModelScope, SharingStarted.Eagerly, SiteUsage())
 
     val frictionApps: StateFlow<List<AppRule>> =
         repository.frictionAppsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -397,14 +402,16 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Sets [minutes] on [limit] (0 removes it). Tighter counts now, looser from midnight: see [AppLimit.withMinutes]. */
+    /** Sets [minutes] on [limit] (0 removes it). Tighter or removing counts now (unless used up), raising from midnight: see [AppLimit.withMinutes]. */
     fun changeLimit(limit: AppLimit, minutes: Int) {
         val now = System.currentTimeMillis()
         val zone = java.time.ZoneId.systemDefault()
         viewModelScope.launch {
+            val usedMs = if (SiteLimits.isSite(limit)) siteUsage.value.usedMs(limit.packageName, SiteLimits.dayOf(now, zone))
+                else withContext(Dispatchers.Default) { UsageReader.foregroundToday(getApplication(), setOf(limit.packageName), now)[limit.packageName] ?: 0L }
             repository.updateLimits { list ->
                 val isNew = list.none { it.packageName == limit.packageName }
-                val base = if (isNew) limit.copy(minutesPerDay = minutes) else list.first { it.packageName == limit.packageName }.withMinutes(minutes, now, zone)
+                val base = if (isNew) limit.copy(minutesPerDay = minutes) else list.first { it.packageName == limit.packageName }.withMinutes(minutes, now, zone, usedMs)
                 // Fold due changes and drop removed limits while we're here.
                 (list.filterNot { it.packageName == limit.packageName } + base).mapNotNull { it.settled(now) }
             }

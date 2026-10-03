@@ -6,6 +6,7 @@ use chrono::{
 };
 use now_focus_core::block_policy::FeedRule;
 use now_focus_core::cheat_day::{self, CheatDay};
+use now_focus_core::daily_limit::{self, DailyLimit};
 use now_focus_core::history_stats::BlockEvent;
 use now_focus_core::schedule::{self, Schedule};
 use now_focus_core::{
@@ -17,7 +18,7 @@ use now_focus_ipc::CommitmentStatusWire;
 
 use crate::dto::{
     AppStateDto, ApplicationRuleDto, BedtimeDto, CheatDayDto, CommitmentDto, DomainRuleDto,
-    FeedRuleDto, ProfileDto, ScheduleDto, SessionDto, ShieldDto, StatsDto, SyncStatusDto,
+    FeedRuleDto, LimitDto, ProfileDto, ScheduleDto, SessionDto, ShieldDto, StatsDto, SyncStatusDto,
     TargetCountDto, UnlockStateDto,
 };
 use crate::enforcer::Enforcer;
@@ -28,6 +29,9 @@ use crate::enforcer::Enforcer;
 /// real app has no such setting yet, so it's a fixed constant matching that
 /// default. Promote it to a real user preference if that's ever asked for.
 const UNLOCK_WAIT: ChronoDuration = ChronoDuration::seconds(30);
+
+/// A foreground note credits at most this long to the app that was in front (the recheck runs every 30s).
+const LIMIT_MAX_GAP_SECS: i64 = 45;
 
 const UNLOCK_SENTENCE: &str = "I am choosing to end this focus session early.";
 
@@ -82,6 +86,9 @@ pub struct AppState {
     shield_native: Option<String>,
     /// What the sync loop last reported, for the Devices screen. Set by `sync_glue`.
     sync_status: SyncStatusDto,
+    /// The limited app (or none) that was in front at the last foreground note, and when: the next note
+    /// credits the time since then to it. In memory only.
+    limit_tick: Option<daily_limit::Tick>,
 }
 
 impl AppState {
@@ -120,6 +127,7 @@ impl AppState {
             passes_used: (None, 0),
             shield_native: None,
             sync_status: SyncStatusDto::default(),
+            limit_tick: None,
         }
     }
 
@@ -242,6 +250,7 @@ impl AppState {
             .iter()
             .map(schedule_to_dto)
             .collect();
+        let limits = self.limit_dtos(now);
         let cheat_options = cheat_day::options(now, &Local, cheat.as_ref(), 14)
             .into_iter()
             .map(|d| d.to_rfc3339())
@@ -258,6 +267,7 @@ impl AppState {
             bedtime,
             schedules,
             cheat_day: cheat.as_ref().map(|c| cheat_to_dto(c, now)),
+            limits,
             cheat_options,
             sync: self.sync_status.clone(),
         })
@@ -813,6 +823,13 @@ impl AppState {
     /// Shield screen, it never touches a window handle itself.
     #[cfg_attr(not(windows), allow(dead_code))]
     pub fn check_foreground_app(&mut self, exe_path: &str) -> Option<String> {
+        let now = Utc::now();
+        self.note_foreground(exe_path, now);
+        self.check_session_block(exe_path)
+            .or_else(|| self.check_limit(exe_path, now))
+    }
+
+    fn check_session_block(&mut self, exe_path: &str) -> Option<String> {
         let session = self.recover().ok()??;
         let now = Utc::now();
         if !session_engine::is_active(&session, now) || self.cheat_active(now) {
@@ -837,6 +854,114 @@ impl AppState {
         let _ = self.record_block_attempt("app".to_string(), display_name.clone());
         self.shield_native = Some(native);
         Some(display_name)
+    }
+
+    // ---- Daily limits ---------------------------------------------------------
+
+    /// Credits the time since the last note to the limited app that was in front, then notes `exe` as in
+    /// front now. Runs on every foreground change and on the 30s recheck, so a stall (sleep, a missed
+    /// tick) credits at most `LIMIT_MAX_GAP_SECS`.
+    /// ponytail: counts an idle PC with the app still in front; add GetLastInputInfo if that over-counts.
+    fn note_foreground(&mut self, exe: &str, now: DateTime<Utc>) {
+        let ms = daily_limit::credit_ms(
+            self.limit_tick.as_ref(),
+            now,
+            ChronoDuration::seconds(LIMIT_MAX_GAP_SECS),
+        );
+        if let Some(daily_limit::Tick { key: Some(k), .. }) = &self.limit_tick {
+            if ms > 0 {
+                let _ = self
+                    .db
+                    .add_limit_usage(k, &daily_limit::day_key(now, &Local), ms);
+            }
+        }
+        let key = self.db.list_limits().ok().and_then(|ls| {
+            daily_limit::limit_for_exe(&ls, exe).map(|l| l.key.clone())
+        });
+        self.limit_tick = Some(daily_limit::Tick { key, at: now });
+    }
+
+    /// Arms the Shield and returns the label when `exe` has used up its limit today (paused on a cheat day).
+    fn check_limit(&mut self, exe: &str, now: DateTime<Utc>) -> Option<String> {
+        if self.cheat_active(now) {
+            return None;
+        }
+        let limits = self.db.list_limits().ok()?;
+        let l = daily_limit::limit_for_exe(&limits, exe)?;
+        let allowed = l.limit_ms_at(now);
+        let used = self
+            .db
+            .limit_used_ms(&l.key, &daily_limit::day_key(now, &Local))
+            .ok()?;
+        if allowed == 0 || used < allowed {
+            return None;
+        }
+        self.shield = Some(ShieldDto {
+            target_kind: "limit".to_string(),
+            target_name: l.label.clone(),
+            passes_left: 0,
+        });
+        self.shield_native = None;
+        Some(l.label.clone())
+    }
+
+    /// `minutes` 0 removes the limit (at once, or from midnight if it is already used up); tighter applies now,
+    /// raising waits for midnight.
+    pub fn set_limit(&mut self, key: &str, label: &str, minutes: u32) -> Result<(), String> {
+        if minutes != 0 && !daily_limit::MINUTE_CHOICES.contains(&minutes) {
+            return Err("Pick one of the offered limits.".to_string());
+        }
+        let now = Utc::now();
+        let existing = self
+            .db
+            .list_limits()
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .find(|l| l.key == key);
+        let next = match existing {
+            Some(l) => {
+                let used = self
+                    .db
+                    .limit_used_ms(key, &daily_limit::day_key(now, &Local))
+                    .unwrap_or(0);
+                l.with_minutes(minutes, now, &Local, used)
+            }
+            None if minutes == 0 => return Ok(()),
+            None => DailyLimit::new(key, label, minutes),
+        };
+        let saved = match next.settled(now) {
+            Some(l) => self.db.save_limit(&l),
+            None => self.db.delete_limit(key),
+        };
+        saved.map_err(|e| e.to_string())
+    }
+
+    fn limit_dtos(&self, now: DateTime<Utc>) -> Vec<LimitDto> {
+        let day = daily_limit::day_key(now, &Local);
+        self.db
+            .list_limits()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|l| l.clone().settled(now).is_some())
+            .map(|l| {
+                let minutes = l.minutes_at(now);
+                let used = self.db.limit_used_ms(&l.key, &day).unwrap_or(0);
+                let pending = match (l.pending_minutes, l.pending_from) {
+                    (Some(0), Some(from)) if from > now => Some("removed at midnight".to_string()),
+                    (Some(m), Some(from)) if from > now => Some(format!("{m} min from midnight")),
+                    _ => None,
+                };
+                LimitDto {
+                    is_site: l.is_site(),
+                    used_up: minutes > 0 && used >= minutes as i64 * 60_000,
+                    used_minutes: used / 60_000,
+                    key: l.key,
+                    label: l.label,
+                    minutes,
+                    pending,
+                }
+            })
+            .collect()
     }
 
     pub fn dismiss_shield(&mut self) {
@@ -1623,6 +1748,80 @@ mod tests {
         assert_eq!(log.lock().unwrap().len(), 1, "the session is applied again");
         assert!(!state.snapshot().unwrap().session.unwrap().paused);
         assert!(state.check_foreground_app(r"C:\Apps\Chat.exe").is_some());
+    }
+
+    const IG: &str = "c:\\apps\\ig.exe";
+
+    fn used(state: &AppState, ms: i64) {
+        let day = daily_limit::day_key(Utc::now(), &Local);
+        state.db.add_limit_usage(IG, &day, ms).unwrap();
+    }
+
+    #[test]
+    fn a_limited_app_is_closed_once_its_time_is_used_up_and_not_before() {
+        let (mut state, _, _) = setup();
+        state.set_limit(IG, "Instagram", 15).unwrap();
+        assert_eq!(state.check_foreground_app("C:\\Apps\\IG.exe"), None);
+        used(&state, 14 * 60_000);
+        assert_eq!(state.check_foreground_app("C:\\Apps\\IG.exe"), None);
+        used(&state, 60_000);
+        assert_eq!(
+            state.check_foreground_app("C:\\Apps\\IG.exe"),
+            Some("Instagram".to_string())
+        );
+        assert_eq!(state.shield.as_ref().unwrap().target_kind, "limit");
+        // Another app is untouched, and the snapshot reports the limit as used up.
+        assert_eq!(state.check_foreground_app("C:\\Apps\\other.exe"), None);
+        let dto = state.snapshot().unwrap().limits;
+        assert!(dto[0].used_up && dto[0].minutes == 15);
+    }
+
+    #[test]
+    fn a_cheat_day_pauses_limits() {
+        let (mut state, _, _) = setup();
+        state.set_limit(IG, "Instagram", 15).unwrap();
+        used(&state, 20 * 60_000);
+        state.db.set_cheat_day(Some(&cheat_now())).unwrap();
+        assert_eq!(state.check_foreground_app("C:\\Apps\\IG.exe"), None);
+    }
+
+    #[test]
+    fn loosening_a_limit_waits_for_midnight_and_removing_it_does_too() {
+        let (mut state, _, _) = setup();
+        state.set_limit(IG, "Instagram", 30).unwrap();
+        state.set_limit(IG, "Instagram", 60).unwrap();
+        let l = &state.snapshot().unwrap().limits[0];
+        assert_eq!((l.minutes, l.pending.as_deref()), (30, Some("60 min from midnight")));
+        used(&state, 30 * 60_000);
+        state.set_limit(IG, "Instagram", 0).unwrap(); // used up: removal waits
+        let l = &state.snapshot().unwrap().limits[0];
+        assert_eq!((l.minutes, l.pending.as_deref()), (30, Some("removed at midnight")));
+        state.set_limit(IG, "Instagram", 15).unwrap(); // tightening applies at once
+        assert_eq!(state.snapshot().unwrap().limits[0].minutes, 15);
+        assert!(state.set_limit(IG, "Instagram", 7).is_err());
+    }
+
+    #[test]
+    fn removing_a_limit_with_time_left_is_at_once() {
+        let (mut state, _, _) = setup();
+        state.set_limit(IG, "Instagram", 30).unwrap();
+        used(&state, 10 * 60_000);
+        state.set_limit(IG, "Instagram", 0).unwrap();
+        assert!(state.snapshot().unwrap().limits.is_empty());
+    }
+
+    #[test]
+    fn time_in_front_is_counted_to_the_limited_app() {
+        let (mut state, _, _) = setup();
+        state.set_limit(IG, "Instagram", 30).unwrap();
+        let t0 = Utc::now();
+        state.note_foreground("C:\\Apps\\IG.exe", t0 - ChronoDuration::seconds(20));
+        state.note_foreground("C:\\Apps\\other.exe", t0);
+        let day = daily_limit::day_key(t0, &Local);
+        assert_eq!(state.db.limit_used_ms(IG, &day).unwrap(), 20_000);
+        // Time after that is nobody's.
+        state.note_foreground("C:\\Apps\\other.exe", t0 + ChronoDuration::seconds(30));
+        assert_eq!(state.db.limit_used_ms(IG, &day).unwrap(), 20_000);
     }
 
     #[test]

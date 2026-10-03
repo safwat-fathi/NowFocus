@@ -98,6 +98,18 @@ export interface Shield {
   passesLeft: number;
 }
 
+export interface Limit {
+  key: string;
+  label: string;
+  isSite: boolean;
+  /** Minutes in force now; 0 = none. */
+  minutes: number;
+  usedMinutes: number;
+  usedUp: boolean;
+  /** "removed at midnight" / "60 min from midnight" while a change waits. */
+  pending: string | null;
+}
+
 export interface Schedule {
   /** Empty for a new schedule. */
   id: string;
@@ -167,6 +179,7 @@ export interface AppState {
   bedtime: Bedtime;
   schedules: Schedule[];
   cheatDay: CheatDay | null;
+  limits: Limit[];
   /** Day starts (RFC3339) a cheat day can still be planned for. */
   cheatOptions: string[];
   sync: SyncStatus;
@@ -183,4 +196,5 @@ export type ScreenId =
   | "bedtime"
   | "schedules"
   | "cheatday"
+  | "limits"
   | "tray";

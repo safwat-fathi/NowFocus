@@ -39,6 +39,13 @@ pub fn normalize(raw: &str) -> Option<String> {
     ok.then_some(domain)
 }
 
+/// Suffix match: "youtube.com" covers "m.youtube.com" but not "notyoutube.com".
+pub fn host_matches(host: &str, domain: &str) -> bool {
+    let h = host.to_lowercase();
+    let h = h.trim_end_matches('.');
+    h == domain || h.ends_with(&format!(".{domain}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

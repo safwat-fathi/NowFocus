@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,9 +48,12 @@ class BlockedActivity : ComponentActivity() {
         const val EXTRA_SOURCE = "source"
         const val EXTRA_PACKAGE = "package"
         const val EXTRA_LIMIT_MINUTES = "limitMinutes"
+        const val EXTRA_SITE = "site"
         /** A [BlockSource] name, or this: the app's daily limit is used up. */
         const val SOURCE_LIMIT = "LIMIT"
         const val EXTRA_PASSES_LEFT = "passesLeft"
+        /** What a pass is for: the limit key (an app's package, or "site:<domain>"). EXTRA_PACKAGE is what to open. */
+        const val EXTRA_PASS_KEY = "passKey"
     }
 
     // Same "activity builds its own repository" pattern as FocusAccessibilityService.
@@ -60,6 +65,7 @@ class BlockedActivity : ComponentActivity() {
     private var person by mutableStateOf<Person?>(null)
     private var goal by mutableStateOf<String?>(null)
     private var triesToday by mutableStateOf(0)
+    private var limitExpiry: kotlinx.coroutines.Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +74,8 @@ class BlockedActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // delay() doesn't count time the phone slept, so also check the wall clock whenever the screen comes back.
+        if (intent.getStringExtra(EXTRA_SOURCE) == SOURCE_LIMIT && System.currentTimeMillis() >= intent.getLongExtra(EXTRA_END_AT, 0L)) { finish(); return }
         lifecycleScope.launch {
             person = PeopleRotation.next(repository.peopleFlow.first())
             goal = Goals.pick(repository.goalsFlow.first())?.text
@@ -97,10 +105,18 @@ class BlockedActivity : ComponentActivity() {
         val source = intent.getStringExtra(EXTRA_SOURCE)
         val fromShield = source == BlockSource.COMMITMENT_SHIELD.name
         val fromLimit = source == SOURCE_LIMIT
-        // The pass offer: only a session window ever carries passesLeft > 0 (Normal and Strict, see Passes).
+        // A daily-limit block is a stale screen once its day is over: close it at the reset rather than keep saying "back in 0m".
+        limitExpiry?.cancel()
+        limitExpiry = if (fromLimit) lifecycleScope.launch {
+            delay((endAt - System.currentTimeMillis()).coerceAtLeast(0))
+            finish()
+        } else null
+        // The pass offer: a Normal/Strict session window (see Passes) or a used-up daily limit (see LimitPasses). Never the Shield.
         val pkg = intent.getStringExtra(EXTRA_PACKAGE)
-        val passesLeft = if (fromShield || fromLimit) 0 else intent.getIntExtra(EXTRA_PASSES_LEFT, 0)
-        val appLabel = pkg?.let { runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(it, 0)).toString() }.getOrNull() }
+        val passKey = intent.getStringExtra(EXTRA_PASS_KEY) ?: pkg
+        val passesLeft = if (fromShield) 0 else intent.getIntExtra(EXTRA_PASSES_LEFT, 0)
+        val site = intent.getStringExtra(EXTRA_SITE)
+        val appLabel = site ?: pkg?.let { runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(it, 0)).toString() }.getOrNull() }
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
@@ -117,7 +133,7 @@ class BlockedActivity : ComponentActivity() {
                         onReturn = { goHome() },
                         onNeedIt = { goUnlock() },
                         passLabel = if (pkg != null && passesLeft > 0) "Open ${appLabel ?: "it"} for 5 min ($passesLeft left)" else null,
-                        onPass = { pkg?.let { openWithPass(it) } },
+                        onPass = { pkg?.let { openWithPass(it, passKey ?: it, fromLimit) } },
                     )
                 }
             }
@@ -140,9 +156,11 @@ class BlockedActivity : ComponentActivity() {
 
     // The pass is awaited and given a moment to reach the services before the app opens, or they would
     // bounce it again on its first window event.
-    private fun openWithPass(pkg: String) {
+    private fun openWithPass(pkg: String, passKey: String, fromLimit: Boolean) {
         lifecycleScope.launch {
-            if (!repository.grantPass(pkg, System.currentTimeMillis())) return@launch
+            val now = System.currentTimeMillis()
+            val granted = if (fromLimit) repository.grantLimitPass(passKey, now) else repository.grantPass(pkg, now)
+            if (!granted) return@launch
             delay(400)
             packageManager.getLaunchIntentForPackage(pkg)?.let { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             finish()
@@ -183,6 +201,8 @@ private fun ShieldScreen(
     onPass: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
+        // Scrolls on its own so the buttons below stay on screen however much the reach-out card or goal takes.
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
         Text(
             when { fromShield -> "Always blocked by NowFocus"; limitMessage != null -> "Daily limit"; else -> "Shielded by NowFocus" },
             style = kickerStyle(NowFocusColors.neutral400),
@@ -212,17 +232,19 @@ private fun ShieldScreen(
             Spacer(Modifier.height(NowFocusSpace.s2))
             Text(goal, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, color = NowFocusColors.bg))
         }
-        Spacer(Modifier.weight(1f))
+        }
         PrimaryButton("Back to focus", onClick = onReturn)
-        // The Commitment Shield has no exit at all - not even the friction of Unlock.
-        // The Commitment Shield and a used-up daily limit have no exit here; a limit lifts at midnight or on a cheat day.
-        if (!fromShield && limitMessage == null) {
+        // The Commitment Shield has no exit at all - not even the friction of Unlock, and no pass.
+        // A used-up daily limit offers only the five-minute pass; it lifts at midnight or on a cheat day.
+        if (!fromShield) {
             if (passLabel != null) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
                 ReachButton(passLabel, Modifier.fillMaxWidth(), onPass)
             }
-            Spacer(Modifier.height(NowFocusSpace.s2))
-            GhostButton("I really need it", onClick = onNeedIt)
+            if (limitMessage == null) {
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                GhostButton("I really need it", onClick = onNeedIt)
+            }
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
     }
