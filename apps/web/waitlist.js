@@ -107,7 +107,10 @@
       submitErr.hidden = true;
       let ok = false;
       try {
-        const res = await fetch("https://api.nowfocus.online/v1/waitlist", {
+        const api = ["localhost", "127.0.0.1"].includes(location.hostname)
+          ? "http://127.0.0.1:3000"
+          : "https://api.nowfocus.online";
+        const res = await fetch(`${api}/v1/waitlist`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
