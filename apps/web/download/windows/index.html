@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/site.css">
 <script src="/consent.js" defer></script>
+<script src="/waitlist.js" defer></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -215,7 +216,7 @@
   <a class="nav-link" href="/#platforms">Platforms</a>
   <a class="nav-link" href="/blog/">Blog</a>
   <a class="nav-link" href="/download/" aria-current="page">Download</a>
-  <a class="btn btn-primary" href="/download/">Get NowFocus</a>
+  <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
 </nav>
 
 <main id="main">
@@ -233,8 +234,7 @@
     <h1>NowFocus for Windows</h1>
     <p class="lede">A tray app and background service that block distracting sites and apps during focus sessions, and make leaving early a decision instead of a reflex. Not available yet.</p>
     <div class="actions">
-      <span class="btn btn-primary" aria-disabled="true">Coming soon</span>
-      <a class="btn btn-ghost" href="mailto:safwat.rashwan@gmail.com?subject=NowFocus%20updates">Email me when it’s out</a>
+      <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
     </div>
     <div class="callout"><h4>In development</h4><p>There’s no installer yet, and the Windows version hasn’t been through testing on real PCs. This page describes what the app is built to do, and details may change before release.</p></div>
   </header>

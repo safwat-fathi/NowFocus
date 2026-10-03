@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/site.css">
 <script src="/consent.js" defer></script>
+<script src="/waitlist.js" defer></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -116,7 +117,7 @@
   <a class="nav-link" href="/#platforms">Platforms</a>
   <a class="nav-link" href="/blog/">Blog</a>
   <a class="nav-link" href="/download/">Download</a>
-  <a class="btn btn-primary" href="/download/">Get NowFocus</a>
+  <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
 </nav>
 
 <main id="main">
@@ -131,7 +132,7 @@
   <h1>Privacy</h1>
   <p class="updated">Last updated: 2 October 2026</p>
 
-  <p>NowFocus is built to work on your device, not on ours. Today the apps have no account, no ads, no trackers and no analytics, and we don’t sell or share your data, because we don’t receive it. The website is separate: it uses consent-based analytics, described under “This website” below.</p>
+  <p>NowFocus is built to work on your device, not on ours. Today the apps have no account, no ads, no trackers and no analytics, and we don’t sell or share your data, because we don’t receive it. The website is separate: it uses consent-based analytics and has an optional waitlist, both described below.</p>
 
   <h2>What stays on your device</h2>
   <p>The Android, macOS and Windows apps keep the following on the device they run on, and never send it to NowFocus:</p>
@@ -168,6 +169,10 @@
     <li><strong>Decline, or no answer yet.</strong> It sets no cookies and stores nothing in your browser. The page still contacts Google, so Google receives your IP address, browser and device details, and the page you’re on, and uses them for basic, cookieless counts.</li>
   </ul>
   <p>We have turned off Google signals and ads personalisation, we don’t use Google Analytics for advertising, and we only see aggregate reports. Your choice is remembered in this browser (in local storage, as <code>nf-consent</code>), and you can change it at any time with “Cookie settings” in the footer. Declining removes the analytics cookies already set. Google Analytics is the only third-party load on this site: even the font is served from here. The apps don’t use Google Analytics. Like any web host, ours may keep standard server logs (such as IP address and time of request) for security and reliability.</p>
+
+  <h2 id="waitlist">Waitlist and feature requests</h2>
+  <p>If you join the waitlist on this site, we store your email address, the platforms you picked and any feature request you write, on our own server, so we can tell you when a build is ready and decide what to make. We use the email for that and nothing else, we don’t sell or share it, and we don’t send marketing. Ask us to delete your entry at <a href="mailto:safwat.rashwan@gmail.com">safwat.rashwan@gmail.com</a> and we will.</p>
+  <p><strong>A feature request is public.</strong> We post its text as an issue on our GitHub repository, where anyone can read it, GitHub processes it under its own terms, and removing it from our server doesn’t remove it from GitHub unless we close and delete the issue. Your email address is never included in the issue. Leave the box empty to keep your request private.</p>
 
   <h2>Children</h2>
   <p>NowFocus is not directed at children under 13, and we don’t knowingly collect anything from them.</p>

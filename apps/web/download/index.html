@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/site.css">
 <script src="/consent.js" defer></script>
+<script src="/waitlist.js" defer></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -207,7 +208,7 @@
   <a class="nav-link" href="/#platforms">Platforms</a>
   <a class="nav-link" href="/blog/">Blog</a>
   <a class="nav-link" href="/download/" aria-current="page">Download</a>
-  <a class="btn btn-primary" href="/download/">Get NowFocus</a>
+  <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
 </nav>
 
 <main id="main">
@@ -223,8 +224,7 @@
     <h1>Download NowFocus</h1>
     <p class="lede">NowFocus is free, and it isn’t published to any store yet. Here’s where each platform stands, what it needs, and how they differ.</p>
     <div class="actions">
-      <span class="btn btn-primary" aria-disabled="true">Coming soon</span>
-      <a class="btn btn-ghost" href="mailto:safwat.rashwan@gmail.com?subject=NowFocus%20updates">Email me when it’s out</a>
+      <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
     </div>
   </header>
 
@@ -343,7 +343,7 @@
       <div class="next-links">
         <a class="btn btn-secondary" href="/privacy/">Privacy</a>
         <a class="btn btn-secondary" href="/terms/">Terms</a>
-        <a class="btn btn-ghost" href="mailto:safwat.rashwan@gmail.com?subject=NowFocus%20updates">Email me when it’s out</a>
+        <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
       </div>
     </section>
   </div>
