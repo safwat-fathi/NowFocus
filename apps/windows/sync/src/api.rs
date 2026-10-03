@@ -252,7 +252,10 @@ impl Api {
 
     /// An authenticated call: one transparent refresh on 401, then it gives up with `AuthExpired` or the server's error.
     fn authed(&self, method: &str, path: &str, body: Option<Value>) -> Result<Value, ApiError> {
-        let token = match self.access.lock().unwrap().clone() {
+        // Copy the token out first: a guard living in the `match` scrutinee would still be held in the `None`
+        // arm, and `refresh` locks `access` again (a std Mutex isn't reentrant: deadlock).
+        let current = self.access.lock().unwrap().clone();
+        let token = match current {
             Some(t) => t,
             None => {
                 self.refresh(None)?;
