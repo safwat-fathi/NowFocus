@@ -89,11 +89,12 @@ fun LimitsScreen(
             Row(Modifier.fillMaxWidth().clickable { editing = l }.padding(vertical = NowFocusSpace.s3), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(l.label, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
-                    val usedMin = usedMs / 60_000
+                    // Under a minute reads "45 s", not a misleading "0": counting was working, the display just rounded it away.
+                    val usedText = if (usedMs in 1 until 60_000) "${usedMs / 1000} s" else "${usedMs / 60_000}"
                     val pending = l.pendingMinutes?.takeIf { l.pendingFrom > now }
                     Text(
                         buildString {
-                            append(if (minutes == 0) "No limit" else "$usedMin of $minutes min today")
+                            append(if (minutes == 0) "No limit" else "$usedText of $minutes min today")
                             if (pending != null) append(if (pending == 0) " · removed at midnight" else " · $pending min from midnight")
                         },
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
