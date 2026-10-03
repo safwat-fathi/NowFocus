@@ -1153,7 +1153,11 @@ mod tests {
         let db = Database::open_in_memory().unwrap();
         let l = DailyLimit::new("site:youtube.com", "youtube.com", 30);
         db.save_limit(&l).unwrap();
-        db.save_limit(&DailyLimit { minutes_per_day: 45, ..l.clone() }).unwrap(); // upsert
+        db.save_limit(&DailyLimit {
+            minutes_per_day: 45,
+            ..l.clone()
+        })
+        .unwrap(); // upsert
         assert_eq!(db.list_limits().unwrap().len(), 1);
         assert_eq!(db.list_limits().unwrap()[0].minutes_per_day, 45);
         db.add_limit_usage(&l.key, "2026-10-02", 5_000).unwrap();

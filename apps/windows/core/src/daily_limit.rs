@@ -161,7 +161,9 @@ mod tests {
         FixedOffset::east_opt(3 * 3600).unwrap()
     }
     fn at(d: u32, h: u32, m: u32) -> DateTime<Utc> {
-        tz().with_ymd_and_hms(2026, 10, d, h, m, 0).unwrap().with_timezone(&Utc)
+        tz().with_ymd_and_hms(2026, 10, d, h, m, 0)
+            .unwrap()
+            .with_timezone(&Utc)
     }
     fn ig() -> DailyLimit {
         DailyLimit::new("c:\\apps\\ig.exe", "Instagram", 30)
@@ -206,7 +208,10 @@ mod tests {
 
     #[test]
     fn exe_match_ignores_case_and_never_matches_a_site() {
-        let limits = vec![ig(), DailyLimit::new(&site_key("youtube.com"), "youtube.com", 30)];
+        let limits = vec![
+            ig(),
+            DailyLimit::new(&site_key("youtube.com"), "youtube.com", 30),
+        ];
         assert!(limit_for_exe(&limits, "C:\\Apps\\IG.exe").is_some());
         assert!(limit_for_exe(&limits, "site:youtube.com").is_none());
     }
@@ -220,19 +225,41 @@ mod tests {
         ];
         let key = |h| limit_for_host(&limits, h).map(|l| l.key.clone());
         assert_eq!(key("m.youtube.com"), Some(site_key("youtube.com")));
-        assert_eq!(key("music.youtube.com"), Some(site_key("music.youtube.com")));
+        assert_eq!(
+            key("music.youtube.com"),
+            Some(site_key("music.youtube.com"))
+        );
         assert_eq!(key("notyoutube.com"), None);
     }
 
     #[test]
     fn a_stalled_tick_credits_at_most_one_interval() {
-        let tick = |k: Option<&str>, t| Tick { key: k.map(String::from), at: t };
+        let tick = |k: Option<&str>, t| Tick {
+            key: k.map(String::from),
+            at: t,
+        };
         let gap = Duration::seconds(10);
-        assert_eq!(credit_ms(Some(&tick(Some("a"), at(2, 9, 0))), at(2, 9, 0) + Duration::seconds(3), gap), 3_000);
-        assert_eq!(credit_ms(Some(&tick(Some("a"), at(2, 9, 0))), at(2, 12, 0), gap), 10_000);
-        assert_eq!(credit_ms(Some(&tick(None, at(2, 9, 0))), at(2, 9, 1), gap), 0);
+        assert_eq!(
+            credit_ms(
+                Some(&tick(Some("a"), at(2, 9, 0))),
+                at(2, 9, 0) + Duration::seconds(3),
+                gap
+            ),
+            3_000
+        );
+        assert_eq!(
+            credit_ms(Some(&tick(Some("a"), at(2, 9, 0))), at(2, 12, 0), gap),
+            10_000
+        );
+        assert_eq!(
+            credit_ms(Some(&tick(None, at(2, 9, 0))), at(2, 9, 1), gap),
+            0
+        );
         assert_eq!(credit_ms(None, at(2, 9, 1), gap), 0);
-        assert_eq!(credit_ms(Some(&tick(Some("a"), at(2, 9, 5))), at(2, 9, 0), gap), 0);
+        assert_eq!(
+            credit_ms(Some(&tick(Some("a"), at(2, 9, 5))), at(2, 9, 0), gap),
+            0
+        );
     }
 
     #[test]

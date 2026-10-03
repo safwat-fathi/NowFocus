@@ -875,9 +875,11 @@ impl AppState {
                     .add_limit_usage(k, &daily_limit::day_key(now, &Local), ms);
             }
         }
-        let key = self.db.list_limits().ok().and_then(|ls| {
-            daily_limit::limit_for_exe(&ls, exe).map(|l| l.key.clone())
-        });
+        let key = self
+            .db
+            .list_limits()
+            .ok()
+            .and_then(|ls| daily_limit::limit_for_exe(&ls, exe).map(|l| l.key.clone()));
         self.limit_tick = Some(daily_limit::Tick { key, at: now });
     }
 
@@ -1791,11 +1793,17 @@ mod tests {
         state.set_limit(IG, "Instagram", 30).unwrap();
         state.set_limit(IG, "Instagram", 60).unwrap();
         let l = &state.snapshot().unwrap().limits[0];
-        assert_eq!((l.minutes, l.pending.as_deref()), (30, Some("60 min from midnight")));
+        assert_eq!(
+            (l.minutes, l.pending.as_deref()),
+            (30, Some("60 min from midnight"))
+        );
         used(&state, 30 * 60_000);
         state.set_limit(IG, "Instagram", 0).unwrap(); // used up: removal waits
         let l = &state.snapshot().unwrap().limits[0];
-        assert_eq!((l.minutes, l.pending.as_deref()), (30, Some("removed at midnight")));
+        assert_eq!(
+            (l.minutes, l.pending.as_deref()),
+            (30, Some("removed at midnight"))
+        );
         state.set_limit(IG, "Instagram", 15).unwrap(); // tightening applies at once
         assert_eq!(state.snapshot().unwrap().limits[0].minutes, 15);
         assert!(state.set_limit(IG, "Instagram", 7).is_err());

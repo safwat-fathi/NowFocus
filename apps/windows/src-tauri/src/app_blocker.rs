@@ -25,8 +25,8 @@ use windows_sys::Win32::System::Threading::{
 };
 use windows_sys::Win32::UI::Accessibility::{SetWinEventHook, HWINEVENTHOOK};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, GetWindowThreadProcessId, PostMessageW, EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT,
-    WM_CLOSE,
+    GetForegroundWindow, GetWindowThreadProcessId, PostMessageW, EVENT_SYSTEM_FOREGROUND,
+    WINEVENT_OUTOFCONTEXT, WM_CLOSE,
 };
 
 use crate::commands::SharedState;
