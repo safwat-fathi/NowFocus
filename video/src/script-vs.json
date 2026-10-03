@@ -1,0 +1,10 @@
+[
+  { "id": "hook", "text": "Focus apps want a subscription. Some want an account too." },
+  { "id": "receipts", "text": "Opal Pro is twenty dollars a month. Freedom locks its best features behind nine dollars a month, and an account." },
+  { "id": "reveal", "text": "NowFocus is free. No account needed. Your stats never leave your device." },
+  { "id": "android", "text": "On Android, block apps, cut the Shorts, and see exactly when your urges hit." },
+  { "id": "macos", "text": "On Mac, build profiles, wind down at night, and lock a session in." },
+  { "id": "windows", "text": "NowFocus for Windows." },
+  { "id": "privacy", "text": "We count it on your phone. We never see what you browse." },
+  { "id": "cta", "text": "NowFocus. Join the waitlist at nowfocus dot online." }
+]

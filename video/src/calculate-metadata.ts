@@ -2,6 +2,7 @@ import { ALL_FORMATS, Input, UrlSource } from "mediabunny";
 import { CalculateMetadataFunction, staticFile } from "remotion";
 import { LEAD } from "./common";
 import script from "./script.json";
+import scriptVs from "./script-vs.json";
 
 export const FPS = 30;
 export const FADE = 10;
@@ -19,5 +20,18 @@ export const calculateMetadata: CalculateMetadataFunction<PromoProps> = async ()
   return {
     props: { scenes },
     durationInFrames: scenes.reduce((a, b) => a + b, 0) - FADE * (scenes.length - 1),
+  };
+};
+
+// The Challenger video: same idea, own script, voice files and (shorter) transitions.
+export const CH_FADE = 8;
+export type ChallengerProps = { scenes: number[] };
+
+export const calculateChallengerMetadata: CalculateMetadataFunction<ChallengerProps> = async () => {
+  const secs = await Promise.all(scriptVs.map((s) => audioSeconds(staticFile(`voiceover-vs/${s.id}.wav`))));
+  const scenes = secs.map((s) => Math.ceil(s * FPS) + LEAD + TAIL);
+  return {
+    props: { scenes },
+    durationInFrames: scenes.reduce((a, b) => a + b, 0) - CH_FADE * (scenes.length - 1),
   };
 };
