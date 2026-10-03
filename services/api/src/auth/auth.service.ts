@@ -146,6 +146,16 @@ export class AuthService {
       refreshHash: refresh.hash, refreshExpiresAt: new Date(now.getTime() + REFRESH_TTL_MS), lastSeenAt: now, revokedAt: null,
     });
     await this.devices.insert(device);
+    // Same machine signing in again (reinstall, lost token, re-login): retire its previous entries so the
+    // device list doesn't fill up with duplicates.
+    const stale = await this.devices.find({
+      where: { userId: user.id, name: info.name, platform: info.platform, revokedAt: IsNull() },
+      select: { id: true },
+    });
+    for (const d of stale.filter((d) => d.id !== device.id)) {
+      await this.devices.update({ id: d.id }, { revokedAt: now, refreshHash: null, refreshExpiresAt: null });
+      this.revoked.next(d.id);
+    }
     return {
       user: { id: user.id, email: user.email },
       device: { id: device.id, name: device.name, platform: device.platform },

@@ -70,6 +70,16 @@ describe('auth + devices', () => {
     expect((await t.http.get('/v1/devices').set(bearer(a))).status).toBe(200);
   });
 
+  it('signing in again from the same machine replaces its old device instead of duplicating it', async () => {
+    const first = await signUp(t, 'ann@example.com', 'windows');
+    const other = await logIn(t, 'ann@example.com', 'android');
+    const again = await logIn(t, 'ann@example.com', 'windows');
+    const live = (await t.http.get('/v1/devices').set(bearer(again))).body.filter((d: any) => !d.revokedAt);
+    expect(live.map((d: any) => d.id).sort()).toEqual([other.device.id, again.device.id].sort());
+    expect((await t.http.get('/v1/devices').set(bearer(first))).status).toBe(401);
+    expect((await t.http.get('/v1/devices').set(bearer(other))).status).toBe(200);
+  });
+
   it("never exposes or lets you revoke another user's devices", async () => {
     const ann = await signUp(t, 'ann@example.com');
     const bob = await signUp(t, 'bob@example.com');
