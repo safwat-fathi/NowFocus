@@ -97,6 +97,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        // The menu bar popover has no reason to stay up once a real window (main window, Preferences) takes focus,
+        // and it doesn't close itself in that case: close it when a titled window becomes key.
+        NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { note in
+            guard let key = note.object as? NSWindow, key.styleMask.contains(.titled) else { return }
+            NSApp.windows
+                .filter { String(describing: type(of: $0)).contains("MenuBarExtraWindow") && $0.isVisible }
+                .forEach { $0.orderOut(nil) }
+        }
+
         // Preferences temporarily promotes us to a regular app (Dock/Cmd+Tab)
         // so its window is reachable; drop back to accessory once it closes.
         // willClose fires while the closing window is still visible, so skip it;
