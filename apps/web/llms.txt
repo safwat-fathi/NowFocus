@@ -17,7 +17,13 @@ Status (2026-10-01): free, but not published to any store and no download links 
 - [Privacy](https://nowfocus.online/privacy/): what stays on the device and why each Android permission is requested
 - [Terms](https://nowfocus.online/terms/): terms of use
 
+## Articles
+
+- [Blog](https://nowfocus.online/blog/): essays, updates, and engineering notes
+- [Why NowFocus?](https://nowfocus.online/blog/why-nowfocus/): the problem with willpower, bypassable timers, and structural friction
+
 ## Optional
 
 - [Full text of the key pages in one file](https://nowfocus.online/llms-full.txt)
 - [Sitemap](https://nowfocus.online/sitemap.xml)
+

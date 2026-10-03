@@ -40,3 +40,6 @@ It is a self-control tool, not a lock. Someone who owns the device can uninstall
 - https://nowfocus.online/download/windows/
 - https://nowfocus.online/privacy/
 - https://nowfocus.online/terms/
+- https://nowfocus.online/blog/
+- https://nowfocus.online/blog/why-nowfocus/
+
