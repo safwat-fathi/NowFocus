@@ -129,32 +129,6 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
 
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div className="column-header">
-            <span className="column-header__label">Feeds only</span>
-            <span className="column-header__hint">Search &amp; work stay open</span>
-          </div>
-          <div className="rule-list" style={{ marginTop: 6 }}>
-            {profile.feeds.map((f) => (
-              <button
-                key={f.feedKey}
-                className="feed-toggle"
-                data-on={f.enabled}
-                onClick={async () => onState(await api.toggleFeed(profile.id, f.feedKey))}
-              >
-                <span style={{ flex: 1 }}>
-                  <span className="feed-toggle__label">{f.label}</span>
-                  <span className="feed-toggle__sub">{f.sub}</span>
-                </span>
-                <span className="switch">
-                  <span className="switch__knob" />
-                </span>
-              </button>
-            ))}
-          </div>
-          <p style={{ fontSize: 11, color: "var(--color-neutral-700)", margin: "8px 0 0" }}>
-            Enforced once the browser extension ships (Phase 5) — stored now, not blocked yet.
-          </p>
-
-          <div className="column-header" style={{ marginTop: 22 }}>
             <span className="column-header__label">Blocked apps</span>
             <span className="column-header__hint">Closed on launch</span>
           </div>

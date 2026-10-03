@@ -104,34 +104,6 @@ struct PolicyDetailView: View {
                     NowFocusSecondaryButton(title: "Add Application…") { pickApplication() }
                         .padding(.top, NowFocusSpace.s2)
                 }
-
-                section("Feeds only · Android") {
-                    Text("Keep an app, lose its feed. Android only for now; on a Mac this needs a browser extension, which isn't available yet. Nothing here is switched on or enforced.")
-                        .font(NowFocusFonts.body(12))
-                        .foregroundColor(NowFocusColors.neutral700)
-                        .fixedSize(horizontal: false, vertical: true)
-                    VStack(spacing: 0) {
-                        ForEach(FeedRules.all) { rule in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(rule.label)
-                                        .font(NowFocusFonts.body(14))
-                                    Text(rule.detail)
-                                        .font(NowFocusFonts.body(12))
-                                        .foregroundColor(NowFocusColors.neutral700)
-                                }
-                                Spacer()
-                                Toggle("", isOn: .constant(false))
-                                    .labelsHidden()
-                                    .toggleStyle(.switch)
-                                    .disabled(true)
-                            }
-                            .foregroundColor(NowFocusColors.neutral600)
-                            .padding(.vertical, NowFocusSpace.s2)
-                            .overlay(alignment: .bottom) { NowFocusRule() }
-                        }
-                    }
-                }
             }
             .padding(NowFocusSpace.s6)
         }
