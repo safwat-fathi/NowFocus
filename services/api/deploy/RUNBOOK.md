@@ -42,8 +42,9 @@ One-time setup:
    rclone config create r2 s3 provider=Cloudflare access_key_id="$AK" secret_access_key="$SK" \
      endpoint="https://<ACCOUNT_ID>.r2.cloudflarestorage.com" acl=private no_check_bucket=true
    unset AK SK
-   echo ok | rclone rcat r2:nowfocus-backups/db/hello.txt && rclone lsf r2:nowfocus-backups/db && rclone deletefile r2:nowfocus-backups/db/hello.txt
+   echo ok > /tmp/hello.txt && rclone copyto /tmp/hello.txt r2:nowfocus-backups/db/hello.txt && rclone lsf r2:nowfocus-backups/db && rclone deletefile r2:nowfocus-backups/db/hello.txt; rm /tmp/hello.txt
    ```
+   Use `copyto`, not `rcat`: `backup.sh` uploads a real file, and R2 rejects `rcat`'s streamed upload with `501 NotImplemented`. An old apt rclone may also log one `501` on attempt 1 and succeed on attempt 2; that is harmless (the command exits 0), and the current build from `curl https://rclone.org/install.sh | sudo bash` avoids it.
 4. **Settings file** `~/.config/nowfocus-backup.env`, `chmod 600`:
    ```
    AGE_RECIPIENT=age1...your public key...
