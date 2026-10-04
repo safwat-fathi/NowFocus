@@ -37,12 +37,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 
 private const val DAY_MS = 24 * 60 * 60 * 1000L
 
 /** (label, how many days ago that stands for). Null days = "can't remember". */
-private val LAST_TALKED_CHOICES: List<Pair<String, Int?>> = listOf(
-    "This week" to 3, "About 2 weeks" to 14, "About a month" to 30, "Longer" to 90, "Can't remember" to null,
+private val LAST_TALKED_CHOICES: List<Pair<Int, Int?>> = listOf(
+    R.string.people_this_week to 3, R.string.people_two_weeks to 14, R.string.people_month to 30, R.string.people_longer to 90, R.string.people_cant_remember to null,
 )
 
 /** The choice whose day count is nearest, so a stored timestamp still highlights a chip as it ages. */
@@ -87,13 +88,13 @@ fun PeopleEditor(
                 Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
                 Text(p.phone, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
             }
-            GhostButton("Remove") { onRemove(p.id) }
+            GhostButton(stringResource(R.string.remove)) { onRemove(p.id) }
         }
-        Text("LAST TALKED", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(vertical = NowFocusSpace.s1))
+        Text(stringResource(R.string.people_last_talked), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(vertical = NowFocusSpace.s1))
         val selected = choiceFor(p, now)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(NowFocusSpace.s1), verticalArrangement = Arrangement.spacedBy(NowFocusSpace.s1)) {
             LAST_TALKED_CHOICES.forEach { (label, daysAgo) ->
-                Chip(label, selected = daysAgo == selected) { onSetLastTalked(p.id, daysAgo?.let { now - it * DAY_MS }) }
+                Chip(stringResource(label), selected = daysAgo == selected) { onSetLastTalked(p.id, daysAgo?.let { now - it * DAY_MS }) }
             }
         }
         Spacer(Modifier.height(NowFocusSpace.s3))
@@ -102,7 +103,7 @@ fun PeopleEditor(
 
     if (people.size < Person.MAX) {
         Spacer(Modifier.height(NowFocusSpace.s3))
-        SecondaryButton("+ Add someone") {
+        SecondaryButton(stringResource(R.string.people_add)) {
             try {
                 picker.launch(Intent(Intent.ACTION_PICK, Phone.CONTENT_URI))
             } catch (_: android.content.ActivityNotFoundException) {
@@ -112,7 +113,7 @@ fun PeopleEditor(
     }
     if (pickFailed) {
         Text(
-            "Couldn't read that contact. Pick one that has a phone number.",
+            stringResource(R.string.people_pick_failed),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
             modifier = Modifier.padding(top = NowFocusSpace.s2),
         )
@@ -161,11 +162,11 @@ fun PeopleScreen(
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Rules", onClick = onBack)
-        Text("People who matter", style = headingStyle(22.sp))
+        GhostButton(stringResource(R.string.back_rules), onClick = onBack)
+        Text(stringResource(R.string.people_title), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
         Text(
-            "When a blocked app opens, we'll point you to whoever you've talked to least recently. Nothing leaves this phone.",
+            stringResource(R.string.people_intro),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
         )
         Spacer(Modifier.height(NowFocusSpace.s3))

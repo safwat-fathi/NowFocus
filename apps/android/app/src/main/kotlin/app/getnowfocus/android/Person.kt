@@ -20,13 +20,13 @@ data class Person(
     val lastTalkedAt: Long? = null,
 ) {
     /** "3 days" / "3 weeks" / "2 months", or null when unknown or too recent to claim anything. */
-    fun sinceLabel(now: Long): String? {
+    fun sinceLabel(now: Long): UiText? {
         val days = ((now - (lastTalkedAt ?: return null)) / DAY_MS).toInt()
         return when {
             days < 3 -> null
-            days < 14 -> "$days days"
-            days < 60 -> "${days / 7} weeks"
-            else -> "${days / 30} months"
+            days < 14 -> UiText.Plural(R.plurals.since_days, days)
+            days < 60 -> UiText.Plural(R.plurals.since_weeks, days / 7)
+            else -> UiText.Plural(R.plurals.since_months, days / 30)
         }
     }
 

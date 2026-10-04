@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 
 /** One more tappable row in Rules > Protections, for the features added after the original five. */
 data class ProtectionEntry(val title: String, val sub: String, val tag: String? = null, val onClick: () -> Unit)
@@ -55,11 +57,10 @@ fun PolicyListScreen(
     var removing by remember { mutableStateOf<BlockPolicy?>(null) }
     removing?.let { policy ->
         ConfirmDialog(
-            title = "Remove ${policy.name}?",
+            title = stringResource(R.string.policies_remove_q, policy.name),
             // Bedtime points at a profile by id, and a missing one means it blocks nothing.
-            message = "This deletes the profile." +
-                if (bedtime.policyId == policy.id) " Bedtime Wind-Down uses it and will stop blocking until you pick another." else "",
-            confirmLabel = "Remove",
+            message = stringResource(if (bedtime.policyId == policy.id) R.string.policies_remove_bedtime else R.string.policies_remove_body),
+            confirmLabel = stringResource(R.string.remove),
             onConfirm = { onDelete(policy.id); removing = null },
             onDismiss = { removing = null },
         )
@@ -68,10 +69,10 @@ fun PolicyListScreen(
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
             Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
-                Text("Rules", style = headingStyle(28.sp), modifier = Modifier.weight(1f))
-                SecondaryButton("+ New profile", onClick = onAdd)
+                Text(stringResource(R.string.rules_title), style = headingStyle(28.sp), modifier = Modifier.weight(1f))
+                SecondaryButton(stringResource(R.string.policies_new), onClick = onAdd)
             }
-            Text("FOCUS PROFILES", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s4, bottom = NowFocusSpace.s1))
+            Text(stringResource(R.string.policies_kicker), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s4, bottom = NowFocusSpace.s1))
             SectionRule()
         }
         items(policies, key = { it.id }) { policy ->
@@ -81,14 +82,14 @@ fun PolicyListScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(policy.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
-                    Text("${policy.domains.size} sites · ${policy.apps.size} apps", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
+                    Text(sitesAppsText(policy.domains.size, policy.apps.size), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
                 }
-                GhostButton("Remove") { removing = policy }
+                GhostButton(stringResource(R.string.remove)) { removing = policy }
             }
             SectionRule()
         }
         item {
-            Text("PROTECTIONS", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+            Text(stringResource(R.string.protections_kicker), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
             SectionRule()
             val active = shield != null && shield.endAt > now
             Row(
@@ -96,13 +97,13 @@ fun PolicyListScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Commitment Shield", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(stringResource(R.string.shield_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
                     Text(
-                        if (active) "${shield!!.domains.size} sites · ${shield.packages.size} apps · locked 14 days" else "Not set up",
+                        if (active) stringResource(R.string.shield_summary, sitesAppsText(shield!!.domains.size, shield.packages.size)) else stringResource(R.string.not_set_up),
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                     )
                 }
-                if (active) TagPill("Active")
+                if (active) TagPill(stringResource(R.string.devices_active))
             }
             SectionRule()
 
@@ -111,10 +112,10 @@ fun PolicyListScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Bedtime Wind-Down", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
-                    Text("Every night", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
+                    Text(stringResource(R.string.bedtime_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(stringResource(R.string.bedtime_every_night), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
                 }
-                TagPill(if (bedtime.enabled) "On" else "Off", accent = false)
+                TagPill(stringResource(if (bedtime.enabled) R.string.on else R.string.off), accent = false)
             }
             SectionRule()
 
@@ -123,9 +124,9 @@ fun PolicyListScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("People who matter", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(stringResource(R.string.people_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
                     Text(
-                        if (peopleCount == 0) "Not set up" else "$peopleCount shown on the block screen",
+                        if (peopleCount == 0) stringResource(R.string.not_set_up) else pluralStringResource(R.plurals.people_shown, peopleCount, peopleCount),
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                     )
                 }
@@ -137,9 +138,9 @@ fun PolicyListScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Your goals", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(stringResource(R.string.goals_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
                     Text(
-                        if (goalsCount == 0) "Not set up" else "$goalsCount to remind you why",
+                        if (goalsCount == 0) stringResource(R.string.not_set_up) else pluralStringResource(R.plurals.goals_count, goalsCount, goalsCount),
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                     )
                 }
@@ -172,7 +173,7 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
 
     fun saveOrToast(newPolicy: BlockPolicy) {
         if (!onSave(newPolicy)) {
-            android.widget.Toast.makeText(context, "You can't remove blocks while a focus session is running on this profile.", android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(context, context.localized().getString(R.string.policy_cant_remove), android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
@@ -185,25 +186,25 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
-            GhostButton("‹ Rules", onClick = onBack)
+            GhostButton(stringResource(R.string.back_rules), onClick = onBack)
             NowFocusTextField(
                 value = name,
                 onValueChange = { name = it; saveOrToast(policy.copy(name = it)) },
-                label = "Profile name",
+                label = stringResource(R.string.policy_name),
                 modifier = Modifier.fillMaxWidth().padding(top = NowFocusSpace.s2),
             )
-            Text("BLOCKED WEBSITES", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+            Text(stringResource(R.string.policy_websites), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
             SectionRule(thick = true)
         }
         items(policy.domains, key = { "d:$it" }) { domain ->
-            RuleRow(domain, "+ subdomains") { saveOrToast(policy.copy(domains = policy.domains - domain)) }
+            RuleRow(domain, stringResource(R.string.policy_subdomains)) { saveOrToast(policy.copy(domains = policy.domains - domain)) }
         }
         item {
             Row(Modifier.padding(top = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
                 NowFocusTextField(
                     value = newDomain,
                     onValueChange = { newDomain = it },
-                    placeholder = "Add a site, e.g. youtube.com",
+                    placeholder = stringResource(R.string.policy_add_site_hint),
                     singleLine = true,
                     isError = newDomain.isNotBlank() && DomainValidation.normalize(newDomain) == null,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -211,9 +212,9 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(NowFocusSpace.s2))
-                SecondaryButton("Add", onClick = ::addDomain)
+                SecondaryButton(stringResource(R.string.add), onClick = ::addDomain)
             }
-            Text("BLOCKED APPLICATIONS", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+            Text(stringResource(R.string.policy_apps), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
             SectionRule(thick = true)
         }
         items(policy.apps, key = { "a:${it.packageName}" }) { app ->
@@ -221,7 +222,7 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
         }
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
-            GhostButton("+ Add application…") { pickingApp = true }
+            GhostButton(stringResource(R.string.policy_add_app)) { pickingApp = true }
         }
         item {
             PartialRulesSection(policy.partial) { saveOrToast(policy.copy(partial = it)) }
@@ -242,17 +243,17 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
 @Composable
 fun PartialRulesSection(selected: Set<PartialRule>, onChange: (Set<PartialRule>) -> Unit) {
     val context = LocalContext.current
-    Text("PARTIAL BLOCKING \u00b7 EXPERIMENTAL", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
+    Text(stringResource(R.string.partial_kicker), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
     SectionRule(thick = true)
     if (selected.isNotEmpty() && !Enforcement.isAccessibilityEnabled(context)) {
         Text(
-            "Turn on NowFocus in Accessibility settings, or these won't be enforced.",
+            stringResource(R.string.partial_need_a11y),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
             modifier = Modifier.padding(top = NowFocusSpace.s2),
         )
     }
     PartialRule.entries.forEach { rule ->
-        ToggleRow(rule.label, rule.detail, rule in selected, onToggle = { onChange(if (rule in selected) selected - rule else selected + rule) })
+        ToggleRow(stringResource(rule.label), stringResource(rule.detail), rule in selected, onToggle = { onChange(if (rule in selected) selected - rule else selected + rule) })
         SectionRule()
     }
 }
@@ -264,7 +265,7 @@ fun RuleRow(title: String, subtitle: String, onRemove: () -> Unit) {
             Text(title, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
             Text(subtitle, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
         }
-        GhostButton("Remove", onClick = onRemove)
+        GhostButton(stringResource(R.string.remove), onClick = onRemove)
     }
     SectionRule()
 }
@@ -284,18 +285,18 @@ fun AppPickerDialog(exclude: Set<String>, onPick: (AppRule) -> Unit, onDismiss: 
     val shown = remember(apps, query) { filterApps(apps, query) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Select an app to block", style = headingStyle(20.sp)) },
+        title = { Text(stringResource(R.string.picker_title), style = headingStyle(20.sp)) },
         text = {
             Column {
                 NowFocusTextField(
                     value = query, onValueChange = { query = it },
-                    placeholder = "Search apps", singleLine = true,
+                    placeholder = stringResource(R.string.picker_search), singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 if (shown.isEmpty()) {
                     Text(
-                        "No apps match",
+                        stringResource(R.string.picker_none),
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                         modifier = Modifier.padding(top = NowFocusSpace.s3),
                     )
@@ -308,7 +309,7 @@ fun AppPickerDialog(exclude: Set<String>, onPick: (AppRule) -> Unit, onDismiss: 
             }
         },
         confirmButton = {},
-        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
+        dismissButton = { GhostButton(stringResource(R.string.cancel), onClick = onDismiss) },
     )
 }
 

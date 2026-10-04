@@ -19,6 +19,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.compose.ui.res.stringResource
 
 /**
  * A local lock on the Account screen only. Sessions, blocking and background sync never touch it.
@@ -35,6 +36,7 @@ internal fun fingerprintAvailable(context: Context) =
 
 /** Cancel leaves things as they were. A real error (e.g. too many tries) is reported, so Unlock never silently does nothing. */
 internal fun FragmentActivity.askFingerprint(onError: (String) -> Unit = {}, onSuccess: () -> Unit) {
+    val t = localized()
     val prompt = BiometricPrompt(
         this, ContextCompat.getMainExecutor(this),
         object : BiometricPrompt.AuthenticationCallback() {
@@ -48,8 +50,8 @@ internal fun FragmentActivity.askFingerprint(onError: (String) -> Unit = {}, onS
     )
     prompt.authenticate(
         BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock Account")
-            .setNegativeButtonText("Cancel")
+            .setTitle(t.getString(R.string.lock_prompt_title))
+            .setNegativeButtonText(t.getString(R.string.cancel))
             .setAllowedAuthenticators(BIOMETRIC_STRONG)
             .build(),
     )
@@ -61,18 +63,18 @@ fun LockedAccount(message: String?, onUnlock: () -> Unit, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Devices", onClick = onBack)
-        Text("Account", style = headingStyle(28.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
+        GhostButton(stringResource(R.string.back_devices), onClick = onBack)
+        Text(stringResource(R.string.account_title), style = headingStyle(28.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
         SectionRule(thick = true)
         Spacer(Modifier.height(NowFocusSpace.s4))
         Text(
-            "Locked. Use your fingerprint to see your account, devices and sign-out. Focus sessions and blocking are not affected.",
+            stringResource(R.string.lock_body),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
         )
         message?.let {
             Text(it, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.accent700), modifier = Modifier.padding(top = NowFocusSpace.s2))
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
-        PrimaryButton("Unlock with fingerprint", modifier = Modifier.fillMaxWidth(), onClick = onUnlock)
+        PrimaryButton(stringResource(R.string.lock_unlock), modifier = Modifier.fillMaxWidth(), onClick = onUnlock)
     }
 }

@@ -36,6 +36,6 @@ class GoalsTest {
 
     @Test
     fun `labels match macOS`() {
-        assertEquals(listOf("High", "Med", "Low"), GoalPriority.entries.map { it.label })
+        assertEquals(listOf(R.string.priority_high, R.string.priority_medium, R.string.priority_low), GoalPriority.entries.map { it.label })
     }
 }

@@ -224,17 +224,18 @@ object HistoryStats {
     }
 
     /** The text the "Share this week" button sends. Counts only: no app names, sites or times of day leave the phone. */
-    fun weekSummaryText(rows: List<SessionHistoryRow>, events: List<BlockEventRow>, from: Long, to: Long, today: LocalDate, zone: ZoneId): String {
-        val minutes = totalFocusedMillis(rows, from, to) / 60_000
+    fun weekSummaryText(rows: List<SessionHistoryRow>, events: List<BlockEventRow>, from: Long, to: Long, today: LocalDate, zone: ZoneId): UiText {
+        val minutes = (totalFocusedMillis(rows, from, to) / 60_000).toInt()
         val sessions = sessionsCount(rows, from, to)
         val streak = currentStreakDays(rows, today, zone)
-        return buildString {
-            append("My NowFocus week: ${minutes / 60}h ${minutes % 60}m focused")
-            append(" across $sessions ${if (sessions == 1) "session" else "sessions"} (${completedCount(rows, from, to)} completed).")
-            focusScore(rows, from, to, zone)?.let { append(" Focus score $it.") }
-            if (streak > 0) append(" $streak-day streak.")
-            append(" Turned away ${turnedAwayCount(events, from, to)} times.")
+        val parts = buildList {
+            add(UiText.Plural(R.plurals.week_share_head, sessions, listOf(minutes / 60, minutes % 60, sessions, completedCount(rows, from, to))))
+            focusScore(rows, from, to, zone)?.let { add(uiText(R.string.week_share_score, it)) }
+            if (streak > 0) add(UiText.Plural(R.plurals.week_share_streak, streak))
+            val turnedAway = turnedAwayCount(events, from, to)
+            add(UiText.Plural(R.plurals.week_share_turned_away, turnedAway))
         }
+        return UiText.Joined(parts, R.string.sep_space)
     }
 
     /** Every blocked attempt in [from, to) across all apps (the top-3 list alone would undercount). */

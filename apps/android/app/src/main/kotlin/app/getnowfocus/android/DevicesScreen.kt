@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.getnowfocus.android.sync.SyncStatus
+import androidx.compose.ui.res.stringResource
 
 /**
  * This phone's health card (the exact checks HealthRow does, in the mockup's
@@ -45,23 +46,23 @@ fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit
 
         Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
             Spacer(Modifier.height(NowFocusSpace.s2))
-            Text("Devices", style = headingStyle(28.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
+            Text(stringResource(R.string.devices_title), style = headingStyle(28.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
             SectionRule(thick = true)
             Spacer(Modifier.height(NowFocusSpace.s4))
             if (account.signedIn) {
                 Text(
-                    "Signed in as ${account.email}. Profiles and bedtime settings sync with your other devices.",
+                    stringResource(R.string.devices_signed_in, account.email.orEmpty()),
                     style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                 )
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                SecondaryButton("Account and devices", onClick = onOpenAccount)
+                SecondaryButton(stringResource(R.string.devices_account), onClick = onOpenAccount)
             } else {
                 Text(
-                    "This phone works on its own. Sign in, optionally, to sync profiles and bedtime settings across your devices.",
+                    stringResource(R.string.devices_alone),
                     style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                 )
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                SecondaryButton("Sign in or create account", onClick = onOpenAccount)
+                SecondaryButton(stringResource(R.string.devices_sign_in), onClick = onOpenAccount)
             }
             Spacer(Modifier.height(NowFocusSpace.s6))
 
@@ -69,27 +70,27 @@ fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit
             Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3), verticalAlignment = Alignment.CenterVertically) {
                 DotIndicator(allOk)
                 Spacer(Modifier.width(NowFocusSpace.s2))
-                Text("This phone", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp), modifier = Modifier.weight(1f))
-                TagPill(if (allOk) "Active" else "Degraded", accent = !allOk)
+                Text(stringResource(R.string.account_this_phone), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp), modifier = Modifier.weight(1f))
+                TagPill(stringResource(if (allOk) R.string.devices_active else R.string.devices_degraded), accent = !allOk)
             }
             Row(Modifier.fillMaxWidth().border(1.dp, NowFocusColors.divider)) {
-                LayerCell("App blocking", appBlockingOk, Modifier.weight(1f))
-                LayerCell("Website filter", websiteFilterOk, Modifier.weight(1f))
-                LayerCell("Do Not Disturb", notifOk, Modifier.weight(1f))
+                LayerCell(stringResource(R.string.devices_app_blocking), appBlockingOk, Modifier.weight(1f))
+                LayerCell(stringResource(R.string.devices_website_filter), websiteFilterOk, Modifier.weight(1f))
+                LayerCell(stringResource(R.string.devices_dnd), notifOk, Modifier.weight(1f))
             }
             // One button per missing layer, each going straight to that permission.
             if (!appBlockingOk) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                GhostButton("Enable app blocking") { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                GhostButton(stringResource(R.string.devices_enable_blocking)) { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
             }
             if (!websiteFilterOk) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
                 // prepare() returns the system VPN consent dialog's intent while consent is missing.
-                GhostButton("Enable website filter") { VpnService.prepare(context)?.let(context::startActivity) }
+                GhostButton(stringResource(R.string.devices_enable_filter)) { VpnService.prepare(context)?.let(context::startActivity) }
             }
             if (!notifOk) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                GhostButton("Enable Do Not Disturb access") { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
+                GhostButton(stringResource(R.string.devices_enable_dnd)) { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
             }
             SectionRule()
         }
@@ -105,7 +106,7 @@ private fun DotIndicator(ok: Boolean) {
 private fun LayerCell(label: String, ok: Boolean, modifier: Modifier = Modifier) {
     Column(modifier.border(1.dp, NowFocusColors.divider).padding(NowFocusSpace.s2)) {
         Text(
-            if (ok) "On" else "Off",
+            stringResource(if (ok) R.string.on else R.string.off),
             style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = if (ok) NowFocusColors.text else NowFocusColors.accent700),
         )
         Text(label, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))

@@ -4,9 +4,12 @@ import android.content.Context
 import app.getnowfocus.android.BedtimeScheduler
 import app.getnowfocus.android.BedtimeSettings
 import app.getnowfocus.android.FocusSessionStatus
+import app.getnowfocus.android.R
 import app.getnowfocus.android.SessionRepository
+import app.getnowfocus.android.UiText
 import app.getnowfocus.android.reconcileBedtimeSession
 import app.getnowfocus.android.reconcileQuietNotifications
+import app.getnowfocus.android.uiText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -50,7 +53,7 @@ data class SyncStatus(
     val syncing: Boolean = false,
     val lastSyncedAt: Long? = null,
     /** Human-readable, e.g. "Offline: will retry". Null when all is well. */
-    val problem: String? = null,
+    val problem: UiText? = null,
     /** Changes the server refused (they stay on this device and are retried only after you edit them). */
     val rejected: Int = 0,
 )
@@ -98,7 +101,7 @@ class SyncController(
     fun setForeground(on: Boolean) { foreground.value = on }
 
     /** Returns an error message for the user, or null on success. */
-    suspend fun signIn(email: String, password: String, createAccount: Boolean): String? = try {
+    suspend fun signIn(email: String, password: String, createAccount: Boolean): UiText? = try {
         val s = if (createAccount) api.register(email, password, deviceName) else api.login(email, password, deviceName)
         // A different account than before starts clean; the same one resumes where it left off.
         store.transact { l -> l.copy(state = SyncLogic.link(l.state, s.userId)) to Unit }
@@ -116,7 +119,7 @@ class SyncController(
     }
 
     /** Deletes the account and its server data; this phone keeps everything it has. Returns an error message or null. */
-    suspend fun deleteAccount(password: String): String? = try {
+    suspend fun deleteAccount(password: String): UiText? = try {
         api.deleteAccount(password)
         backgroundSync(false)
         session?.cancel()
@@ -127,7 +130,7 @@ class SyncController(
 
     suspend fun devices(): List<DeviceInfo> = api.devices()
 
-    suspend fun revokeDevice(id: String): String? = try { api.revokeDevice(id); null } catch (e: CancellationException) { throw e } catch (e: Exception) { friendly(e) }
+    suspend fun revokeDevice(id: String): UiText? = try { api.revokeDevice(id); null } catch (e: CancellationException) { throw e } catch (e: Exception) { friendly(e) }
 
     // ----------------------------------------------------------------
 
@@ -160,7 +163,7 @@ class SyncController(
                 expired(); return
             } catch (e: Exception) {
                 backoff = if (backoff == 0L) 5_000 else minOf(backoff * 2, 300_000)
-                _status.update { it.copy(syncing = false, problem = if (e is NetworkException) "Offline. Will retry." else friendly(e)) }
+                _status.update { it.copy(syncing = false, problem = if (e is NetworkException) uiText(R.string.sync_offline) else friendly(e)) }
                 val wait = backoff
                 launch { delay(wait); trigger.trySend(Unit) }
             }
@@ -197,20 +200,20 @@ class SyncController(
     private suspend fun expired() {
         backgroundSync(false)
         api.forget()
-        _status.update { SyncStatus(loaded = true, problem = "This device was signed out. Sign in again to keep syncing.") }
+        _status.update { SyncStatus(loaded = true, problem = uiText(R.string.sync_signed_out)) }
         session?.cancel()
     }
 
-    private fun friendly(e: Exception): String = when {
-        e is NetworkException -> "Can't reach NowFocus. Check your connection and try again."
-        e is AuthExpired -> "Your session ended. Sign in again."
-        e is ApiException && e.code == "invalid_credentials" -> "Wrong email or password."
-        e is ApiException && e.code == "email_taken" -> "An account with this email already exists. Sign in instead."
-        e is ApiException && e.code == "wrong_password" -> "Wrong password."
-        e is ApiException && e.status == 429 -> "Too many attempts. Wait a minute and try again."
-        e is ApiException && e.status in 500..599 -> "NowFocus is having trouble right now. Try again shortly."
-        e is ApiException -> e.message ?: "Something went wrong."
-        else -> e.message ?: "Something went wrong."
+    private fun friendly(e: Exception): UiText = when {
+        e is NetworkException -> uiText(R.string.sync_err_network)
+        e is AuthExpired -> uiText(R.string.sync_err_session_ended)
+        e is ApiException && e.code == "invalid_credentials" -> uiText(R.string.sync_err_invalid_credentials)
+        e is ApiException && e.code == "email_taken" -> uiText(R.string.sync_err_email_taken)
+        e is ApiException && e.code == "wrong_password" -> uiText(R.string.sync_err_wrong_password)
+        e is ApiException && e.status == 429 -> uiText(R.string.sync_err_rate_limited)
+        e is ApiException && e.status in 500..599 -> uiText(R.string.sync_err_server)
+        // The server's own message is English and not ours to translate.
+        else -> e.message?.let { UiText.Raw(it) } ?: uiText(R.string.sync_err_generic)
     }
 
     private companion object { const val DEBOUNCE_MS = 1_500L }

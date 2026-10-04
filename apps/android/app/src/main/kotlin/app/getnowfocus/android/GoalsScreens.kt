@@ -28,6 +28,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 
 /**
  * Add and remove goals, each High / Med / Low. Stateless; used by the onboarding step and [GoalsScreen].
@@ -54,9 +55,9 @@ fun GoalsEditor(
             Column(Modifier.weight(1f)) {
                 Text(g.text, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
             }
-            TagPill(g.priority.label, accent = g.priority == GoalPriority.HIGH)
+            TagPill(stringResource(g.priority.label), accent = g.priority == GoalPriority.HIGH)
             Spacer(Modifier.width(NowFocusSpace.s2))
-            GhostButton("Remove") { onRemove(g.id) }
+            GhostButton(stringResource(R.string.remove)) { onRemove(g.id) }
         }
         Spacer(Modifier.height(NowFocusSpace.s2))
         SectionRule()
@@ -66,18 +67,18 @@ fun GoalsEditor(
         NowFocusTextField(
             value = text,
             onValueChange = { text = it },
-            placeholder = "Add a goal, e.g. Finish my thesis",
+            placeholder = stringResource(R.string.goals_hint),
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { add() }),
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(NowFocusSpace.s2))
-        SecondaryButton("Add", onClick = ::add)
+        SecondaryButton(stringResource(R.string.add), onClick = ::add)
     }
-    Text("PRIORITY", style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s3, bottom = NowFocusSpace.s1))
+    Text(stringResource(R.string.goals_priority), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s3, bottom = NowFocusSpace.s1))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(NowFocusSpace.s1)) {
-        GoalPriority.entries.forEach { p -> Chip(p.label, selected = p == priority) { priority = p } }
+        GoalPriority.entries.forEach { p -> Chip(stringResource(p.label), selected = p == priority) { priority = p } }
     }
 }
 
@@ -91,11 +92,11 @@ fun GoalsScreen(
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Rules", onClick = onBack)
-        Text("Your goals", style = headingStyle(22.sp))
+        GhostButton(stringResource(R.string.back_rules), onClick = onBack)
+        Text(stringResource(R.string.goals_title), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
         Text(
-            "What you're focusing for. Shown while you wait to end a Strict session early, and on the block screen when no one is set to reach out to. Stays on this phone.",
+            stringResource(R.string.goals_intro),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
         )
         Spacer(Modifier.height(NowFocusSpace.s3))

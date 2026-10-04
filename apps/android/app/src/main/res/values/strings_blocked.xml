@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="blocked_wait">This can wait.</string>
+    <string name="blocked_tries">Tries today</string>
+    <string name="blocked_remember">REMEMBER</string>
+    <string name="blocked_back">Back to focus</string>
+    <string name="blocked_need_it">I really need it</string>
+    <string name="blocked_reach_out">OR REACH OUT INSTEAD</string>
+    <string name="blocked_since">You haven\'t talked to %1$s in about %2$s.</string>
+    <string name="blocked_reach_instead">Reach out to %1$s instead.</string>
+    <string name="blocked_call">Call</string>
+    <string name="blocked_text">Text</string>
+    <string name="blocked_it">it</string>
+    <string name="blocked_pass">Open %1$s for %2$d min (%3$d left)</string>
+    <plurals name="blocked_pass_note">
+        <item quantity="one">Your %1$d-day streak adds %2$d min.</item>
+        <item quantity="other">Your %1$d-day streak adds %2$d min.</item>
+    </plurals>
+</resources>

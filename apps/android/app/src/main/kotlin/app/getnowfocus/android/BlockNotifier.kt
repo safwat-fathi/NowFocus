@@ -39,9 +39,10 @@ object BlockNotifier {
         ) return
         lastPostedAt = now
 
+        val t = context.localized()
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Blocked sites", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL, t.getString(R.string.notif_blocked_channel), NotificationManager.IMPORTANCE_LOW)
                 .apply { lockscreenVisibility = Notification.VISIBILITY_SECRET }
         )
         val open = PendingIntent.getActivity(
@@ -52,8 +53,8 @@ object BlockNotifier {
             ID,
             NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_nowfocus_active)
-                .setContentTitle("NowFocus blocked a site")
-                .setContentText(BlockCopy.siteNotice(reason))
+                .setContentTitle(t.getString(R.string.notif_blocked_title))
+                .setContentText(BlockCopy.siteNotice(reason).resolve(t))
                 .setVisibility(NotificationCompat.VISIBILITY_SECRET)
                 .setAutoCancel(true)
                 .setTimeoutAfter(TIMEOUT_MS)

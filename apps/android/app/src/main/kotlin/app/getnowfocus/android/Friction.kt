@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.util.concurrent.ConcurrentHashMap
+import androidx.compose.ui.res.stringResource
 
 /**
  * Apps you've asked NowFocus to make you pause for ([SessionRepository.frictionAppsFlow]): opening one
@@ -41,7 +42,7 @@ object FrictionGate {
     fun isAllowed(pkg: String, now: Long): Boolean = (allowedUntil[pkg] ?: 0L) > now
 }
 
-val FRICTION_INTENTS = listOf("Something specific", "Just bored", "Avoiding something")
+val FRICTION_INTENTS = listOf(R.string.friction_specific, R.string.friction_bored, R.string.friction_avoiding)
 
 class FrictionActivity : ComponentActivity() {
     companion object { const val EXTRA_PACKAGE = "package" }
@@ -49,7 +50,7 @@ class FrictionActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val pkg = intent.getStringExtra(EXTRA_PACKAGE) ?: return finish()
-        val label = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault("this app")
+        val label = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(localized().getString(R.string.block_this_app))
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
@@ -70,29 +71,29 @@ class FrictionActivity : ComponentActivity() {
 @Composable
 private fun FrictionScreen(appLabel: String, onOpen: () -> Unit, onNotNow: () -> Unit) {
     var secondsLeft by remember { mutableIntStateOf(FrictionGate.BREATH_SECONDS) }
-    var intent by remember { mutableStateOf<String?>(null) }
+    var intent by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(Unit) { while (secondsLeft > 0) { delay(1000); secondsLeft-- } }
     val ready = secondsLeft == 0 && intent != null
 
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
-        Text("A PAUSE BEFORE ${appLabel.uppercase()}", style = kickerStyle(NowFocusColors.neutral400))
+        Text(stringResource(R.string.friction_kicker, appLabel.uppercase()), style = kickerStyle(NowFocusColors.neutral400))
         Spacer(Modifier.height(NowFocusSpace.s8))
         // Four seconds in, four out: the text changes, nothing animates, so it stays calm and cheap.
-        val phase = if ((FrictionGate.BREATH_SECONDS - secondsLeft) / 4 % 2 == 0) "Breathe in" else "Breathe out"
-        Text(if (secondsLeft > 0) phase else "Ready when you are.", style = headingStyle(44.sp, color = NowFocusColors.bg))
+        val phase = stringResource(if ((FrictionGate.BREATH_SECONDS - secondsLeft) / 4 % 2 == 0) R.string.friction_in else R.string.friction_out)
+        Text(if (secondsLeft > 0) phase else stringResource(R.string.friction_ready), style = headingStyle(44.sp, color = NowFocusColors.bg))
         Spacer(Modifier.height(NowFocusSpace.s2))
         if (secondsLeft > 0) Text("$secondsLeft", style = headingStyle(72.sp, color = NowFocusColors.neutral400))
         Spacer(Modifier.height(NowFocusSpace.s6))
-        Text("What do you want to do here?", style = TextStyle(fontFamily = ArchivoSemiBold, fontSize = 18.sp, color = NowFocusColors.bg))
+        Text(stringResource(R.string.friction_what), style = TextStyle(fontFamily = ArchivoSemiBold, fontSize = 18.sp, color = NowFocusColors.bg))
         Spacer(Modifier.height(NowFocusSpace.s3))
         FRICTION_INTENTS.forEach { option ->
-            Chip(option, intent == option) { intent = option }
+            Chip(stringResource(option), intent == option) { intent = option }
             Spacer(Modifier.height(6.dp))
         }
         Spacer(Modifier.weight(1f))
-        PrimaryButton("Open $appLabel", enabled = ready, onClick = onOpen)
+        PrimaryButton(stringResource(R.string.friction_open, appLabel), enabled = ready, onClick = onOpen)
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("Not now", onClick = onNotNow)
+        GhostButton(stringResource(R.string.friction_not_now), onClick = onNotNow)
         Spacer(Modifier.height(NowFocusSpace.s4))
     }
 }

@@ -45,18 +45,18 @@ class PeopleRotationTest {
 
     @Test
     fun `sinceLabel counts days up to two weeks`() {
-        assertEquals("3 days", person("a", lastTalkedAt = 100 * day - 3 * day).sinceLabel(now = 100 * day))
-        assertEquals("13 days", person("a", lastTalkedAt = 100 * day - 13 * day).sinceLabel(now = 100 * day))
+        assertEquals(UiText.Plural(R.plurals.since_days, 3), person("a", lastTalkedAt = 100 * day - 3 * day).sinceLabel(now = 100 * day))
+        assertEquals(UiText.Plural(R.plurals.since_days, 13), person("a", lastTalkedAt = 100 * day - 13 * day).sinceLabel(now = 100 * day))
     }
 
     @Test
     fun `sinceLabel switches to weeks at two weeks`() {
-        assertEquals("2 weeks", person("a", lastTalkedAt = 100 * day - 14 * day).sinceLabel(now = 100 * day))
-        assertEquals("8 weeks", person("a", lastTalkedAt = 100 * day - 59 * day).sinceLabel(now = 100 * day))
+        assertEquals(UiText.Plural(R.plurals.since_weeks, 2), person("a", lastTalkedAt = 100 * day - 14 * day).sinceLabel(now = 100 * day))
+        assertEquals(UiText.Plural(R.plurals.since_weeks, 8), person("a", lastTalkedAt = 100 * day - 59 * day).sinceLabel(now = 100 * day))
     }
 
     @Test
     fun `sinceLabel switches to months at sixty days`() {
-        assertEquals("2 months", person("a", lastTalkedAt = 100 * day - 65 * day).sinceLabel(now = 100 * day))
+        assertEquals(UiText.Plural(R.plurals.since_months, 2), person("a", lastTalkedAt = 100 * day - 65 * day).sinceLabel(now = 100 * day))
     }
 }

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="account_title">Account</string>
+    <string name="lock_prompt_title">Unlock Account</string>
+    <string name="lock_body">Locked. Use your fingerprint to see your account, devices and sign-out. Focus sessions and blocking are not affected.</string>
+    <string name="lock_unlock">Unlock with fingerprint</string>
+    <string name="account_intro">Optional. Sign in to keep your profiles and bedtime settings in sync across your devices. People, goals, voice notes and stats stay on this phone, and NowFocus keeps blocking from this phone\'s own copy even when you\'re offline.</string>
+    <string name="account_email">Email</string>
+    <string name="account_password">Password (8+ characters)</string>
+    <string name="account_sign_in">Sign in</string>
+    <string name="account_create">Create account</string>
+    <string name="account_signed_in">SIGNED IN</string>
+    <string name="account_syncing">Syncing…</string>
+    <string name="account_synced">Synced %1$s</string>
+    <string name="account_waiting">Waiting to sync</string>
+    <plurals name="account_rejected">
+        <item quantity="one">%1$d change couldn\'t be synced. It stays on this phone; editing it again retries.</item>
+        <item quantity="other">%1$d changes couldn\'t be synced. They stay on this phone; editing them again retries.</item>
+    </plurals>
+    <string name="account_sync_now">Sync now</string>
+    <string name="account_join_title">Join sessions from my other devices</string>
+    <string name="account_join_sub">A session you start on another device starts here too, up to 24 hours. Turn off to keep this phone separate.</string>
+    <string name="account_lock_title">Require fingerprint to open Account</string>
+    <string name="account_lock_sub">Only this screen. Focus sessions and blocking are never locked.</string>
+    <string name="account_devices_kicker">DEVICES ON THIS ACCOUNT</string>
+    <string name="account_this_phone">This phone</string>
+    <string name="account_signout_note">Signing out keeps your profiles, bedtime and Commitment Shield on this phone. Blocking continues as before.</string>
+    <string name="account_sign_out">Sign out</string>
+    <string name="account_delete">Delete account…</string>
+    <string name="account_delete_title">Delete account?</string>
+    <string name="account_delete_body">This permanently deletes your account and everything synced to it, on every device. Nothing on this phone is deleted, and blocking is unaffected.</string>
+    <string name="account_confirm_password">Confirm with your password</string>
+</resources>

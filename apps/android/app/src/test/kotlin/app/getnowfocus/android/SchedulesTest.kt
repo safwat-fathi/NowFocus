@@ -56,10 +56,16 @@ class SchedulesTest {
 
     @Test
     fun `day labels`() {
-        assertEquals("Mon-Fri", Schedules.daysLabel(weekdays))
-        assertEquals("Every day", Schedules.daysLabel(DayOfWeek.entries.toSet()))
-        assertEquals("Sat, Sun", Schedules.daysLabel(setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)))
-        assertEquals("Mon, Wed, Fri", Schedules.daysLabel(setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)))
+        assertEquals(uiText(R.string.days_range, DayOfWeek.MONDAY.shortName(), DayOfWeek.FRIDAY.shortName()), Schedules.daysLabel(weekdays))
+        assertEquals(uiText(R.string.days_every_day), Schedules.daysLabel(DayOfWeek.entries.toSet()))
+        assertEquals(
+            UiText.Joined(listOf(DayOfWeek.SATURDAY.shortName(), DayOfWeek.SUNDAY.shortName()), R.string.sep_comma),
+            Schedules.daysLabel(setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)),
+        )
+        assertEquals(
+            UiText.Joined(listOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY).map { it.shortName() }, R.string.sep_comma),
+            Schedules.daysLabel(setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)),
+        )
     }
 
     @Test

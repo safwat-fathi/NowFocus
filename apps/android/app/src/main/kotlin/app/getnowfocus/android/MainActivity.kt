@@ -69,6 +69,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 
 class MainActivity : FragmentActivity() {   // FragmentActivity: BiometricPrompt needs it for the Account fingerprint lock
 
@@ -114,11 +116,10 @@ private sealed interface Screen {
 
 // Same presets as the macOS menu bar picker.
 private val DURATIONS = listOf(
-    "25 min" to 25, "45 min" to 45, "1 hour" to 60, "1.5 hrs" to 90,
-    "2 hrs" to 120, "3 hrs" to 180, "4 hrs" to 240,
+    R.string.dur_25 to 25, R.string.dur_45 to 45, R.string.dur_60 to 60, R.string.dur_90 to 90,
+    R.string.dur_120 to 120, R.string.dur_180 to 180, R.string.dur_240 to 240,
 )
 
-private const val UNLOCK_SENTENCE = "I am choosing to end this focus session early."
 private const val UNLOCK_WAIT_MS = 30_000L
 
 @Composable
@@ -270,33 +271,33 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                         onOpenGoals = { screen = Screen.Goals },
                         extraRows = listOf(
                             ProtectionEntry(
-                                "Schedules",
-                                if (schedules.isEmpty()) "Not set up" else "${schedules.count { it.enabled }} on",
+                                stringResource(R.string.sched_title),
+                                if (schedules.isEmpty()) stringResource(R.string.not_set_up) else stringResource(R.string.sched_on_count, schedules.count { it.enabled }),
                                 onClick = { screen = Screen.Schedules },
                             ),
                             ProtectionEntry(
-                                "Daily limits",
-                                if (limits.isEmpty()) "Not set up" else "${limits.size} ${if (limits.size == 1) "limit" else "limits"}",
+                                stringResource(R.string.limits_title),
+                                if (limits.isEmpty()) stringResource(R.string.not_set_up) else pluralStringResource(R.plurals.n_limits, limits.size, limits.size),
                                 onClick = { screen = Screen.Limits },
                             ),
                             ProtectionEntry(
-                                "Opening friction",
-                                if (frictionApps.isEmpty()) "Not set up" else "${frictionApps.size} ${if (frictionApps.size == 1) "app" else "apps"}",
+                                stringResource(R.string.friction_apps_title),
+                                if (frictionApps.isEmpty()) stringResource(R.string.not_set_up) else pluralStringResource(R.plurals.n_apps, frictionApps.size, frictionApps.size),
                                 onClick = { screen = Screen.Friction },
                             ),
                             ProtectionEntry(
-                                "Cheat day",
+                                stringResource(R.string.cheat_title),
                                 when {
-                                    cheat?.isActive(now) == true -> "Blocking is paused until midnight"
-                                    cheat?.let { now < it.startAt } == true -> "Planned"
-                                    else -> "A planned day off from blocking"
+                                    cheat?.isActive(now) == true -> stringResource(R.string.cheat_row_paused)
+                                    cheat?.let { now < it.startAt } == true -> stringResource(R.string.cheat_row_planned)
+                                    else -> stringResource(R.string.cheat_row_idle)
                                 },
-                                tag = if (cheat?.isActive(now) == true) "On" else null,
+                                tag = if (cheat?.isActive(now) == true) stringResource(R.string.on) else null,
                                 onClick = { screen = Screen.CheatDay },
                             ),
                             ProtectionEntry(
-                                "About",
-                                "Version ${BuildConfig.VERSION_NAME}, privacy, terms, support",
+                                stringResource(R.string.about_title),
+                                stringResource(R.string.about_row, BuildConfig.VERSION_NAME),
                                 onClick = { screen = Screen.About },
                             ),
                         ),
@@ -420,10 +421,10 @@ private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onDevices: ()
     val statsSelected = selected is Screen.Stats
     SectionRule(thick = true)
     Row(Modifier.fillMaxWidth().background(NowFocusColors.bg)) {
-        TabItem("Focus", selected = !rulesSelected && !devicesSelected && !statsSelected, modifier = Modifier.weight(1f), onClick = onFocus)
-        TabItem("Rules", selected = rulesSelected, modifier = Modifier.weight(1f), onClick = onRules)
-        TabItem("Devices", selected = devicesSelected, modifier = Modifier.weight(1f), onClick = onDevices)
-        TabItem("Stats", selected = statsSelected, modifier = Modifier.weight(1f), onClick = onStats)
+        TabItem(stringResource(R.string.tab_focus), selected = !rulesSelected && !devicesSelected && !statsSelected, modifier = Modifier.weight(1f), onClick = onFocus)
+        TabItem(stringResource(R.string.rules_title), selected = rulesSelected, modifier = Modifier.weight(1f), onClick = onRules)
+        TabItem(stringResource(R.string.devices_title), selected = devicesSelected, modifier = Modifier.weight(1f), onClick = onDevices)
+        TabItem(stringResource(R.string.stats_title), selected = statsSelected, modifier = Modifier.weight(1f), onClick = onStats)
     }
 }
 
@@ -481,7 +482,7 @@ private fun HomeScreen(
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3), verticalAlignment = Alignment.Bottom) {
-            Text("NowFocus", style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp), modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.app_name), style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp), modifier = Modifier.weight(1f))
             Text(today, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
         }
         SectionRule(thick = true)
@@ -489,9 +490,9 @@ private fun HomeScreen(
 
         // "Cross-device sync" was M1 leftover mockup copy for a feature this
         // build doesn't have (that's Phase 6, not built) - left in by mistake.
-        Text(if (running) "Focusing now" else "Ready when you are", style = kickerStyle())
+        Text(stringResource(if (running) R.string.home_focusing else R.string.home_ready), style = kickerStyle())
         Spacer(Modifier.height(NowFocusSpace.s2))
-        val heroTitle = if (running) "You're in a focus session." else "Your phone is ready."
+        val heroTitle = stringResource(if (running) R.string.home_hero_running else R.string.home_hero_idle)
         Text(heroTitle, style = headingStyle(38.sp))
         Spacer(Modifier.height(NowFocusSpace.s6))
 
@@ -501,17 +502,17 @@ private fun HomeScreen(
         SectionRule()
         val dayFrom = HistoryStats.startOfDayMillis(now, ZoneId.systemDefault())
         val dayTo = dayFrom + 24 * 60 * 60 * 1000L
-        val focusedMinutes = HistoryStats.totalFocusedMillis(todayRows, dayFrom, dayTo) / 60_000
+        val focusedMinutes = (HistoryStats.totalFocusedMillis(todayRows, dayFrom, dayTo) / 60_000).toInt()
         Row(Modifier.fillMaxWidth()) {
-            StatCell("Today", "${focusedMinutes / 60}h ${focusedMinutes % 60}m", Modifier.weight(1f))
-            StatCell("Turned away", "${HistoryStats.turnedAwayCount(todayEvents, dayFrom, dayTo)}", Modifier.weight(1f))
-            StatCell("Sessions", "${HistoryStats.sessionsCount(todayRows, dayFrom, dayTo)}", Modifier.weight(1f))
+            StatCell(stringResource(R.string.home_today), stringResource(R.string.duration_hm, focusedMinutes / 60, focusedMinutes % 60), Modifier.weight(1f))
+            StatCell(stringResource(R.string.home_turned_away), "${HistoryStats.turnedAwayCount(todayEvents, dayFrom, dayTo)}", Modifier.weight(1f))
+            StatCell(stringResource(R.string.home_sessions), "${HistoryStats.sessionsCount(todayRows, dayFrom, dayTo)}", Modifier.weight(1f))
         }
         SectionRule()
         Spacer(Modifier.height(NowFocusSpace.s6))
 
         PrimaryButton(
-            text = if (running) "Return to session" else "Start focus session",
+            text = stringResource(if (running) R.string.home_return else R.string.home_start),
             onClick = onPrimaryCta,
         )
 
@@ -519,19 +520,19 @@ private fun HomeScreen(
         // A cheat day in progress is the one thing that changes what the rest of this screen means.
         if (cheat?.isActive(now) == true) {
             Spacer(Modifier.height(NowFocusSpace.s4))
-            Text("Cheat day · blocking is paused until midnight", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.accent700))
+            Text(stringResource(R.string.home_cheat_paused), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.accent700))
         }
         if (showShieldRow || bedtime.enabled) {
             Spacer(Modifier.height(NowFocusSpace.s6))
-            Text("ALWAYS ON", style = kickerStyle(NowFocusColors.neutral700))
+            Text(stringResource(R.string.home_always_on), style = kickerStyle(NowFocusColors.neutral700))
             if (showShieldRow) {
-                val daysLeft = ((shield!!.endAt - now) / 86_400_000L + 1).coerceAtLeast(1)
+                val daysLeft = ((shield!!.endAt - now) / 86_400_000L + 1).coerceAtLeast(1).toInt()
                 Row(
                     Modifier.fillMaxWidth().clickable(onClick = onOpenCommitment).padding(vertical = NowFocusSpace.s3),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Commitment Shield", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
-                    TagPill("$daysLeft days left")
+                    Text(stringResource(R.string.shield_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
+                    TagPill(pluralStringResource(R.plurals.home_days_left, daysLeft, daysLeft))
                 }
                 SectionRule()
             }
@@ -540,8 +541,8 @@ private fun HomeScreen(
                     Modifier.fillMaxWidth().clickable(onClick = onOpenBedtime).padding(vertical = NowFocusSpace.s3),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Bedtime Wind-Down", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
-                    TagPill("Tonight ${formatClock(bedtime.windDownMinute, is24Hour)}", accent = false)
+                    Text(stringResource(R.string.bedtime_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
+                    TagPill(stringResource(R.string.home_tonight, formatClock(bedtime.windDownMinute, is24Hour)), accent = false)
                 }
                 SectionRule()
             }
@@ -584,7 +585,7 @@ private fun SetupScreen(
         VoiceRecorder(context, VoiceNote.pending(context)) { usable ->
             recording = false
             hasNote = usable
-            noteMessage = if (usable) null else "That recording didn't work. Try again."
+            noteMessage = if (usable) null else context.localized().getString(R.string.setup_rec_failed)
         }
     }
     DisposableEffect(Unit) { onDispose { recorder.cancel() } }
@@ -600,31 +601,31 @@ private fun SetupScreen(
         recording = recorder.start()
         if (!recording) {
             hasNote = false // a failed start leaves no file behind
-            noteMessage = "Couldn't start recording. Is another app using the mic?"
+            noteMessage = context.localized().getString(R.string.setup_rec_cant_start)
         }
     }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) startRecording() else noteMessage = "Mic access is off, so Strict will use the typed sentence and 30-second wait."
+        if (granted) startRecording() else noteMessage = context.localized().getString(R.string.setup_mic_off)
     }
 
     // Scrolls: the STRICT voice-note section makes this taller than a small screen.
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            GhostButton("‹ Back", onClick = onBack)
+            GhostButton(stringResource(R.string.back), onClick = onBack)
         }
-        Text("New focus session", style = headingStyle(22.sp))
+        Text(stringResource(R.string.setup_title), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s4))
 
         if (policies.isEmpty()) {
-            Text("No profiles yet.", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
+            Text(stringResource(R.string.setup_no_profiles), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp))
             Spacer(Modifier.height(NowFocusSpace.s2))
-            SecondaryButton("Manage profiles", onClick = onManagePolicies)
+            SecondaryButton(stringResource(R.string.setup_manage), onClick = onManagePolicies)
             return@Column
         }
         val selected = policies.find { it.id == policyId } ?: policies.first()
 
-        Text("PROFILE", style = kickerStyle(NowFocusColors.neutral700))
+        Text(stringResource(R.string.setup_profile), style = kickerStyle(NowFocusColors.neutral700))
         SectionRule()
         policies.forEach { p ->
             Row(
@@ -637,16 +638,16 @@ private fun SetupScreen(
                 Spacer(Modifier.width(NowFocusSpace.s3))
                 Column {
                     Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
-                    Text("${p.domains.size} sites · ${p.apps.size} apps", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+                    Text(sitesAppsText(p.domains.size, p.apps.size), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
                 }
             }
             SectionRule()
         }
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("Manage profiles", onClick = onManagePolicies)
+        GhostButton(stringResource(R.string.setup_manage), onClick = onManagePolicies)
 
         Spacer(Modifier.height(NowFocusSpace.s4))
-        Text("DURATION", style = kickerStyle(NowFocusColors.neutral700))
+        Text(stringResource(R.string.setup_duration), style = kickerStyle(NowFocusColors.neutral700))
         Spacer(Modifier.height(NowFocusSpace.s2))
         LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.height(96.dp)) {
             items(DURATIONS) { (label, value) ->
@@ -659,7 +660,7 @@ private fun SetupScreen(
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     Text(
-                        label,
+                        stringResource(label),
                         modifier = Modifier.padding(start = NowFocusSpace.s2),
                         style = TextStyle(
                             fontFamily = ArchivoSemiBold,
@@ -673,43 +674,45 @@ private fun SetupScreen(
         }
 
         Spacer(Modifier.height(NowFocusSpace.s4))
-        Text("IF I WANT TO STOP EARLY", style = kickerStyle(NowFocusColors.neutral700))
+        Text(stringResource(R.string.sched_stop_early), style = kickerStyle(NowFocusColors.neutral700))
         Spacer(Modifier.height(NowFocusSpace.s2))
         SegmentedControl(
-            options = listOf("Normal" to EnforcementMode.NORMAL, "Strict" to EnforcementMode.STRICT, "Locked" to EnforcementMode.LOCKED),
+            options = EnforcementMode.entries.map { stringResource(it.labelRes()) to it },
             selected = mode,
             onSelect = { mode = it },
         )
         Spacer(Modifier.height(NowFocusSpace.s2))
         Text(
-            when (mode) {
-                EnforcementMode.NORMAL -> "You can end any time. Good for light days."
-                EnforcementMode.STRICT -> "To leave early you'll type a short sentence, then wait 30 seconds."
-                EnforcementMode.LOCKED -> "No early exit on this device until the timer ends."
-            },
+            stringResource(
+                when (mode) {
+                    EnforcementMode.NORMAL -> R.string.setup_mode_normal
+                    EnforcementMode.STRICT -> R.string.setup_mode_strict
+                    EnforcementMode.LOCKED -> R.string.setup_mode_locked
+                },
+            ),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral800),
         )
 
         if (mode == EnforcementMode.STRICT) {
             Spacer(Modifier.height(NowFocusSpace.s4))
-            Text("YOUR VOICE NOTE", style = kickerStyle(NowFocusColors.neutral700))
+            Text(stringResource(R.string.setup_voice), style = kickerStyle(NowFocusColors.neutral700))
             Spacer(Modifier.height(NowFocusSpace.s1))
             Text(
-                "Optional. Record 10 seconds to yourself; to leave early you'll have to hear it first. Skip it and Strict works as described above.",
+                stringResource(R.string.setup_voice_intro),
                 style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral800),
             )
             Spacer(Modifier.height(NowFocusSpace.s2))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (recording) {
-                    SecondaryButton("Stop · ${recordedSeconds}s") { recorder.stop() }
+                    SecondaryButton(stringResource(R.string.setup_stop, recordedSeconds)) { recorder.stop() }
                 } else {
-                    SecondaryButton(if (hasNote) "Re-record" else "Record") {
+                    SecondaryButton(stringResource(if (hasNote) R.string.setup_rerecord else R.string.setup_record)) {
                         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) startRecording()
                         else micPermission.launch(Manifest.permission.RECORD_AUDIO)
                     }
                     if (hasNote) {
                         Spacer(Modifier.width(NowFocusSpace.s2))
-                        TagPill("Recorded", accent = false)
+                        TagPill(stringResource(R.string.setup_recorded), accent = false)
                     }
                 }
             }
@@ -723,7 +726,7 @@ private fun SetupScreen(
         }
 
         Spacer(Modifier.height(NowFocusSpace.s6))
-        PrimaryButton("Start ${DURATIONS.first { it.second == minutes }.first}") {
+        PrimaryButton(stringResource(R.string.setup_start, stringResource(DURATIONS.first { it.second == minutes }.first))) {
             // Finalize an in-progress note first so startSession adopts a complete file.
             if (recording) recorder.stop()
             val consentIntent = VpnService.prepare(context)
@@ -744,19 +747,19 @@ private fun ActiveScreen(session: FocusSession, now: Long, paused: Boolean, onEn
     val hours = remainingSeconds / 3600
     val minutes = remainingSeconds % 3600 / 60
     val seconds = remainingSeconds % 60
-    val remaining = if (hours > 0) String.format("%d:%02d:%02d", hours, minutes, seconds) else String.format("%02d:%02d", minutes, seconds)
+    val remaining = if (hours > 0) String.format(java.util.Locale.ROOT, "%d:%02d:%02d", hours, minutes, seconds) else String.format(java.util.Locale.ROOT, "%02d:%02d", minutes, seconds)
     val progress = ((now - session.startAt).toFloat() / (session.endAt - session.startAt).toFloat()).coerceIn(0f, 1f)
 
     Column(Modifier.fillMaxSize().background(NowFocusColors.accent).padding(NowFocusSpace.s6)) {
         Row(Modifier.fillMaxWidth()) {
-            Text("Focus session", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.text), modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.active_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.text), modifier = Modifier.weight(1f))
             Text(
-                session.enforcementMode.name,
+                stringResource(session.enforcementMode.labelRes()).uppercase(),
                 style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = NowFocusColors.text, letterSpacing = 1.sp),
             )
         }
         Spacer(Modifier.height(NowFocusSpace.s6))
-        Text("You're in it. Keep going.", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = NowFocusColors.text))
+        Text(stringResource(R.string.active_keep_going), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = NowFocusColors.text))
         Text(remaining, style = headingStyle(72.sp, color = NowFocusColors.bg))
         Spacer(Modifier.height(NowFocusSpace.s3))
         Box(Modifier.fillMaxWidth().height(6.dp).background(NowFocusColors.text.copy(alpha = 0.25f))) {
@@ -764,11 +767,11 @@ private fun ActiveScreen(session: FocusSession, now: Long, paused: Boolean, onEn
         }
         if (paused) {
             Spacer(Modifier.height(NowFocusSpace.s3))
-            Text("Cheat day: blocking is paused until midnight.", style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.text))
+            Text(stringResource(R.string.active_cheat), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.text))
         }
         Spacer(Modifier.weight(1f))
         SecondaryButton(
-            if (session.enforcementMode == EnforcementMode.LOCKED) "Locked until timer ends" else "End session early",
+            stringResource(if (session.enforcementMode == EnforcementMode.LOCKED) R.string.active_locked else R.string.active_end_early),
             onClick = onEndEarly,
         )
     }
@@ -790,30 +793,30 @@ private fun UnlockScreen(
     val goal = remember { Goals.pick(goals)?.text }
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Back to focus", onClick = onBack)
-        Text("End early?", style = headingStyle(22.sp))
+        GhostButton(stringResource(R.string.back_to_focus), onClick = onBack)
+        Text(stringResource(R.string.unlock_title), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s4))
 
         when (session.enforcementMode) {
             EnforcementMode.NORMAL -> {
                 Text(
-                    "End this session now? ${DurationFormat.remaining((session.endAt - now).coerceAtLeast(0))} left.",
+                    stringResource(R.string.unlock_end_now_q, DurationFormat.remaining((session.endAt - now).coerceAtLeast(0)).text()),
                     style = TextStyle(fontFamily = ArchivoRegular, fontSize = 16.sp),
                 )
                 Spacer(Modifier.height(NowFocusSpace.s4))
-                PrimaryButton("End session now") { if (onCancel(false, false)) onCancelled() }
+                PrimaryButton(stringResource(R.string.unlock_end_now)) { if (onCancel(false, false)) onCancelled() }
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                GhostButton("Keep going", onClick = onBack)
+                GhostButton(stringResource(R.string.unlock_keep_going), onClick = onBack)
             }
             EnforcementMode.LOCKED -> {
-                Text("This one's locked, by you.", style = headingStyle(28.sp))
+                Text(stringResource(R.string.unlock_locked_title), style = headingStyle(28.sp))
                 Spacer(Modifier.height(NowFocusSpace.s2))
                 Text(
-                    "You chose Locked when you started this session, so there's no early exit. You've got this.",
+                    stringResource(R.string.unlock_locked_body),
                     style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
                 )
                 Spacer(Modifier.height(NowFocusSpace.s4))
-                PrimaryButton("Back to focus", onClick = onBack)
+                PrimaryButton(stringResource(R.string.blocked_back), onClick = onBack)
             }
             EnforcementMode.STRICT -> {
                 var typed by remember { mutableStateOf("") }
@@ -821,7 +824,8 @@ private fun UnlockScreen(
                 val waiting = waitEndAt != null
                 val waitRemainingMs = waitEndAt?.let { (it - now).coerceAtLeast(0) } ?: 0L
                 val waitDone = waiting && waitRemainingMs == 0L
-                val matched = typed.trim() == UNLOCK_SENTENCE
+                val unlockSentence = stringResource(R.string.unlock_sentence)
+                val matched = typed.trim() == unlockSentence
 
                 // A note to hear before leaving, if this session has one. Same helper as
                 // SessionViewModel.cancelSession, so both agree on whether a note exists.
@@ -834,24 +838,23 @@ private fun UnlockScreen(
 
                 if (!waiting) {
                     Text(
-                        "No judgement. Type this out, word for word, so it's a choice and not a reflex.",
+                        stringResource(R.string.unlock_type_it),
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
                     )
                     Spacer(Modifier.height(NowFocusSpace.s3))
-                    Text("“$UNLOCK_SENTENCE”", style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp))
+                    Text(stringResource(R.string.unlock_quoted, unlockSentence), style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 19.sp))
                     Spacer(Modifier.height(NowFocusSpace.s3))
                     NowFocusTextField(value = typed, onValueChange = { typed = it }, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(NowFocusSpace.s4))
-                    PrimaryButton("Start 30-second pause", enabled = matched) { waitEndAt = System.currentTimeMillis() + UNLOCK_WAIT_MS }
+                    PrimaryButton(stringResource(R.string.unlock_start_pause), enabled = matched) { waitEndAt = System.currentTimeMillis() + UNLOCK_WAIT_MS }
                 } else {
                     Text(
-                        if (player == null) "Take a breath. If you still want out when this hits zero, it's yours."
-                        else "Take a breath, then hear what you told yourself. You can leave once you have.",
+                        stringResource(if (player == null) R.string.unlock_breath else R.string.unlock_breath_note),
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
                     )
                     if (goal != null) {
                         Spacer(Modifier.height(NowFocusSpace.s3))
-                        Text("REMEMBER WHY YOU STARTED", style = kickerStyle(NowFocusColors.neutral700))
+                        Text(stringResource(R.string.unlock_remember), style = kickerStyle(NowFocusColors.neutral700))
                         Text(goal, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
                     }
                     Spacer(Modifier.height(NowFocusSpace.s3))
@@ -859,11 +862,13 @@ private fun UnlockScreen(
                     Spacer(Modifier.height(NowFocusSpace.s4))
                     if (player != null) {
                         SecondaryButton(
-                            when {
-                                playing -> "Playing…"
-                                listened -> "Play again"
-                                else -> "Play your note"
-                            },
+                            stringResource(
+                                when {
+                                    playing -> R.string.unlock_playing
+                                    listened -> R.string.unlock_play_again
+                                    else -> R.string.unlock_play
+                                },
+                            ),
                         ) {
                             if (!playing) {
                                 playing = true
@@ -873,16 +878,18 @@ private fun UnlockScreen(
                         Spacer(Modifier.height(NowFocusSpace.s2))
                     }
                     PrimaryButton(
-                        when {
-                            canEnd -> "End session now"
-                            waitDone -> "Hear your note first"
-                            else -> "Waiting…"
-                        },
+                        stringResource(
+                            when {
+                                canEnd -> R.string.unlock_end_now
+                                waitDone -> R.string.unlock_hear_first
+                                else -> R.string.unlock_waiting
+                            },
+                        ),
                         enabled = canEnd,
                     ) { if (onCancel(true, listened)) onCancelled() }
                 }
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                SecondaryButton("Stay focused", onClick = onBack)
+                SecondaryButton(stringResource(R.string.unlock_stay), onClick = onBack)
             }
         }
     }
@@ -917,13 +924,13 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
     val score = HistoryStats.focusScore(allSessions, weekFrom, weekTo, zone)
     val topBlocked = HistoryStats.topBlockedPackages(weekEvents, weekFrom, weekTo)
     val maxMinutes = (weekMinutes.maxOrNull() ?: 0L).coerceAtLeast(1L)
-    val dayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
+    val dayLabels = listOf(R.string.dayl_mon, R.string.dayl_tue, R.string.dayl_wed, R.string.dayl_thu, R.string.dayl_fri, R.string.dayl_sat, R.string.dayl_sun).map { stringResource(it) }
 
     // Scrolls: with the YOUR URGES section this is taller than a phone screen.
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
-            Text("This week", style = headingStyle(28.sp), modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.stats_this_week), style = headingStyle(28.sp), modifier = Modifier.weight(1f))
             Text(
                 "${monday.format(DateTimeFormatter.ofPattern("MMM d"))} – ${monday.plusDays(6).format(DateTimeFormatter.ofPattern("d"))}",
                 style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
@@ -933,9 +940,9 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
         Spacer(Modifier.height(NowFocusSpace.s4))
 
         Row(verticalAlignment = Alignment.Bottom) {
-            Text("${totalMinutes / 60}h ${totalMinutes % 60}m", style = headingStyle(56.sp))
+            Text(stringResource(R.string.duration_hm, (totalMinutes / 60).toInt(), (totalMinutes % 60).toInt()), style = headingStyle(56.sp))
             Spacer(Modifier.width(NowFocusSpace.s2))
-            Text("focused", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral700), modifier = Modifier.padding(bottom = 8.dp))
+            Text(stringResource(R.string.stats_focused), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral700), modifier = Modifier.padding(bottom = 8.dp))
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
 
@@ -958,20 +965,20 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
         SectionRule()
 
         Row(Modifier.fillMaxWidth()) {
-            StatCell("Sessions", "$sessionsThisWeek", Modifier.weight(1f))
-            StatCell("Completed", "${(completion * 100).toInt()}%", Modifier.weight(1f))
+            StatCell(stringResource(R.string.home_sessions), "$sessionsThisWeek", Modifier.weight(1f))
+            StatCell(stringResource(R.string.stats_completed), "${(completion * 100).toInt()}%", Modifier.weight(1f))
         }
         SectionRule()
         Row(Modifier.fillMaxWidth()) {
-            StatCell("Turned away", "${HistoryStats.turnedAwayCount(weekEvents, weekFrom, weekTo)}", Modifier.weight(1f))
-            StatCell("Streak", "$streak days", Modifier.weight(1f))
+            StatCell(stringResource(R.string.home_turned_away), "${HistoryStats.turnedAwayCount(weekEvents, weekFrom, weekTo)}", Modifier.weight(1f))
+            StatCell(stringResource(R.string.stats_streak), pluralStringResource(R.plurals.since_days, streak, streak), Modifier.weight(1f))
         }
         SectionRule()
         Row(Modifier.fillMaxWidth()) {
-            StatCell("Focus score", score?.toString() ?: "-", Modifier.weight(1f))
+            StatCell(stringResource(R.string.stats_score), score?.toString() ?: "-", Modifier.weight(1f))
             Box(Modifier.weight(1f).padding(vertical = NowFocusSpace.s3), contentAlignment = Alignment.CenterEnd) {
-                SecondaryButton("Share this week") {
-                    val text = HistoryStats.weekSummaryText(allSessions, weekEvents, weekFrom, weekTo, today, zone)
+                SecondaryButton(stringResource(R.string.stats_share)) {
+                    val text = HistoryStats.weekSummaryText(allSessions, weekEvents, weekFrom, weekTo, today, zone).resolve(context)
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
                 }
             }
@@ -979,10 +986,10 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
         SectionRule()
         Spacer(Modifier.height(NowFocusSpace.s4))
 
-        Text("MOST TURNED AWAY", style = kickerStyle(NowFocusColors.neutral700))
+        Text(stringResource(R.string.stats_most), style = kickerStyle(NowFocusColors.neutral700))
         Spacer(Modifier.height(NowFocusSpace.s1))
         if (topBlocked.isEmpty()) {
-            Text("Nothing yet this week.", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral700))
+            Text(stringResource(R.string.stats_nothing), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral700))
         } else {
             topBlocked.forEach { (pkg, count) ->
                 Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
@@ -994,15 +1001,17 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
 
-        Text("YOUR URGES", style = kickerStyle(NowFocusColors.neutral700))
+        Text(stringResource(R.string.stats_urges), style = kickerStyle(NowFocusColors.neutral700))
         Spacer(Modifier.height(NowFocusSpace.s1))
         val urge = HistoryStats.peakUrge(urgeEvents, zone)
         if (urge == null) {
-            Text("Nothing to map yet.", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral700))
+            Text(stringResource(R.string.stats_nothing_map), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral700))
         } else {
             // "tried to open a blocked app", not "reached for your phone": attempts are only logged while a session or shield is on.
             Text(
-                "You tried to open a blocked app ${if (urge.count == 1) "once" else "${urge.count} times"} between ${hourLabel(urge.hour)} and ${hourLabel(urge.hour + 1)}, usually ${appLabelFor(context, urge.topPackage)}. (last $URGE_WINDOW_DAYS days)",
+                pluralStringResource(
+                    R.plurals.stats_urge, urge.count, urge.count, hourLabel(urge.hour), hourLabel(urge.hour + 1), appLabelFor(context, urge.topPackage), URGE_WINDOW_DAYS,
+                ),
                 style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp),
             )
             Spacer(Modifier.height(NowFocusSpace.s3))
@@ -1029,13 +1038,13 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
             HistoryStats.appUrges(urgeEvents, zone).forEach { u ->
                 val label = appLabelFor(context, u.packageName)
                 Spacer(Modifier.height(NowFocusSpace.s3))
-                Text("$label: most tries around ${hourLabel(u.hour)} (${u.hourCount} of ${u.total}).", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp))
-                GhostButton("Block $label at ${hourLabel(u.hour)} every day") { onScheduleBlock(AppRule(u.packageName, label), u.hour) }
+                Text(stringResource(R.string.stats_urge_app, label, hourLabel(u.hour), u.hourCount, u.total), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp))
+                GhostButton(stringResource(R.string.stats_block_at, label, hourLabel(u.hour))) { onScheduleBlock(AppRule(u.packageName, label), u.hour) }
             }
         }
         Spacer(Modifier.height(NowFocusSpace.s3))
         Text(
-            "Counted on your phone. We never see what you browse.",
+            stringResource(R.string.stats_counted),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
         )
         Spacer(Modifier.height(NowFocusSpace.s4))
@@ -1081,7 +1090,7 @@ private fun CommitmentScreen(
     BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Back", onClick = onBack)
+        GhostButton(stringResource(R.string.back), onClick = onBack)
 
         // isOver/canCancel are boot-relative (elapsedRealtime + boot count),
         // not wall-clock - see CommitmentShield's kdoc for why that matters.
@@ -1115,56 +1124,56 @@ private fun CommitmentSetup(onCreate: (Set<String>, Set<String>, Set<PartialRule
         newDomain = ""
     }
 
-    Text("Commitment Shield", style = headingStyle(22.sp))
+    Text(stringResource(R.string.shield_title), style = headingStyle(22.sp))
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
-        "Lock sites and apps for 14 days, no early exit once it starts. You'll get 60 seconds to change your mind first.",
+        stringResource(R.string.shield_intro),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
     )
     Spacer(Modifier.height(NowFocusSpace.s4))
 
-    Text("SITES", style = kickerStyle(NowFocusColors.neutral700))
+    Text(stringResource(R.string.shield_sites), style = kickerStyle(NowFocusColors.neutral700))
     SectionRule()
     domains.forEach { d ->
-        RuleRow(d, "+ subdomains") { domains = domains - d }
+        RuleRow(d, stringResource(R.string.policy_subdomains)) { domains = domains - d }
     }
     Row(Modifier.padding(top = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
         NowFocusTextField(
             value = newDomain, onValueChange = { newDomain = it },
-            placeholder = "e.g. reddit.com", singleLine = true, modifier = Modifier.weight(1f),
+            placeholder = stringResource(R.string.shield_site_hint), singleLine = true, modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(NowFocusSpace.s2))
-        SecondaryButton("Add", onClick = ::addDomain)
+        SecondaryButton(stringResource(R.string.add), onClick = ::addDomain)
     }
 
     Spacer(Modifier.height(NowFocusSpace.s4))
-    Text("APPS", style = kickerStyle(NowFocusColors.neutral700))
+    Text(stringResource(R.string.shield_apps), style = kickerStyle(NowFocusColors.neutral700))
     SectionRule()
     apps.forEach { a ->
         RuleRow(a.label, a.packageName) { apps = apps.filterNot { it.packageName == a.packageName } }
     }
-    GhostButton("+ Add application…") { pickingApp = true }
+    GhostButton(stringResource(R.string.policy_add_app)) { pickingApp = true }
 
     PartialRulesSection(partial) { partial = it }
 
     Spacer(Modifier.height(NowFocusSpace.s6))
     if (!confirming) {
-        PrimaryButton("Lock for 14 days", enabled = domains.isNotEmpty() || apps.isNotEmpty() || partial.isNotEmpty()) { confirming = true }
+        PrimaryButton(stringResource(R.string.shield_lock), enabled = domains.isNotEmpty() || apps.isNotEmpty() || partial.isNotEmpty()) { confirming = true }
     } else {
         // Same two-step as Windows: the 60-second undo after this is a second chance, not the first.
-        Text("Are you sure?", style = headingStyle(22.sp))
+        Text(stringResource(R.string.shield_sure), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
         Text(
-            "${domains.size} site${if (domains.size == 1) "" else "s"} and ${apps.size} app${if (apps.size == 1) "" else "s"} will be blocked for 14 days. You'll have 60 seconds to undo, then it's locked in.",
+            stringResource(R.string.shield_confirm, pluralStringResource(R.plurals.n_sites, domains.size, domains.size), pluralStringResource(R.plurals.n_apps, apps.size, apps.size)),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
         )
         Spacer(Modifier.height(NowFocusSpace.s3))
-        PrimaryButton("Yes, commit") {
+        PrimaryButton(stringResource(R.string.shield_commit)) {
             val consentIntent = if (domains.isNotEmpty()) VpnService.prepare(context) else null
             if (consentIntent != null) vpnConsent.launch(consentIntent) else onCreate(domains, apps.map { it.packageName }.toSet(), partial)
         }
         Spacer(Modifier.height(NowFocusSpace.s2))
-        SecondaryButton("Back") { confirming = false }
+        SecondaryButton(stringResource(R.string.back_plain)) { confirming = false }
     }
 
     if (pickingApp) {
@@ -1179,37 +1188,37 @@ private fun CommitmentSetup(onCreate: (Set<String>, Set<String>, Set<PartialRule
 @Composable
 private fun CommitmentGrace(shield: CommitmentShield, elapsedNow: Long, onCancel: () -> Unit) {
     val secondsLeft = ((shield.createdElapsedRealtime + CommitmentShield.GRACE_MS - elapsedNow) / 1000 + 1).coerceAtLeast(0)
-    Text("Locking it in…", style = headingStyle(28.sp))
+    Text(stringResource(R.string.shield_locking), style = headingStyle(28.sp))
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
-        "This is the only chance to undo it. After this, it runs the full 14 days.",
+        stringResource(R.string.shield_last_chance),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
     )
     Spacer(Modifier.height(NowFocusSpace.s4))
     Text("$secondsLeft", style = headingStyle(96.sp, color = NowFocusColors.accent))
     Spacer(Modifier.height(NowFocusSpace.s4))
-    SecondaryButton("Cancel", onClick = onCancel)
+    SecondaryButton(stringResource(R.string.cancel), onClick = onCancel)
 }
 
 @Composable
 private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
     val context = LocalContext.current
-    val daysLeft = ((shield.endAt - now) / 86_400_000L + 1).coerceAtLeast(0)
-    Text("Always blocked · this device", style = kickerStyle())
+    val daysLeft = ((shield.endAt - now) / 86_400_000L + 1).coerceAtLeast(0).toInt()
+    Text(stringResource(R.string.shield_detail_kicker), style = kickerStyle())
     Row(verticalAlignment = Alignment.Bottom) {
         Text("$daysLeft", style = headingStyle(72.sp, color = NowFocusColors.accent))
-        Text(" days to go", style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp), modifier = Modifier.padding(bottom = 12.dp))
+        Text(" " + pluralStringResource(R.plurals.shield_days_to_go, daysLeft), style = TextStyle(fontFamily = ArchivoBlack, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp), modifier = Modifier.padding(bottom = 12.dp))
     }
     if (shield.domains.isNotEmpty() && !Enforcement.isVpnPermitted(context)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        TagPill("Sites degraded — VPN permission not granted")
+        TagPill(stringResource(R.string.shield_sites_degraded))
     }
     if (shield.packages.isNotEmpty() && !Enforcement.isAccessibilityEnabled(context)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        TagPill("Apps degraded — Accessibility not enabled")
+        TagPill(stringResource(R.string.shield_apps_degraded))
     }
     Spacer(Modifier.height(NowFocusSpace.s4))
-    Text("LOCKED SITES", style = kickerStyle(NowFocusColors.neutral700))
+    Text(stringResource(R.string.shield_locked_sites), style = kickerStyle(NowFocusColors.neutral700))
     SectionRule()
     shield.domains.forEach { d ->
         Text(d, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
@@ -1217,7 +1226,7 @@ private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
     }
     if (shield.packages.isNotEmpty()) {
         Spacer(Modifier.height(NowFocusSpace.s4))
-        Text("LOCKED APPS", style = kickerStyle(NowFocusColors.neutral700))
+        Text(stringResource(R.string.shield_locked_apps), style = kickerStyle(NowFocusColors.neutral700))
         SectionRule()
         shield.packages.forEach { pkg ->
             Text(appLabelFor(context, pkg), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp), modifier = Modifier.padding(vertical = NowFocusSpace.s2))
@@ -1226,9 +1235,7 @@ private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
     }
     Spacer(Modifier.height(NowFocusSpace.s4))
     Text(
-        "Turning off Accessibility, revoking the VPN permission, or uninstalling the app still stops this - " +
-            "there's no way around that on a normal app. And while this is running, no other VPN app can be active " +
-            "at the same time (Android only allows one).",
+        stringResource(R.string.shield_caveat),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
     )
 }
@@ -1243,31 +1250,31 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Back", onClick = onBack)
-        Text("Bedtime Wind-Down", style = headingStyle(22.sp))
+        GhostButton(stringResource(R.string.back), onClick = onBack)
+        Text(stringResource(R.string.bedtime_title), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
         Text(
-            "Each night from wind-down until wake, your chosen profile is blocked as a locked session you can't end early. Tap a time to change it.",
+            stringResource(R.string.bedtime_intro),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
         )
         Spacer(Modifier.height(NowFocusSpace.s4))
 
-        ToggleRow("On every night", "Applies automatically, no need to start it", settings.enabled, { onSave(settings.copy(enabled = !settings.enabled)) })
+        ToggleRow(stringResource(R.string.bedtime_on), stringResource(R.string.bedtime_on_sub), settings.enabled, { onSave(settings.copy(enabled = !settings.enabled)) })
         SectionRule()
         Spacer(Modifier.height(NowFocusSpace.s3))
 
         Row(Modifier.fillMaxWidth()) {
-            TimeBump("Wind-down", settings.windDownMinute, Modifier.weight(1f)) { onSave(settings.copy(windDownMinute = it)) }
-            TimeBump("Sleep", settings.sleepMinute, Modifier.weight(1f)) { onSave(settings.copy(sleepMinute = it)) }
-            TimeBump("Wake", settings.wakeMinute, Modifier.weight(1f)) { onSave(settings.copy(wakeMinute = it)) }
+            TimeBump(stringResource(R.string.bedtime_winddown), settings.windDownMinute, Modifier.weight(1f)) { onSave(settings.copy(windDownMinute = it)) }
+            TimeBump(stringResource(R.string.bedtime_sleep), settings.sleepMinute, Modifier.weight(1f)) { onSave(settings.copy(sleepMinute = it)) }
+            TimeBump(stringResource(R.string.bedtime_wake), settings.wakeMinute, Modifier.weight(1f)) { onSave(settings.copy(wakeMinute = it)) }
         }
         Spacer(Modifier.height(NowFocusSpace.s6))
 
-        Text("BLOCK PROFILE", style = kickerStyle(NowFocusColors.neutral700))
+        Text(stringResource(R.string.sched_block_profile), style = kickerStyle(NowFocusColors.neutral700))
         SectionRule()
         if (policies.isEmpty()) {
             Text(
-                "No profiles yet — create one in Rules first, or nothing will be blocked at bedtime.",
+                stringResource(R.string.bedtime_no_profiles),
                 style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                 modifier = Modifier.padding(vertical = NowFocusSpace.s2),
             )
@@ -1281,14 +1288,14 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
                     Spacer(Modifier.width(NowFocusSpace.s3))
                     Column {
                         Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
-                        Text("${p.domains.size} sites · ${p.apps.size} apps", style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+                        Text(sitesAppsText(p.domains.size, p.apps.size), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
                     }
                 }
                 SectionRule()
             }
             if (settings.enabled && settings.policyId == null) {
                 Text(
-                    "Pick a profile above, or nothing will be blocked at bedtime.",
+                    stringResource(R.string.bedtime_pick),
                     style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.accent700),
                     modifier = Modifier.padding(top = NowFocusSpace.s2),
                 )
@@ -1296,20 +1303,20 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
         }
         Spacer(Modifier.height(NowFocusSpace.s6))
 
-        Text("DURING WIND-DOWN", style = kickerStyle(NowFocusColors.neutral700))
+        Text(stringResource(R.string.bedtime_during), style = kickerStyle(NowFocusColors.neutral700))
         SectionRule()
         ToggleRow(
-            "Quiet notifications", "Only priority notifications come through",
+            stringResource(R.string.bedtime_quiet), stringResource(R.string.bedtime_quiet_sub),
             settings.quietNotifications, { onSave(settings.copy(quietNotifications = !settings.quietNotifications)) },
         )
         if (!notificationPolicyOk) {
-            GhostButton("Allow in Notification Access settings") {
+            GhostButton(stringResource(R.string.bedtime_allow_access)) {
                 context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             }
         }
         if (Build.VERSION.SDK_INT >= 28) {
             ToggleRow(
-                "Lock phone at sleep time", "Locks once, at your sleep time",
+                stringResource(R.string.bedtime_lock), stringResource(R.string.bedtime_lock_sub),
                 settings.lockAtSleep, { onSave(settings.copy(lockAtSleep = !settings.lockAtSleep)) },
             )
         }
@@ -1342,7 +1349,7 @@ internal fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier
 @Composable
 private fun TimePickerDialog(title: String, minutes: Int, is24Hour: Boolean, onConfirm: (Int) -> Unit, onDismiss: () -> Unit) {
     var hour by remember { mutableStateOf((if (is24Hour) minutes / 60 else (minutes / 60 + 11) % 12 + 1).toString()) }
-    var minute by remember { mutableStateOf("%02d".format(minutes % 60)) }
+    var minute by remember { mutableStateOf(String.format(java.util.Locale.ROOT, "%02d", minutes % 60)) }
     var pm by remember { mutableStateOf(minutes >= 12 * 60) }
     val result = parseClock(hour.toIntOrNull() ?: -1, minute.toIntOrNull() ?: -1, pm, is24Hour)
     val digits = KeyboardOptions(keyboardType = KeyboardType.Number)
@@ -1351,14 +1358,14 @@ private fun TimePickerDialog(title: String, minutes: Int, is24Hour: Boolean, onC
         title = { Text(title, style = headingStyle(20.sp)) },
         text = {
             Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(NowFocusSpace.s2)) {
-                NowFocusTextField(hour, { hour = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = "Hour", singleLine = true, keyboardOptions = digits)
+                NowFocusTextField(hour, { hour = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = stringResource(R.string.time_hour), singleLine = true, keyboardOptions = digits)
                 Text(":", style = headingStyle(24.sp), modifier = Modifier.padding(bottom = NowFocusSpace.s3))
-                NowFocusTextField(minute, { minute = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = "Minute", singleLine = true, keyboardOptions = digits)
-                if (!is24Hour) SegmentedControl(listOf("AM" to false, "PM" to true), pm, { pm = it }, Modifier.weight(1.2f))
+                NowFocusTextField(minute, { minute = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), label = stringResource(R.string.time_minute), singleLine = true, keyboardOptions = digits)
+                if (!is24Hour) SegmentedControl(listOf(stringResource(R.string.time_am) to false, stringResource(R.string.time_pm) to true), pm, { pm = it }, Modifier.weight(1.2f))
             }
         },
-        confirmButton = { PrimaryButton("Set", enabled = result != null) { result?.let(onConfirm) } },
-        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
+        confirmButton = { PrimaryButton(stringResource(R.string.time_set), enabled = result != null) { result?.let(onConfirm) } },
+        dismissButton = { GhostButton(stringResource(R.string.cancel), onClick = onDismiss) },
     )
 }
 
@@ -1370,18 +1377,18 @@ private fun HealthRow() {
     val appsOk = Enforcement.isAccessibilityEnabled(context)
 
     Text(
-        if (vpnOk) "Website blocking: ready" else "Website blocking: VPN permission asked on start",
+        stringResource(if (vpnOk) R.string.health_web_ok else R.string.health_web_ask),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = if (vpnOk) NowFocusColors.text else NowFocusColors.accent700),
     )
     Text(
-        if (appsOk) "App blocking: ready" else "App blocking: off",
+        stringResource(if (appsOk) R.string.health_apps_ok else R.string.health_apps_off),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = if (appsOk) NowFocusColors.text else NowFocusColors.accent700),
     )
     if (!appsOk) {
         Spacer(Modifier.height(NowFocusSpace.s1))
-        GhostButton("Enable in Accessibility Settings") { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        GhostButton(stringResource(R.string.health_enable)) { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         Text(
-            "Toggle greyed out? Open App info → ⋮ → Allow restricted settings first.",
+            stringResource(R.string.restricted_settings_hint),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
         )
     }

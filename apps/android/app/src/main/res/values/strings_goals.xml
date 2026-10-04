@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="goals_title">Your goals</string>
+    <string name="goals_intro">What you\'re focusing for. Shown while you wait to end a Strict session early, and on the block screen when no one is set to reach out to. Stays on this phone.</string>
+    <string name="goals_hint">Add a goal, e.g. Finish my thesis</string>
+    <string name="goals_priority">PRIORITY</string>
+</resources>

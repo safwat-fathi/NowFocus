@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="about_title">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_tagline">Blocks the apps that pull you away, and keeps them blocked until you\'re done.</string>
+    <string name="about_website">Website</string>
+    <string name="about_privacy">Privacy policy</string>
+    <string name="about_terms">Terms</string>
+    <string name="about_source">Source code</string>
+    <string name="about_support">Contact support</string>
+    <string name="about_license" translatable="false">Source available under the FSL-1.1-ALv2 license.</string>
+    <string name="about_copyright" translatable="false">© 2026 Safwat Fathi</string>
+    <string name="about_row">Version %1$s, privacy, terms, support</string>
+</resources>

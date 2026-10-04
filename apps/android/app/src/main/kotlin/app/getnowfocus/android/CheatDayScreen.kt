@@ -23,6 +23,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import java.time.ZoneId
+import androidx.compose.ui.res.stringResource
 
 private val body = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800)
 
@@ -37,34 +38,31 @@ fun CheatDayScreen(cheat: CheatDay?, now: Long, onSchedule: (Long) -> Boolean, o
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Back", onClick = onBack)
-        Text("Cheat day", style = headingStyle(22.sp))
+        GhostButton(stringResource(R.string.back), onClick = onBack)
+        Text(stringResource(R.string.cheat_title), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
-        Text(
-            "A whole day with blocking paused: sessions, Bedtime, schedules and limits. Your Commitment Shield stays on, always.",
-            style = body,
-        )
+        Text(stringResource(R.string.cheat_intro), style = body)
         Spacer(Modifier.height(NowFocusSpace.s2))
-        Text("You set it at least 24 hours ahead, and you get one a week, so it's a plan and not an impulse.", style = body)
+        Text(stringResource(R.string.cheat_rule), style = body)
         Spacer(Modifier.height(NowFocusSpace.s4))
         SectionRule(thick = true)
         Spacer(Modifier.height(NowFocusSpace.s3))
 
         when {
             cheat != null && cheat.isActive(now) -> {
-                Text("On now", style = headingStyle(28.sp))
-                Text("Blocking is paused until ${time(cheat.endAt)}.", style = body)
+                Text(stringResource(R.string.cheat_on_now), style = headingStyle(28.sp))
+                Text(stringResource(R.string.cheat_paused_until, time(cheat.endAt)), style = body)
                 Spacer(Modifier.height(NowFocusSpace.s4))
-                SecondaryButton("End it early", onClick = onCancel)
+                SecondaryButton(stringResource(R.string.cheat_end_early), onClick = onCancel)
             }
             cheat != null && now < cheat.startAt -> {
-                Text("Set for ${day(cheat.startAt)}", style = headingStyle(28.sp))
-                Text("It starts at ${time(cheat.startAt)}. Cancelling frees your week.", style = body)
+                Text(stringResource(R.string.cheat_set_for, day(cheat.startAt)), style = headingStyle(28.sp))
+                Text(stringResource(R.string.cheat_starts_at, time(cheat.startAt)), style = body)
                 Spacer(Modifier.height(NowFocusSpace.s4))
-                SecondaryButton("Cancel it", onClick = onCancel)
+                SecondaryButton(stringResource(R.string.cheat_cancel), onClick = onCancel)
             }
             else -> {
-                Text("Pick a day", style = kickerStyle(NowFocusColors.neutral700))
+                Text(stringResource(R.string.cheat_pick), style = kickerStyle(NowFocusColors.neutral700))
                 SectionRule()
                 CheatDays.options(now, ZoneId.systemDefault(), cheat).forEach { start ->
                     Text(
@@ -80,9 +78,9 @@ fun CheatDayScreen(cheat: CheatDay?, now: Long, onSchedule: (Long) -> Boolean, o
     }
     confirming?.let { start ->
         ConfirmDialog(
-            "Make ${day(start)} your cheat day?",
-            "Blocking pauses from midnight until the next midnight. You can cancel it before then.",
-            "Yes, plan it",
+            stringResource(R.string.cheat_confirm_title, day(start)),
+            stringResource(R.string.cheat_confirm_body),
+            stringResource(R.string.cheat_confirm_yes),
             { onSchedule(start); confirming = null },
             { confirming = null },
         )

@@ -88,13 +88,26 @@ object Schedules {
     }
 
     /** "Mon-Fri", "Every day", "Sat, Sun", "Mon, Wed, Fri". */
-    fun daysLabel(days: Set<DayOfWeek>): String {
+    fun daysLabel(days: Set<DayOfWeek>): UiText {
         val sorted = days.sorted()
-        val names = sorted.map { it.name.take(3).lowercase().replaceFirstChar(Char::uppercase) }
+        val names = sorted.map { it.shortName() }
         return when {
-            sorted.size == 7 -> "Every day"
-            sorted.size > 2 && sorted.zipWithNext().all { (a, b) -> b.value - a.value == 1 } -> "${names.first()}-${names.last()}"
-            else -> names.joinToString(", ")
+            sorted.size == 7 -> uiText(R.string.days_every_day)
+            sorted.size > 2 && sorted.zipWithNext().all { (a, b) -> b.value - a.value == 1 } -> uiText(R.string.days_range, names.first(), names.last())
+            else -> UiText.Joined(names, R.string.sep_comma)
         }
     }
 }
+
+/** "Mon", "Tue", ... in the app language. */
+fun DayOfWeek.shortName(): UiText = uiText(
+    when (this) {
+        DayOfWeek.MONDAY -> R.string.day_mon
+        DayOfWeek.TUESDAY -> R.string.day_tue
+        DayOfWeek.WEDNESDAY -> R.string.day_wed
+        DayOfWeek.THURSDAY -> R.string.day_thu
+        DayOfWeek.FRIDAY -> R.string.day_fri
+        DayOfWeek.SATURDAY -> R.string.day_sat
+        DayOfWeek.SUNDAY -> R.string.day_sun
+    },
+)

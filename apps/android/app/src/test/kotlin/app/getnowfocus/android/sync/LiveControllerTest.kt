@@ -17,6 +17,8 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
+import app.getnowfocus.android.R
+import app.getnowfocus.android.uiText
 
 /** Same switch as [LiveSyncTest]: needs SYNC_IT_URL pointing at a running services/api. */
 class LiveControllerTest {
@@ -116,10 +118,10 @@ class LiveControllerTest {
                 until(what = "controllers loaded") { a.controller.status.value.loaded && b.controller.status.value.loaded }
 
                 // Wrong password is a friendly message, not an exception.
-                assertEquals("Wrong email or password.", a.controller.signIn(email, "pw-pw-pw-pw", false))
+                assertEquals(uiText(R.string.sync_err_invalid_credentials), a.controller.signIn(email, "pw-pw-pw-pw", false))
                 assertNull(a.controller.signIn(email, "pw-pw-pw-pw", true))                       // creates the account
                 assertNull(b.controller.signIn(email, "pw-pw-pw-pw", false))
-                assertEquals("An account with this email already exists. Sign in instead.", a.controller.signIn(email, "pw-pw-pw-pw", true))
+                assertEquals(uiText(R.string.sync_err_email_taken), a.controller.signIn(email, "pw-pw-pw-pw", true))
                 until(what = "both signed in and idle") { a.controller.status.value.lastSyncedAt != null && b.controller.status.value.lastSyncedAt != null }
 
                 // A edits: B must get it without anyone pressing anything (edit -> debounce -> push -> websocket -> pull).
@@ -139,7 +141,7 @@ class LiveControllerTest {
                 assertTrue("a signed-out phone must not receive anything", a.store.local.policies.none { it.name == "While A is out" })
 
                 // Wrong password on delete, then the real thing.
-                assertEquals("Wrong password.", b.controller.deleteAccount("nope-nope-nope"))
+                assertEquals(uiText(R.string.sync_err_wrong_password), b.controller.deleteAccount("nope-nope-nope"))
                 assertNull(b.controller.deleteAccount("pw-pw-pw-pw"))
                 assertEquals(SyncState(), b.store.local.state)
                 assertEquals(2, b.store.local.policies.size)   // its data stays on the phone

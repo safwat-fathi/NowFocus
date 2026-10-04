@@ -255,8 +255,19 @@ class HistoryStatsTest {
         val rows = listOf(completed(monday, 9, 90), cancelled(monday.plusDays(1), 9, 60, 30))
         val events = listOf(BlockEventRow(packageName = "com.secret.app", timestampMillis = millisAt(monday, 10)))
         val text = HistoryStats.weekSummaryText(rows, events, from, to, today = monday.plusDays(1), zone = zone)
-        assertTrue(text, text.startsWith("My NowFocus week: 2h 0m focused across 2 sessions (1 completed)."))
-        assertTrue(text, text.contains("Turned away 1 times."))
-        assertFalse(text, text.contains("secret"))
+        assertEquals(
+            UiText.Joined(
+                listOf(
+                    UiText.Plural(R.plurals.week_share_head, 2, listOf(2, 0, 2, 1)),
+                    uiText(R.string.week_share_score, HistoryStats.focusScore(rows, from, to, zone)!!),
+                    UiText.Plural(R.plurals.week_share_streak, 2),
+                    UiText.Plural(R.plurals.week_share_turned_away, 1),
+                ),
+                R.string.sep_space,
+            ),
+            text,
+        )
+        // Counts only: no app name can be in there, because nothing in the message takes one.
+        assertFalse(text.toString(), text.toString().contains("secret"))
     }
 }

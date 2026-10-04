@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="devices_title">Devices</string>
+    <string name="devices_signed_in">Signed in as %1$s. Profiles and bedtime settings sync with your other devices.</string>
+    <string name="devices_account">Account and devices</string>
+    <string name="devices_alone">This phone works on its own. Sign in, optionally, to sync profiles and bedtime settings across your devices.</string>
+    <string name="devices_sign_in">Sign in or create account</string>
+    <string name="devices_active">Active</string>
+    <string name="devices_degraded">Degraded</string>
+    <string name="devices_app_blocking">App blocking</string>
+    <string name="devices_website_filter">Website filter</string>
+    <string name="devices_dnd">Do Not Disturb</string>
+    <string name="devices_enable_blocking">Enable app blocking</string>
+    <string name="devices_enable_filter">Enable website filter</string>
+    <string name="devices_enable_dnd">Enable Do Not Disturb access</string>
+</resources>

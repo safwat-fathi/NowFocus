@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sched_title">Schedules</string>
+    <string name="sched_intro">Sessions that start by themselves, like Mon-Fri 9-12. They won\'t start on a cheat day, or while another session is running.</string>
+    <!-- days, start, end, profile, mode -->
+    <string name="sched_row">%1$s · %2$s-%3$s · %4$s · %5$s</string>
+    <string name="sched_no_profile">No profile</string>
+    <string name="sched_need_profile">Create a profile in Rules first: a schedule needs one to block.</string>
+    <string name="sched_new">+ New schedule</string>
+    <!-- Stored as the schedule\'s name when it is created, so it is not a label that follows the language afterwards. -->
+    <string name="sched_default_name">Work</string>
+    <string name="sched_new_title">New schedule</string>
+    <string name="sched_edit_title">Edit schedule</string>
+    <string name="sched_days">DAYS</string>
+    <string name="sched_starts">Starts</string>
+    <string name="sched_ends">Ends</string>
+    <string name="sched_next_day">Ends the next day.</string>
+    <string name="sched_block_profile">BLOCK PROFILE</string>
+    <string name="sched_stop_early">IF I WANT TO STOP EARLY</string>
+    <string name="sched_locked_note">Locked has no early exit, and this one starts by itself.</string>
+    <string name="sched_on_sub">Starts by itself at the times above</string>
+    <string name="sched_delete">Delete schedule</string>
+    <string name="sched_delete_q">Delete %1$s?</string>
+    <string name="sched_delete_body">It won\'t start again. A session it already started keeps running.</string>
+    <string name="sched_on_count">%1$d on</string>
+</resources>

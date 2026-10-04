@@ -1,12 +1,13 @@
 package app.getnowfocus.android
 
+import androidx.annotation.StringRes
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 import kotlin.random.Random
 
 /** Same three levels and short labels as macOS's GoalPriority. */
-enum class GoalPriority(val label: String) { HIGH("High"), MEDIUM("Med"), LOW("Low") }
+enum class GoalPriority(@StringRes val label: Int) { HIGH(R.string.priority_high), MEDIUM(R.string.priority_medium), LOW(R.string.priority_low) }
 
 /** Something you told NowFocus you're focusing for: shown when you're tempted to quit, or blocked. */
 data class Goal(

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cheat_title">Cheat day</string>
+    <string name="cheat_intro">A whole day with blocking paused: sessions, Bedtime, schedules and limits. Your Commitment Shield stays on, always.</string>
+    <string name="cheat_rule">You set it at least 24 hours ahead, and you get one a week, so it\'s a plan and not an impulse.</string>
+    <string name="cheat_on_now">On now</string>
+    <string name="cheat_paused_until">Blocking is paused until %1$s.</string>
+    <string name="cheat_end_early">End it early</string>
+    <string name="cheat_set_for">Set for %1$s</string>
+    <string name="cheat_starts_at">It starts at %1$s. Cancelling frees your week.</string>
+    <string name="cheat_cancel">Cancel it</string>
+    <string name="cheat_pick">Pick a day</string>
+    <string name="cheat_confirm_title">Make %1$s your cheat day?</string>
+    <string name="cheat_confirm_body">Blocking pauses from midnight until the next midnight. You can cancel it before then.</string>
+    <string name="cheat_confirm_yes">Yes, plan it</string>
+    <string name="cheat_row_paused">Blocking is paused until midnight</string>
+    <string name="cheat_row_planned">Planned</string>
+    <string name="cheat_row_idle">A planned day off from blocking</string>
+</resources>

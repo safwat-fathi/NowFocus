@@ -441,7 +441,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 wm.updateViewLayout(existing, lp)
             } else {
                 val view = TextView(this).apply {
-                    text = "Recommendations are off while you focus"
+                    text = localized().getString(R.string.overlay_recommendations_off)
                     gravity = Gravity.CENTER
                     setTextColor(NowFocusColors.text.toArgb())
                     setBackgroundColor(NowFocusColors.bg.toArgb())

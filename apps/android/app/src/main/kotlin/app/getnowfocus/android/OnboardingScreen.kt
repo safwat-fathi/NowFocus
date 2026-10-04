@@ -36,6 +36,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 
 /**
  * 5 steps: Welcome, Goals, People, Permissions, First session. The mockup's pairing-code step (a
@@ -94,17 +95,19 @@ fun OnboardingScreen(
         }
         if (step < LAST_STEP) {
             PrimaryButton(
-                when (step) {
-                    0 -> "Let's set it up"
-                    1 -> if (goals.isEmpty()) "Skip for now" else "Continue"
-                    2 -> if (people.isEmpty()) "Skip for now" else "Continue"
-                    else -> "Continue"
-                },
+                stringResource(
+                    when (step) {
+                        0 -> R.string.onb_setup
+                        1 -> if (goals.isEmpty()) R.string.onb_skip else R.string.onb_continue
+                        2 -> if (people.isEmpty()) R.string.onb_skip else R.string.onb_continue
+                        else -> R.string.onb_continue
+                    },
+                ),
             ) { step++ }
         } else {
             // Blocking has to work before the "win": with Accessibility off the picked apps are never bounced.
-            PrimaryButton("Start 10 minutes", enabled = picked.isNotEmpty() && accessibilityOk) { onStartFirstSession(picked) }
-            GhostButton("Not now", onClick = onDone)
+            PrimaryButton(stringResource(R.string.onb_start), enabled = picked.isNotEmpty() && accessibilityOk) { onStartFirstSession(picked) }
+            GhostButton(stringResource(R.string.friction_not_now), onClick = onDone)
         }
     }
 }
@@ -120,24 +123,24 @@ private fun OnboardingFirstSession(
 ) {
     val context = LocalContext.current
     var picking by remember { mutableStateOf(false) }
-    Text("STEP 5 OF 5 · YOUR FIRST SESSION", style = kickerStyle())
+    Text(stringResource(R.string.onb_step5), style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s2))
-    Text("Which app steals your time?", style = headingStyle(28.sp))
+    Text(stringResource(R.string.onb_step5_title), style = headingStyle(28.sp))
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
-        "Pick one, and we'll block it for 10 minutes. You can end it any time.",
+        stringResource(R.string.onb_step5_body),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
     )
     Spacer(Modifier.height(NowFocusSpace.s4))
     SectionRule(thick = true)
     picked.forEach { app -> RuleRow(app.label, app.packageName) { onUnpick(app.packageName) } }
-    GhostButton(if (picked.isEmpty()) "+ Pick an app…" else "+ Add another…") { picking = true }
+    GhostButton(stringResource(if (picked.isEmpty()) R.string.onb_pick_app else R.string.onb_add_another)) { picking = true }
     if (!accessibilityOk) {
         Spacer(Modifier.height(NowFocusSpace.s4))
-        PermissionRow("App blocking", "Needed to block the app. Turn on NowFocus in Accessibility settings", false) {
+        PermissionRow(stringResource(R.string.devices_app_blocking), stringResource(R.string.onb_blocking_needed), false) {
             context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
-        Text(RESTRICTED_SETTINGS_HINT, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+        Text(stringResource(R.string.restricted_settings_hint), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
     }
     if (picking) {
         AppPickerDialog(
@@ -148,20 +151,18 @@ private fun OnboardingFirstSession(
     }
 }
 
-private const val RESTRICTED_SETTINGS_HINT = "Toggle greyed out? Open App info → ⋮ → Allow restricted settings first."
-
 @Composable
 private fun OnboardingGoals(
     goals: List<Goal>,
     onAdd: (text: String, priority: GoalPriority) -> Unit,
     onRemove: (id: String) -> Unit,
 ) {
-    Text("STEP 2 OF 5 · GOALS", style = kickerStyle())
+    Text(stringResource(R.string.onb_step2), style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s2))
-    Text("What are you focusing for?", style = headingStyle(28.sp))
+    Text(stringResource(R.string.onb_step2_title), style = headingStyle(28.sp))
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
-        "We'll remind you while you wait to end a Strict session early, and when a blocked app opens. Stays on this phone.",
+        stringResource(R.string.onb_step2_body),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
     )
     Spacer(Modifier.height(NowFocusSpace.s4))
@@ -176,12 +177,12 @@ private fun OnboardingPeople(
     onRemove: (id: String) -> Unit,
     onSetLastTalked: (id: String, lastTalkedAt: Long?) -> Unit,
 ) {
-    Text("STEP 3 OF 5 · PEOPLE", style = kickerStyle())
+    Text(stringResource(R.string.onb_step3), style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s2))
-    Text("Who matters to you?", style = headingStyle(28.sp))
+    Text(stringResource(R.string.onb_step3_title), style = headingStyle(28.sp))
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
-        "When a blocked app opens, we'll point you to someone you haven't talked to in a while, with one tap to call or text. Nothing leaves this phone.",
+        stringResource(R.string.onb_step3_body),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
     )
     Spacer(Modifier.height(NowFocusSpace.s4))
@@ -191,24 +192,24 @@ private fun OnboardingPeople(
 
 @Composable
 private fun OnboardingWelcome() {
-    Text("WELCOME TO NOWFOCUS", style = kickerStyle())
+    Text(stringResource(R.string.onb_welcome), style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s4))
-    Text("You decide what deserves your attention.", style = headingStyle(38.sp))
+    Text(stringResource(R.string.onb_welcome_title), style = headingStyle(38.sp))
     Spacer(Modifier.height(NowFocusSpace.s4))
     Text(
-        "Start a focus session and the sites and apps you pick stop reaching you.",
+        stringResource(R.string.onb_welcome_body),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 16.sp, color = NowFocusColors.neutral800),
     )
     Spacer(Modifier.height(NowFocusSpace.s6))
     SectionRule(thick = true)
     listOf(
-        "One tap starts a focus session",
-        "Blocks the sites and apps you pick",
-        "No 5-second off switch, if you choose Strict or Locked",
+        stringResource(R.string.onb_point1),
+        stringResource(R.string.onb_point2),
+        stringResource(R.string.onb_point3),
     ).forEachIndexed { i, text ->
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3)) {
             Text(
-                String.format("%02d", i + 1),
+                String.format(java.util.Locale.ROOT, "%02d", i + 1),
                 style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = NowFocusColors.accent700),
                 modifier = Modifier.width(24.dp),
             )
@@ -228,12 +229,12 @@ private fun OnboardingPermissions(resumeKey: Int) {
     var vpnResumeKey by remember { mutableIntStateOf(0) }
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { vpnResumeKey++ }
 
-    Text("STEP 4 OF 5 · PERMISSIONS", style = kickerStyle())
+    Text(stringResource(R.string.onb_step4), style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s2))
-    Text("A few permissions, so blocking actually holds.", style = headingStyle(28.sp))
+    Text(stringResource(R.string.onb_step4_title), style = headingStyle(28.sp))
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
-        "Everything runs on this phone. Your browsing and app lists never leave it.",
+        stringResource(R.string.onb_step4_body),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
     )
     Spacer(Modifier.height(NowFocusSpace.s4))
@@ -244,17 +245,17 @@ private fun OnboardingPermissions(resumeKey: Int) {
         val vpnOk = Enforcement.isVpnPermitted(context)
         val notifOk = context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted ?: false
 
-        PermissionRow("App blocking", "Spots when a blocked app opens. With partial blocking on, also reads the YouTube, Facebook, Instagram and X screens during a session (experimental), on-device only", accessibilityOk) {
+        PermissionRow(stringResource(R.string.devices_app_blocking), stringResource(R.string.onb_perm_blocking), accessibilityOk) {
             context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
         if (!accessibilityOk) {
-            Text(RESTRICTED_SETTINGS_HINT, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+            Text(stringResource(R.string.restricted_settings_hint), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
         }
-        PermissionRow("Website filter", "Blocks sites on-device, no traffic routed anywhere", vpnOk) {
+        PermissionRow(stringResource(R.string.devices_website_filter), stringResource(R.string.onb_perm_filter), vpnOk) {
             val consentIntent = VpnService.prepare(context)
             if (consentIntent != null) vpnConsent.launch(consentIntent) else vpnResumeKey++
         }
-        PermissionRow("Do Not Disturb access", "Lets Bedtime Wind-Down quiet things down", notifOk) {
+        PermissionRow(stringResource(R.string.devices_dnd), stringResource(R.string.onb_perm_dnd), notifOk) {
             context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
         }
     }
@@ -268,11 +269,11 @@ private fun PermissionRow(title: String, sub: String, granted: Boolean, onAllow:
             Text(sub, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
         }
         if (granted) {
-            TagPill("Allowed", accent = false)
+            TagPill(stringResource(R.string.onb_allowed), accent = false)
         } else {
             // Not PrimaryButton: it fills max width by design, meant for a
             // standalone CTA, not an inline row action next to other content.
-            SecondaryButton("Allow", onClick = onAllow)
+            SecondaryButton(stringResource(R.string.onb_allow), onClick = onAllow)
         }
     }
     SectionRule()

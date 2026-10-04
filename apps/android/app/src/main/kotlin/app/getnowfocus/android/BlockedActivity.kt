@@ -40,6 +40,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
 
 class BlockedActivity : ComponentActivity() {
 
@@ -133,9 +134,9 @@ class BlockedActivity : ComponentActivity() {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
                     ShieldScreen(
-                        title = BlockCopy.title(appLabel),
-                        reasonText = BlockCopy.reason(reason, until, appLabel, intent.getIntExtra(EXTRA_LIMIT_MINUTES, 0)),
-                        timeLabel = BlockCopy.timeLabel(reason),
+                        title = BlockCopy.title(appLabel).resolve(this),
+                        reasonText = BlockCopy.reason(reason, until, appLabel, intent.getIntExtra(EXTRA_LIMIT_MINUTES, 0)).resolve(this),
+                        timeLabel = BlockCopy.timeLabel(reason).resolve(this),
                         endAt = endAt,
                         fromShield = fromShield,
                         fromLimit = fromLimit,
@@ -146,8 +147,8 @@ class BlockedActivity : ComponentActivity() {
                         onText = { person?.let { reachOut(it, Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(it.phone)}"))) } },
                         onReturn = { goHome() },
                         onNeedIt = { goUnlock() },
-                        passLabel = if (pkg != null && passesLeft > 0) "Open ${appLabel ?: "it"} for ${passMinutes(fromLimit)} min ($passesLeft left)" else null,
-                        passNote = if (fromLimit && streakDays > 0) "Your $streakDays-day streak adds ${passMinutes(true) - passMinutes(false)} min." else null,
+                        passLabel = if (pkg != null && passesLeft > 0) getString(R.string.blocked_pass, appLabel ?: getString(R.string.blocked_it), passMinutes(fromLimit), passesLeft) else null,
+                        passNote = if (fromLimit && streakDays > 0) resources.getQuantityString(R.plurals.blocked_pass_note, streakDays, streakDays, passMinutes(true) - passMinutes(false)) else null,
                         onPass = { pkg?.let { openWithPass(it, passKey ?: it, fromLimit) } },
                     )
                 }
@@ -228,7 +229,7 @@ private fun ShieldScreen(
         Text(title.uppercase(), style = kickerStyle(NowFocusColors.neutral400))
         Spacer(Modifier.height(NowFocusSpace.s8))
         Text(
-            "This can wait.",
+            stringResource(R.string.blocked_wait),
             style = headingStyle(48.sp, color = NowFocusColors.bg),
         )
         Spacer(Modifier.height(NowFocusSpace.s3))
@@ -237,19 +238,19 @@ private fun ShieldScreen(
         // Ticks each half-minute: "1h 12m" doesn't need a per-second clock.
         var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
         LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
-        SideRow(timeLabel, DurationFormat.remaining(endAt - now))
-        SideRow("Tries today", "$triesToday")
+        SideRow(timeLabel, DurationFormat.remaining(endAt - now).text())
+        SideRow(stringResource(R.string.blocked_tries), "$triesToday")
         if (person != null) {
             Spacer(Modifier.height(NowFocusSpace.s8))
             ReachOutCard(person, onCall, onText)
         } else if (goal != null) {
             Spacer(Modifier.height(NowFocusSpace.s8))
-            Text("REMEMBER", style = kickerStyle(NowFocusColors.neutral400))
+            Text(stringResource(R.string.blocked_remember), style = kickerStyle(NowFocusColors.neutral400))
             Spacer(Modifier.height(NowFocusSpace.s2))
             Text(goal, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, color = NowFocusColors.bg))
         }
         }
-        PrimaryButton("Back to focus", onClick = onReturn)
+        PrimaryButton(stringResource(R.string.blocked_back), onClick = onReturn)
         // The Commitment Shield has no exit at all - not even the friction of Unlock, and no pass.
         // A used-up daily limit offers only the five-minute pass; it lifts at midnight or on a cheat day.
         if (!fromShield) {
@@ -263,7 +264,7 @@ private fun ShieldScreen(
             }
             if (!fromLimit) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                GhostButton("I really need it", onClick = onNeedIt)
+                GhostButton(stringResource(R.string.blocked_need_it), onClick = onNeedIt)
             }
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
@@ -282,16 +283,16 @@ private fun SideRow(label: String, value: String) {
 @Composable
 private fun ReachOutCard(person: Person, onCall: () -> Unit, onText: () -> Unit) {
     val since = remember(person) { person.sinceLabel(System.currentTimeMillis()) }
-    Text("OR REACH OUT INSTEAD", style = kickerStyle(NowFocusColors.neutral400))
+    Text(stringResource(R.string.blocked_reach_out), style = kickerStyle(NowFocusColors.neutral400))
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
-        if (since != null) "You haven't talked to ${person.name} in about $since." else "Reach out to ${person.name} instead.",
+        if (since != null) stringResource(R.string.blocked_since, person.name, since.text()) else stringResource(R.string.blocked_reach_instead, person.name),
         style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, color = NowFocusColors.bg),
     )
     Spacer(Modifier.height(NowFocusSpace.s3))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(NowFocusSpace.s2)) {
-        ReachButton("Call", Modifier.weight(1f), onCall)
-        ReachButton("Text", Modifier.weight(1f), onText)
+        ReachButton(stringResource(R.string.blocked_call), Modifier.weight(1f), onCall)
+        ReachButton(stringResource(R.string.blocked_text), Modifier.weight(1f), onText)
     }
 }
 

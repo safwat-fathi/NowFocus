@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bottom tabs. Rules, Devices and Stats reuse rules_title, devices_title, stats_title. -->
+    <string name="tab_focus">Focus</string>
+
+    <!-- Duration presets on the new-session screen. -->
+    <string name="dur_25">25 min</string>
+    <string name="dur_45">45 min</string>
+    <string name="dur_60">1 hour</string>
+    <string name="dur_90">1.5 hrs</string>
+    <string name="dur_120">2 hrs</string>
+    <string name="dur_180">3 hrs</string>
+    <string name="dur_240">4 hrs</string>
+
+    <!-- Home -->
+    <string name="home_focusing">Focusing now</string>
+    <string name="home_ready">Ready when you are</string>
+    <string name="home_hero_running">You\'re in a focus session.</string>
+    <string name="home_hero_idle">Your phone is ready.</string>
+    <string name="home_today">Today</string>
+    <string name="home_turned_away">Turned away</string>
+    <string name="home_sessions">Sessions</string>
+    <string name="home_return">Return to session</string>
+    <string name="home_start">Start focus session</string>
+    <string name="home_cheat_paused">Cheat day · blocking is paused until midnight</string>
+    <string name="home_always_on">ALWAYS ON</string>
+    <plurals name="home_days_left">
+        <item quantity="one">%1$d days left</item>
+        <item quantity="other">%1$d days left</item>
+    </plurals>
+    <string name="home_tonight">Tonight %1$s</string>
+    <string name="health_web_ok">Website blocking: ready</string>
+    <string name="health_web_ask">Website blocking: VPN permission asked on start</string>
+    <string name="health_apps_ok">App blocking: ready</string>
+    <string name="health_apps_off">App blocking: off</string>
+    <string name="health_enable">Enable in Accessibility Settings</string>
+
+    <!-- New focus session -->
+    <string name="setup_title">New focus session</string>
+    <string name="setup_no_profiles">No profiles yet.</string>
+    <string name="setup_manage">Manage profiles</string>
+    <string name="setup_profile">PROFILE</string>
+    <string name="setup_duration">DURATION</string>
+    <string name="setup_mode_normal">You can end any time. Good for light days.</string>
+    <string name="setup_mode_strict">To leave early you\'ll type a short sentence, then wait 30 seconds.</string>
+    <string name="setup_mode_locked">No early exit on this device until the timer ends.</string>
+    <string name="setup_voice">YOUR VOICE NOTE</string>
+    <string name="setup_voice_intro">Optional. Record 10 seconds to yourself; to leave early you\'ll have to hear it first. Skip it and Strict works as described above.</string>
+    <string name="setup_stop">Stop · %1$ds</string>
+    <string name="setup_record">Record</string>
+    <string name="setup_rerecord">Re-record</string>
+    <string name="setup_recorded">Recorded</string>
+    <string name="setup_rec_failed">That recording didn\'t work. Try again.</string>
+    <string name="setup_rec_cant_start">Couldn\'t start recording. Is another app using the mic?</string>
+    <string name="setup_mic_off">Mic access is off, so Strict will use the typed sentence and 30-second wait.</string>
+    <string name="setup_start">Start %1$s</string>
+
+    <!-- Active session and the unlock flow -->
+    <string name="active_title">Focus session</string>
+    <string name="active_keep_going">You\'re in it. Keep going.</string>
+    <string name="active_cheat">Cheat day: blocking is paused until midnight.</string>
+    <string name="active_locked">Locked until timer ends</string>
+    <string name="active_end_early">End session early</string>
+    <string name="unlock_title">End early?</string>
+    <string name="unlock_end_now_q">End this session now? %1$s left.</string>
+    <string name="unlock_end_now">End session now</string>
+    <string name="unlock_keep_going">Keep going</string>
+    <string name="unlock_locked_title">This one\'s locked, by you.</string>
+    <string name="unlock_locked_body">You chose Locked when you started this session, so there\'s no early exit. You\'ve got this.</string>
+    <!-- Typed word for word and compared exactly, so the Arabic one uses only plain letters (docs/i18n-glossary.md). -->
+    <string name="unlock_sentence">I am choosing to end this focus session early.</string>
+    <string name="unlock_quoted">“%1$s”</string>
+    <string name="unlock_type_it">No judgement. Type this out, word for word, so it\'s a choice and not a reflex.</string>
+    <string name="unlock_start_pause">Start 30-second pause</string>
+    <string name="unlock_breath">Take a breath. If you still want out when this hits zero, it\'s yours.</string>
+    <string name="unlock_breath_note">Take a breath, then hear what you told yourself. You can leave once you have.</string>
+    <string name="unlock_remember">REMEMBER WHY YOU STARTED</string>
+    <string name="unlock_playing">Playing…</string>
+    <string name="unlock_play_again">Play again</string>
+    <string name="unlock_play">Play your note</string>
+    <string name="unlock_hear_first">Hear your note first</string>
+    <string name="unlock_waiting">Waiting…</string>
+    <string name="unlock_stay">Stay focused</string>
+
+    <!-- Stats -->
+    <string name="stats_title">Stats</string>
+    <string name="stats_this_week">This week</string>
+    <string name="stats_focused">focused</string>
+    <string name="stats_completed">Completed</string>
+    <string name="stats_streak">Streak</string>
+    <string name="stats_score">Focus score</string>
+    <string name="stats_share">Share this week</string>
+    <string name="stats_most">MOST TURNED AWAY</string>
+    <string name="stats_nothing">Nothing yet this week.</string>
+    <string name="stats_urges">YOUR URGES</string>
+    <string name="stats_nothing_map">Nothing to map yet.</string>
+    <!-- count, from hour, to hour, app, window days -->
+    <plurals name="stats_urge">
+        <item quantity="one">You tried to open a blocked app once between %2$s and %3$s, usually %4$s. (last %5$d days)</item>
+        <item quantity="other">You tried to open a blocked app %1$d times between %2$s and %3$s, usually %4$s. (last %5$d days)</item>
+    </plurals>
+    <string name="stats_urge_app">%1$s: most tries around %2$s (%3$d of %4$d).</string>
+    <string name="stats_block_at">Block %1$s at %2$s every day</string>
+    <string name="stats_counted">Counted on your phone. We never see what you browse.</string>
+    <string name="dayl_mon">M</string>
+    <string name="dayl_tue">T</string>
+    <string name="dayl_wed">W</string>
+    <string name="dayl_thu">T</string>
+    <string name="dayl_fri">F</string>
+    <string name="dayl_sat">S</string>
+    <string name="dayl_sun">S</string>
+
+    <!-- Commitment Shield -->
+    <string name="shield_intro">Lock sites and apps for 14 days, no early exit once it starts. You\'ll get 60 seconds to change your mind first.</string>
+    <string name="shield_sites">SITES</string>
+    <string name="shield_apps">APPS</string>
+    <string name="shield_site_hint">e.g. reddit.com</string>
+    <string name="shield_lock">Lock for 14 days</string>
+    <string name="shield_sure">Are you sure?</string>
+    <string name="shield_confirm">%1$s and %2$s will be blocked for 14 days. You\'ll have 60 seconds to undo, then it\'s locked in.</string>
+    <string name="shield_commit">Yes, commit</string>
+    <string name="back_plain">Back</string>
+    <string name="shield_locking">Locking it in…</string>
+    <string name="shield_last_chance">This is the only chance to undo it. After this, it runs the full 14 days.</string>
+    <string name="shield_detail_kicker">Always blocked · this device</string>
+    <plurals name="shield_days_to_go">
+        <item quantity="one">day to go</item>
+        <item quantity="other">days to go</item>
+    </plurals>
+    <string name="shield_sites_degraded">Sites degraded — VPN permission not granted</string>
+    <string name="shield_apps_degraded">Apps degraded — Accessibility not enabled</string>
+    <string name="shield_locked_sites">LOCKED SITES</string>
+    <string name="shield_locked_apps">LOCKED APPS</string>
+    <string name="shield_caveat">Turning off Accessibility, revoking the VPN permission, or uninstalling the app still stops this - there\'s no way around that on a normal app. And while this is running, no other VPN app can be active at the same time (Android only allows one).</string>
+
+    <!-- Bedtime Wind-Down -->
+    <string name="bedtime_intro">Each night from wind-down until wake, your chosen profile is blocked as a locked session you can\'t end early. Tap a time to change it.</string>
+    <string name="bedtime_on">On every night</string>
+    <string name="bedtime_on_sub">Applies automatically, no need to start it</string>
+    <string name="bedtime_winddown">Wind-down</string>
+    <string name="bedtime_sleep">Sleep</string>
+    <string name="bedtime_wake">Wake</string>
+    <string name="bedtime_no_profiles">No profiles yet — create one in Rules first, or nothing will be blocked at bedtime.</string>
+    <string name="bedtime_pick">Pick a profile above, or nothing will be blocked at bedtime.</string>
+    <string name="bedtime_during">DURING WIND-DOWN</string>
+    <string name="bedtime_quiet">Quiet notifications</string>
+    <string name="bedtime_quiet_sub">Only priority notifications come through</string>
+    <string name="bedtime_allow_access">Allow in Notification Access settings</string>
+    <string name="bedtime_lock">Lock phone at sleep time</string>
+    <string name="bedtime_lock_sub">Locks once, at your sleep time</string>
+    <string name="time_hour">Hour</string>
+    <string name="time_minute">Minute</string>
+    <string name="time_am">AM</string>
+    <string name="time_pm">PM</string>
+    <string name="time_set">Set</string>
+</resources>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rules_title">Rules</string>
+    <string name="policies_kicker">FOCUS PROFILES</string>
+    <string name="policies_new">+ New profile</string>
+    <string name="policies_remove_q">Remove %1$s?</string>
+    <string name="policies_remove_body">This deletes the profile.</string>
+    <string name="policies_remove_bedtime">This deletes the profile. Bedtime Wind-Down uses it and will stop blocking until you pick another.</string>
+    <string name="protections_kicker">PROTECTIONS</string>
+    <string name="not_set_up">Not set up</string>
+    <string name="shield_title">Commitment Shield</string>
+    <string name="shield_summary">%1$s · locked 14 days</string>
+    <string name="bedtime_title">Bedtime Wind-Down</string>
+    <string name="bedtime_every_night">Every night</string>
+    <plurals name="people_shown">
+        <item quantity="one">%1$d shown on the block screen</item>
+        <item quantity="other">%1$d shown on the block screen</item>
+    </plurals>
+    <plurals name="goals_count">
+        <item quantity="one">%1$d to remind you why</item>
+        <item quantity="other">%1$d to remind you why</item>
+    </plurals>
+    <plurals name="n_sites">
+        <item quantity="one">%1$d site</item>
+        <item quantity="other">%1$d sites</item>
+    </plurals>
+    <plurals name="n_limits">
+        <item quantity="one">%1$d limit</item>
+        <item quantity="other">%1$d limits</item>
+    </plurals>
+    <plurals name="n_apps">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <string name="sites_apps">%1$s · %2$s</string>
+
+    <string name="policy_cant_remove">You can\'t remove blocks while a focus session is running on this profile.</string>
+    <string name="policy_name">Profile name</string>
+    <string name="policy_websites">BLOCKED WEBSITES</string>
+    <string name="policy_subdomains">+ subdomains</string>
+    <string name="policy_add_site_hint">Add a site, e.g. youtube.com</string>
+    <string name="policy_apps">BLOCKED APPLICATIONS</string>
+    <string name="policy_add_app">+ Add application…</string>
+    <string name="picker_title">Select an app to block</string>
+    <string name="picker_search">Search apps</string>
+    <string name="picker_none">No apps match</string>
+
+    <string name="partial_kicker">PARTIAL BLOCKING · EXPERIMENTAL</string>
+    <string name="partial_need_a11y">Turn on NowFocus in Accessibility settings, or these won\'t be enforced.</string>
+    <string name="partial_yt_shorts">YouTube Shorts</string>
+    <string name="partial_yt_shorts_sub">Backs out of the Shorts player and tab</string>
+    <string name="partial_yt_home">YouTube Home feed</string>
+    <string name="partial_yt_home_sub">Hides recommended videos on the Home tab</string>
+    <string name="partial_yt_related">YouTube up next / related</string>
+    <string name="partial_yt_related_sub">Hides the list under a playing video</string>
+    <string name="partial_fb_reels">Facebook Reels</string>
+    <string name="partial_fb_reels_sub">Backs out of the Reels tab and viewer</string>
+    <string name="partial_ig_reels">Instagram Reels &amp; Explore</string>
+    <string name="partial_ig_reels_sub">Backs out of the Reels tab, viewer and Explore tab</string>
+    <string name="partial_x_for_you">X “For you” feed</string>
+    <string name="partial_x_for_you_sub">Hides the For you timeline; Following stays open</string>
+</resources>

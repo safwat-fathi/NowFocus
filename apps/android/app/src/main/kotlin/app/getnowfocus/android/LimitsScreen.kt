@@ -36,6 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
+import androidx.compose.ui.res.stringResource
 
 private val body = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800)
 
@@ -73,15 +74,15 @@ fun LimitsScreen(
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Back", onClick = onBack)
-        Text("Daily limits", style = headingStyle(22.sp))
+        GhostButton(stringResource(R.string.back), onClick = onBack)
+        Text(stringResource(R.string.limits_title), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
-        Text("\"30 minutes of Instagram a day.\" Past it, the app or website is blocked until midnight. Website time is counted from your browser's address bar. Lowering or removing a limit counts at once, unless it is already used up; raising one only counts from midnight.", style = body)
+        Text(stringResource(R.string.limits_intro), style = body)
         if (!granted) {
             Spacer(Modifier.height(NowFocusSpace.s4))
-            Text("Limits need usage access to see how long an app was open. Until you allow it, they aren't enforced.", style = body.copy(color = NowFocusColors.accent700))
+            Text(stringResource(R.string.limits_need_usage), style = body.copy(color = NowFocusColors.accent700))
             Spacer(Modifier.height(NowFocusSpace.s2))
-            SecondaryButton("Allow usage access") { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+            SecondaryButton(stringResource(R.string.limits_allow_usage)) { context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
         SectionRule(thick = true)
@@ -92,25 +93,27 @@ fun LimitsScreen(
                 Column(Modifier.weight(1f)) {
                     Text(l.label, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
                     // Under a minute reads "45 s", not a misleading "0": counting was working, the display just rounded it away.
-                    val usedText = if (usedMs in 1 until 60_000) "${usedMs / 1000} s" else "${usedMs / 60_000}"
+                    val usedText = if (usedMs in 1 until 60_000) stringResource(R.string.limits_used_secs, usedMs / 1000) else "${usedMs / 60_000}"
                     val pending = l.pendingMinutes?.takeIf { l.pendingFrom > now }
                     Text(
-                        buildString {
-                            append(if (minutes == 0) "No limit" else "$usedText of $minutes min today")
-                            if (pending != null) append(if (pending == 0) " · removed at midnight" else " · $pending min from midnight")
-                        },
+                        (if (minutes == 0) stringResource(R.string.limits_none) else stringResource(R.string.limits_used_of, usedText, minutes)) +
+                            when (pending) {
+                                null -> ""
+                                0 -> stringResource(R.string.limits_removed_midnight)
+                                else -> stringResource(R.string.limits_from_midnight, pending)
+                            },
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
                     )
                 }
-                if (minutes > 0 && usedMs >= minutes * 60_000L) TagPill("Used up")
+                if (minutes > 0 && usedMs >= minutes * 60_000L) TagPill(stringResource(R.string.limits_used_up))
             }
             SectionRule()
         }
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("+ Add a limit…") { picking = true }
-        GhostButton("+ Add a website limit…") { pickingSite = true }
+        GhostButton(stringResource(R.string.limits_add)) { picking = true }
+        GhostButton(stringResource(R.string.limits_add_site)) { pickingSite = true }
         if (!siteWatching && limits.any { SiteLimits.isSite(it) }) {
-            Text("Website limits need NowFocus's accessibility service switched on. Until then they aren't counted.", style = body.copy(color = NowFocusColors.accent700))
+            Text(stringResource(R.string.limits_site_need_a11y), style = body.copy(color = NowFocusColors.accent700))
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
     }
@@ -149,12 +152,12 @@ private fun DomainDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
     val domain = DomainValidation.normalize(text)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Website", style = headingStyle(20.sp)) },
+        title = { Text(stringResource(R.string.limits_website), style = headingStyle(20.sp)) },
         text = {
             NowFocusTextField(
                 value = text,
                 onValueChange = { text = it },
-                placeholder = "e.g. youtube.com",
+                placeholder = stringResource(R.string.limits_site_hint),
                 singleLine = true,
                 isError = text.isNotBlank() && domain == null,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -162,8 +165,8 @@ private fun DomainDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
         },
-        confirmButton = { if (domain != null) SecondaryButton("Next") { onPick(domain) } },
-        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
+        confirmButton = { if (domain != null) SecondaryButton(stringResource(R.string.next)) { onPick(domain) } },
+        dismissButton = { GhostButton(stringResource(R.string.cancel), onClick = onDismiss) },
     )
 }
 
@@ -174,7 +177,7 @@ private fun MinutesDialog(title: String, isNew: Boolean, usedUp: Boolean, onPick
         title = { Text(title, style = headingStyle(20.sp)) },
         text = {
             Column {
-                Text("Minutes per day", style = kickerStyle(NowFocusColors.neutral700))
+                Text(stringResource(R.string.limits_minutes_per_day), style = kickerStyle(NowFocusColors.neutral700))
                 Spacer(Modifier.height(NowFocusSpace.s2))
                 AppLimit.MINUTE_CHOICES.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 6.dp)) {
@@ -183,13 +186,13 @@ private fun MinutesDialog(title: String, isNew: Boolean, usedUp: Boolean, onPick
                 }
                 if (!isNew) {
                     // Raising or removing a used-up limit would just undo the block it caused, so it waits for midnight.
-                    if (usedUp) Text("Used up today: raising or removing it counts from midnight. The pass on the block screen is the way to more time today.", style = body.copy(fontSize = 13.sp))
-                    GhostButton("Remove limit") { onPick(0) }
+                    if (usedUp) Text(stringResource(R.string.limits_used_up_note), style = body.copy(fontSize = 13.sp))
+                    GhostButton(stringResource(R.string.limits_remove)) { onPick(0) }
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
+        dismissButton = { GhostButton(stringResource(R.string.cancel), onClick = onDismiss) },
     )
 }
 
@@ -200,15 +203,15 @@ fun FrictionAppsScreen(apps: List<AppRule>, onAdd: (AppRule) -> Unit, onRemove: 
     var picking by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("‹ Back", onClick = onBack)
-        Text("Opening friction", style = headingStyle(22.sp))
+        GhostButton(stringResource(R.string.back), onClick = onBack)
+        Text(stringResource(R.string.friction_apps_title), style = headingStyle(22.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
-        Text("Open one of these apps and NowFocus first asks you to breathe for ten seconds and say what you're there for. Then it opens, and stays open for ten minutes. Works any time, in or out of a session.", style = body)
+        Text(stringResource(R.string.friction_apps_intro), style = body)
         Spacer(Modifier.height(NowFocusSpace.s4))
         SectionRule(thick = true)
         apps.forEach { RuleRow(it.label, it.packageName) { onRemove(it.packageName) } }
         Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton("+ Add an app…") { picking = true }
+        GhostButton(stringResource(R.string.friction_apps_add)) { picking = true }
     }
     if (picking) {
         AppPickerDialog(exclude = apps.map { it.packageName }.toSet(), onPick = { onAdd(it); picking = false }, onDismiss = { picking = false })

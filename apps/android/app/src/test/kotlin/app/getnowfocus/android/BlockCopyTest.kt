@@ -12,17 +12,18 @@ class BlockCopyTest {
 
     @Test
     fun `the title always says NowFocus closed the app`() {
-        assertEquals("NowFocus closed YouTube", BlockCopy.title("YouTube"))
-        assertEquals("NowFocus closed this app", BlockCopy.title(null))
+        assertEquals(uiText(R.string.block_title, "YouTube"), BlockCopy.title("YouTube"))
+        assertEquals(uiText(R.string.block_title, uiText(R.string.block_this_app)), BlockCopy.title(null))
     }
 
     @Test
     fun `each cause is named with its time`() {
-        assertEquals("You're in a focus session until 3:45 PM.", BlockCopy.reason(BlockReason.FOCUS_SESSION, "3:45 PM", "YouTube"))
-        assertEquals("It's bedtime wind-down until 6:00 AM.", BlockCopy.reason(BlockReason.BEDTIME, "6:00 AM", "YouTube"))
-        assertEquals("Locked by your Commitment Shield until Oct 9.", BlockCopy.reason(BlockReason.COMMITMENT_SHIELD, "Oct 9", "YouTube"))
+        assertEquals(uiText(R.string.block_reason_session, "3:45 PM"), BlockCopy.reason(BlockReason.FOCUS_SESSION, "3:45 PM", "YouTube"))
+        assertEquals(uiText(R.string.block_reason_bedtime, "6:00 AM"), BlockCopy.reason(BlockReason.BEDTIME, "6:00 AM", "YouTube"))
+        assertEquals(uiText(R.string.block_reason_shield, "Oct 9"), BlockCopy.reason(BlockReason.COMMITMENT_SHIELD, "Oct 9", "YouTube"))
+        // The limit sentence is a plural on the minutes, with the app name second.
         assertEquals(
-            "You've used your 30 minutes of YouTube today. It's back at midnight.",
+            UiText.Plural(R.plurals.block_reason_limit, 30, listOf(30, "YouTube")),
             BlockCopy.reason(BlockReason.DAILY_LIMIT, "ignored", "YouTube", limitMinutes = 30),
         )
     }
@@ -47,11 +48,11 @@ class BlockCopyTest {
 
     @Test
     fun `the site notice names the cause but never the site`() {
-        BlockReason.values().forEach { r ->
-            val text = BlockCopy.siteNotice(r)
-            assertTrue(text, text.endsWith("It will load again when it ends.") || r == BlockReason.DAILY_LIMIT)
-        }
-        assertTrue(BlockCopy.siteNotice(BlockReason.BEDTIME).contains("Bedtime"))
-        assertTrue(BlockCopy.siteNotice(BlockReason.COMMITMENT_SHIELD).contains("Commitment Shield"))
+        // One fixed sentence per cause and no args, so there is nothing to put a site name into.
+        assertEquals(uiText(R.string.block_site_session), BlockCopy.siteNotice(BlockReason.FOCUS_SESSION))
+        assertEquals(uiText(R.string.block_site_bedtime), BlockCopy.siteNotice(BlockReason.BEDTIME))
+        assertEquals(uiText(R.string.block_site_shield), BlockCopy.siteNotice(BlockReason.COMMITMENT_SHIELD))
+        assertEquals(uiText(R.string.block_site_limit), BlockCopy.siteNotice(BlockReason.DAILY_LIMIT))
+        BlockReason.values().forEach { r -> assertTrue((BlockCopy.siteNotice(r) as UiText.Res).args.isEmpty()) }
     }
 }

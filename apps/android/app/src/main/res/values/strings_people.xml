@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="people_title">People who matter</string>
+    <string name="people_intro">When a blocked app opens, we\'ll point you to whoever you\'ve talked to least recently. Nothing leaves this phone.</string>
+    <string name="people_last_talked">LAST TALKED</string>
+    <string name="people_this_week">This week</string>
+    <string name="people_two_weeks">About 2 weeks</string>
+    <string name="people_month">About a month</string>
+    <string name="people_longer">Longer</string>
+    <string name="people_cant_remember">Can\'t remember</string>
+    <string name="people_add">+ Add someone</string>
+    <string name="people_pick_failed">Couldn\'t read that contact. Pick one that has a phone number.</string>
+</resources>

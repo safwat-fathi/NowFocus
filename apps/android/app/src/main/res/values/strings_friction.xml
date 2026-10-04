@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="friction_specific">Something specific</string>
+    <string name="friction_bored">Just bored</string>
+    <string name="friction_avoiding">Avoiding something</string>
+    <string name="friction_kicker">A PAUSE BEFORE %1$s</string>
+    <string name="friction_in">Breathe in</string>
+    <string name="friction_out">Breathe out</string>
+    <string name="friction_ready">Ready when you are.</string>
+    <string name="friction_what">What do you want to do here?</string>
+    <string name="friction_open">Open %1$s</string>
+    <string name="friction_not_now">Not now</string>
+</resources>

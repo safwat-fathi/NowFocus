@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onb_setup">Let\'s set it up</string>
+    <string name="onb_skip">Skip for now</string>
+    <string name="onb_continue">Continue</string>
+    <string name="onb_start">Start 10 minutes</string>
+    <string name="onb_welcome">WELCOME TO NOWFOCUS</string>
+    <string name="onb_welcome_title">You decide what deserves your attention.</string>
+    <string name="onb_welcome_body">Start a focus session and the sites and apps you pick stop reaching you.</string>
+    <string name="onb_point1">One tap starts a focus session</string>
+    <string name="onb_point2">Blocks the sites and apps you pick</string>
+    <string name="onb_point3">No 5-second off switch, if you choose Strict or Locked</string>
+    <string name="onb_step2">STEP 2 OF 5 · GOALS</string>
+    <string name="onb_step2_title">What are you focusing for?</string>
+    <string name="onb_step2_body">We\'ll remind you while you wait to end a Strict session early, and when a blocked app opens. Stays on this phone.</string>
+    <string name="onb_step3">STEP 3 OF 5 · PEOPLE</string>
+    <string name="onb_step3_title">Who matters to you?</string>
+    <string name="onb_step3_body">When a blocked app opens, we\'ll point you to someone you haven\'t talked to in a while, with one tap to call or text. Nothing leaves this phone.</string>
+    <string name="onb_step4">STEP 4 OF 5 · PERMISSIONS</string>
+    <string name="onb_step4_title">A few permissions, so blocking actually holds.</string>
+    <string name="onb_step4_body">Everything runs on this phone. Your browsing and app lists never leave it.</string>
+    <string name="onb_perm_blocking">Spots when a blocked app opens. With partial blocking on, also reads the YouTube, Facebook, Instagram and X screens during a session (experimental), on-device only</string>
+    <string name="onb_perm_filter">Blocks sites on-device, no traffic routed anywhere</string>
+    <string name="onb_perm_dnd">Lets Bedtime Wind-Down quiet things down</string>
+    <string name="onb_allowed">Allowed</string>
+    <string name="onb_allow">Allow</string>
+    <string name="onb_step5">STEP 5 OF 5 · YOUR FIRST SESSION</string>
+    <string name="onb_step5_title">Which app steals your time?</string>
+    <string name="onb_step5_body">Pick one, and we\'ll block it for 10 minutes. You can end it any time.</string>
+    <string name="onb_pick_app">+ Pick an app…</string>
+    <string name="onb_add_another">+ Add another…</string>
+    <string name="onb_blocking_needed">Needed to block the app. Turn on NowFocus in Accessibility settings</string>
+    <string name="restricted_settings_hint">Toggle greyed out? Open App info → ⋮ → Allow restricted settings first.</string>
+</resources>

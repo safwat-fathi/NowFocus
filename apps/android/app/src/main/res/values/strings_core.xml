@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Block screen and blocked-site notice wording (BlockCopy). -->
+    <string name="block_title">NowFocus closed %1$s</string>
+    <string name="block_this_app">this app</string>
+    <string name="block_reason_session">You\'re in a focus session until %1$s.</string>
+    <string name="block_reason_bedtime">It\'s bedtime wind-down until %1$s.</string>
+    <string name="block_reason_shield">Locked by your Commitment Shield until %1$s.</string>
+    <plurals name="block_reason_limit">
+        <item quantity="one">You\'ve used your %1$d minute of %2$s today. It\'s back at midnight.</item>
+        <item quantity="other">You\'ve used your %1$d minutes of %2$s today. It\'s back at midnight.</item>
+    </plurals>
+    <string name="block_time_session">Left in session</string>
+    <string name="block_time_bedtime">Left in bedtime</string>
+    <string name="block_time_shield">Locked for</string>
+    <string name="block_time_limit">Back in</string>
+    <string name="block_site_session">Your focus session is on. It will load again when it ends.</string>
+    <string name="block_site_bedtime">Bedtime wind-down is on. It will load again when it ends.</string>
+    <string name="block_site_shield">Your Commitment Shield is on. It will load again when it ends.</string>
+    <string name="block_site_limit">Your daily limit is used up. It will load again at midnight.</string>
+
+    <!-- Time left, coarse (DurationFormat). -->
+    <string name="duration_lt_min">&lt;1m</string>
+    <string name="duration_m">%1$dm</string>
+    <string name="duration_h">%1$dh</string>
+    <string name="duration_hm">%1$dh %2$dm</string>
+    <string name="duration_d">%1$dd</string>
+    <string name="duration_dh">%1$dd %2$dh</string>
+
+    <!-- Separators between pieces of one sentence or list. -->
+    <string name="sep_comma">", "</string>
+    <string name="sep_space">" "</string>
+
+    <!-- Sync problems shown on the Account and Devices screens (SyncController). -->
+    <string name="sync_offline">Offline. Will retry.</string>
+    <string name="sync_signed_out">This device was signed out. Sign in again to keep syncing.</string>
+    <string name="sync_err_network">Can\'t reach NowFocus. Check your connection and try again.</string>
+    <string name="sync_err_session_ended">Your session ended. Sign in again.</string>
+    <string name="sync_err_invalid_credentials">Wrong email or password.</string>
+    <string name="sync_err_email_taken">An account with this email already exists. Sign in instead.</string>
+    <string name="sync_err_wrong_password">Wrong password.</string>
+    <string name="sync_err_rate_limited">Too many attempts. Wait a minute and try again.</string>
+    <string name="sync_err_server">NowFocus is having trouble right now. Try again shortly.</string>
+    <string name="sync_err_generic">Something went wrong.</string>
+
+    <!-- Days of the week, short (Schedules, stats). -->
+    <string name="day_mon">Mon</string>
+    <string name="day_tue">Tue</string>
+    <string name="day_wed">Wed</string>
+    <string name="day_thu">Thu</string>
+    <string name="day_fri">Fri</string>
+    <string name="day_sat">Sat</string>
+    <string name="day_sun">Sun</string>
+    <string name="days_every_day">Every day</string>
+    <string name="days_range">%1$s-%2$s</string>
+
+    <!-- Goal priority chips. -->
+    <string name="priority_high">High</string>
+    <string name="priority_medium">Med</string>
+    <string name="priority_low">Low</string>
+
+    <!-- How long since you last talked to someone (Person.sinceLabel). -->
+    <plurals name="since_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="since_weeks">
+        <item quantity="one">%1$d week</item>
+        <item quantity="other">%1$d weeks</item>
+    </plurals>
+    <plurals name="since_months">
+        <item quantity="one">%1$d month</item>
+        <item quantity="other">%1$d months</item>
+    </plurals>
+
+    <!-- The text "Share this week" sends (HistoryStats.weekSummaryText). Counts only. -->
+    <plurals name="week_share_head">
+        <item quantity="one">My NowFocus week: %1$dh %2$dm focused across %3$d session (%4$d completed).</item>
+        <item quantity="other">My NowFocus week: %1$dh %2$dm focused across %3$d sessions (%4$d completed).</item>
+    </plurals>
+    <string name="week_share_score">Focus score %1$d.</string>
+    <plurals name="week_share_streak">
+        <item quantity="one">%1$d-day streak.</item>
+        <item quantity="other">%1$d-day streak.</item>
+    </plurals>
+    <plurals name="week_share_turned_away">
+        <item quantity="one">Turned away %1$d time.</item>
+        <item quantity="other">Turned away %1$d times.</item>
+    </plurals>
+
+    <!-- Account form problems and relative time. -->
+    <string name="cred_bad_email">Enter a valid email address.</string>
+    <string name="cred_short_password">Password must be at least 8 characters.</string>
+    <string name="ago_now">just now</string>
+    <string name="ago_seconds">%1$ds ago</string>
+    <string name="ago_minutes">%1$d min ago</string>
+    <string name="ago_hours">%1$d h ago</string>
+</resources>

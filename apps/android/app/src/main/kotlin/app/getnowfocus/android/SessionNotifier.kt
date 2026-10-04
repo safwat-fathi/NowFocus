@@ -40,8 +40,9 @@ object SessionNotifier {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
 
+        val t = context.localized()
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Focus session", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL, t.getString(R.string.notif_session_channel), NotificationManager.IMPORTANCE_LOW)
         )
         val open = PendingIntent.getActivity(
             context, 0, Intent(context, MainActivity::class.java),
@@ -51,8 +52,8 @@ object SessionNotifier {
             ID,
             NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_nowfocus_active)
-                .setContentTitle("Focus session in progress")
-                .setContentText("Blocked sites won't load until the timer ends.")
+                .setContentTitle(t.getString(R.string.notif_session_title))
+                .setContentText(t.getString(R.string.notif_session_text))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(open)

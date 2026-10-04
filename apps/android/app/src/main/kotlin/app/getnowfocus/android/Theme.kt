@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 
 /**
  * Modernist design tokens, ported 1:1 from the Claude Design system's
@@ -234,7 +235,7 @@ fun ConfirmDialog(title: String, message: String, confirmLabel: String, onConfir
         title = { Text(title, style = headingStyle(20.sp)) },
         text = { Text(message, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800)) },
         confirmButton = { PrimaryButton(confirmLabel, onClick = onConfirm) },
-        dismissButton = { GhostButton("Cancel", onClick = onDismiss) },
+        dismissButton = { GhostButton(stringResource(R.string.cancel), onClick = onDismiss) },
     )
 }
 

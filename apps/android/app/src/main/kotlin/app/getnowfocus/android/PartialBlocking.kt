@@ -1,15 +1,17 @@
 package app.getnowfocus.android
 
+import androidx.annotation.StringRes
+
 /** What to do when a rule's surface is on screen: back out of it, or hide just the list. */
 enum class PartialAction { LEAVE, COVER }
 
-enum class PartialRule(val label: String, val detail: String, val action: PartialAction) {
-    YT_SHORTS("YouTube Shorts", "Backs out of the Shorts player and tab", PartialAction.LEAVE),
-    YT_HOME("YouTube Home feed", "Hides recommended videos on the Home tab", PartialAction.COVER),
-    YT_RELATED("YouTube up next / related", "Hides the list under a playing video", PartialAction.COVER),
-    FB_REELS("Facebook Reels", "Backs out of the Reels tab and viewer", PartialAction.LEAVE),
-    IG_REELS("Instagram Reels & Explore", "Backs out of the Reels tab, viewer and Explore tab", PartialAction.LEAVE),
-    X_FOR_YOU("X \u201cFor you\u201d feed", "Hides the For you timeline; Following stays open", PartialAction.COVER),
+enum class PartialRule(@StringRes val label: Int, @StringRes val detail: Int, val action: PartialAction) {
+    YT_SHORTS(R.string.partial_yt_shorts, R.string.partial_yt_shorts_sub, PartialAction.LEAVE),
+    YT_HOME(R.string.partial_yt_home, R.string.partial_yt_home_sub, PartialAction.COVER),
+    YT_RELATED(R.string.partial_yt_related, R.string.partial_yt_related_sub, PartialAction.COVER),
+    FB_REELS(R.string.partial_fb_reels, R.string.partial_fb_reels_sub, PartialAction.LEAVE),
+    IG_REELS(R.string.partial_ig_reels, R.string.partial_ig_reels_sub, PartialAction.LEAVE),
+    X_FOR_YOU(R.string.partial_x_for_you, R.string.partial_x_for_you_sub, PartialAction.COVER),
 }
 
 /** Plain-data copy of an AccessibilityNodeInfo subtree, so matching is testable on the JVM (no android.graphics.Rect). */

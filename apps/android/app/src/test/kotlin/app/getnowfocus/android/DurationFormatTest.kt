@@ -10,21 +10,21 @@ class DurationFormatTest {
 
     @Test
     fun `under a minute is shown as less than one minute`() {
-        assertEquals("<1m", DurationFormat.remaining(30_000))
-        assertEquals("<1m", DurationFormat.remaining(0))
-        assertEquals("<1m", DurationFormat.remaining(-5_000))
+        assertEquals(uiText(R.string.duration_lt_min), DurationFormat.remaining(30_000))
+        assertEquals(uiText(R.string.duration_lt_min), DurationFormat.remaining(0))
+        assertEquals(uiText(R.string.duration_lt_min), DurationFormat.remaining(-5_000))
     }
 
     @Test
     fun `minutes then hours and minutes`() {
-        assertEquals("45m", DurationFormat.remaining(45 * min + 20_000))
-        assertEquals("1h 12m", DurationFormat.remaining(hour + 12 * min))
-        assertEquals("1h", DurationFormat.remaining(hour))
+        assertEquals(uiText(R.string.duration_m, 45), DurationFormat.remaining(45 * min + 20_000))
+        assertEquals(uiText(R.string.duration_hm, 1, 12), DurationFormat.remaining(hour + 12 * min))
+        assertEquals(uiText(R.string.duration_h, 1), DurationFormat.remaining(hour))
     }
 
     @Test
     fun `days and hours for a long commitment`() {
-        assertEquals("3d 4h", DurationFormat.remaining(3 * day + 4 * hour + 30 * min))
-        assertEquals("1d", DurationFormat.remaining(day))
+        assertEquals(uiText(R.string.duration_dh, 3, 4), DurationFormat.remaining(3 * day + 4 * hour + 30 * min))
+        assertEquals(uiText(R.string.duration_d, 1), DurationFormat.remaining(day))
     }
 }

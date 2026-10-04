@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="limits_title">Daily limits</string>
+    <string name="limits_intro">\"30 minutes of Instagram a day.\" Past it, the app or website is blocked until midnight. Website time is counted from your browser\'s address bar. Lowering or removing a limit counts at once, unless it is already used up; raising one only counts from midnight.</string>
+    <string name="limits_need_usage">Limits need usage access to see how long an app was open. Until you allow it, they aren\'t enforced.</string>
+    <string name="limits_allow_usage">Allow usage access</string>
+    <string name="limits_used_secs">%1$d s</string>
+    <string name="limits_none">No limit</string>
+    <string name="limits_used_of">%1$s of %2$d min today</string>
+    <string name="limits_removed_midnight">" · removed at midnight"</string>
+    <string name="limits_from_midnight">" · %1$d min from midnight"</string>
+    <string name="limits_used_up">Used up</string>
+    <string name="limits_add">+ Add a limit…</string>
+    <string name="limits_add_site">+ Add a website limit…</string>
+    <string name="limits_site_need_a11y">Website limits need NowFocus\'s accessibility service switched on. Until then they aren\'t counted.</string>
+    <string name="limits_website">Website</string>
+    <string name="limits_site_hint">e.g. youtube.com</string>
+    <string name="limits_minutes_per_day">Minutes per day</string>
+    <string name="limits_used_up_note">Used up today: raising or removing it counts from midnight. The pass on the block screen is the way to more time today.</string>
+    <string name="limits_remove">Remove limit</string>
+    <string name="friction_apps_title">Opening friction</string>
+    <string name="friction_apps_intro">Open one of these apps and NowFocus first asks you to breathe for ten seconds and say what you\'re there for. Then it opens, and stays open for ten minutes. Works any time, in or out of a session.</string>
+    <string name="friction_apps_add">+ Add an app…</string>
+</resources>
