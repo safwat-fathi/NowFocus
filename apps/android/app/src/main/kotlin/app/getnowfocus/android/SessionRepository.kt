@@ -139,16 +139,16 @@ class SessionRepository(context: Context) {
         }
     }
 
-    /** Today's five-minute passes on used-up daily limits ([LimitPasses]). Device-local. */
+    /** Today's passes on used-up daily limits ([LimitPasses]). Device-local. */
     val limitPassesFlow: Flow<LimitPassState> = store.data.map { p -> p[Keys.LIMIT_PASSES]?.let { LimitPasses.fromJson(it) } ?: LimitPassState() }
 
-    /** Grants a pass on the limit [key] if one may be given; true when it was. */
-    suspend fun grantLimitPass(key: String, now: Long): Boolean {
+    /** Grants a pass of [minutes] on the limit [key] if one may be given; true when it was. */
+    suspend fun grantLimitPass(key: String, now: Long, minutes: Int): Boolean {
         var granted = false
         val day = SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())
         store.edit { p ->
             val current = p[Keys.LIMIT_PASSES]?.let { LimitPasses.fromJson(it) } ?: LimitPassState()
-            val updated = LimitPasses.grant(current, key, now, day) ?: return@edit
+            val updated = LimitPasses.grant(current, key, now, day, minutes) ?: return@edit
             p[Keys.LIMIT_PASSES] = LimitPasses.toJson(updated)
             granted = true
         }

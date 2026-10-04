@@ -53,10 +53,13 @@ object LimitPasses {
     fun activeUntil(state: LimitPassState, key: String, now: Long, day: String): Long =
         today(state, day).filter { it.packageName == key && it.until > now }.maxOfOrNull { it.until } ?: 0L
 
+    /** Minutes one pass lasts: five, plus a minute per day of streak, up to fifteen. The only place these numbers live. */
+    fun passMinutes(streakDays: Int): Int = 5 + streakDays.coerceIn(0, 10)
+
     /** The state with a pass for [key] added, or null when none may be given (none left, or one is still open). */
-    fun grant(state: LimitPassState, key: String, now: Long, day: String): LimitPassState? {
+    fun grant(state: LimitPassState, key: String, now: Long, day: String, minutes: Int = 5): LimitPassState? {
         if (passesLeft(state, key, day) == 0 || activeUntil(state, key, now, day) > now) return null
-        return LimitPassState(day, today(state, day) + AppPass(key, now + Passes.DURATION_MS))
+        return LimitPassState(day, today(state, day) + AppPass(key, now + minutes * 60_000L))
     }
 
     fun toJson(s: LimitPassState): String = JSONObject().put("day", s.day).put("passes", JSONArray(Passes.toJson(s.passes))).toString()

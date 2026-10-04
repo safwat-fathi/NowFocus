@@ -68,6 +68,8 @@ fun LimitsScreen(
     var pickingSite by remember { mutableStateOf(false) }
     val siteWatching = remember(resumeKey) { FocusAccessibilityService.instance != null }
     var editing by remember { mutableStateOf<AppLimit?>(null) }
+    fun usedMsOf(l: AppLimit): Long =
+        if (SiteLimits.isSite(l)) siteUsage.usedMs(l.packageName, SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())) else used[l.packageName] ?: 0L
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
@@ -85,7 +87,7 @@ fun LimitsScreen(
         SectionRule(thick = true)
         limits.forEach { l ->
             val minutes = l.minutesAt(now)
-            val usedMs = if (SiteLimits.isSite(l)) siteUsage.usedMs(l.packageName, SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())) else used[l.packageName] ?: 0L
+            val usedMs = usedMsOf(l)
             Row(Modifier.fillMaxWidth().clickable { editing = l }.padding(vertical = NowFocusSpace.s3), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(l.label, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
@@ -134,6 +136,7 @@ fun LimitsScreen(
         MinutesDialog(
             title = l.label,
             isNew = l.minutesPerDay == 0 && l.pendingMinutes == null,
+            usedUp = l.minutesAt(now) > 0 && usedMsOf(l) >= l.minutesAt(now) * 60_000L,
             onPick = { minutes -> onChange(l, minutes); editing = null },
             onDismiss = { editing = null },
         )
@@ -165,7 +168,7 @@ private fun DomainDialog(onPick: (String) -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun MinutesDialog(title: String, isNew: Boolean, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+private fun MinutesDialog(title: String, isNew: Boolean, usedUp: Boolean, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title, style = headingStyle(20.sp)) },
@@ -178,7 +181,11 @@ private fun MinutesDialog(title: String, isNew: Boolean, onPick: (Int) -> Unit, 
                         row.forEach { m -> Chip("$m", false) { onPick(m) } }
                     }
                 }
-                if (!isNew) GhostButton("Remove limit") { onPick(0) }
+                if (!isNew) {
+                    // Raising or removing a used-up limit would just undo the block it caused, so it waits for midnight.
+                    if (usedUp) Text("Used up today: raising or removing it counts from midnight. The pass on the block screen is the way to more time today.", style = body.copy(fontSize = 13.sp))
+                    GhostButton("Remove limit") { onPick(0) }
+                }
             }
         },
         confirmButton = {},

@@ -65,6 +65,8 @@ class BlockedActivity : ComponentActivity() {
     private var person by mutableStateOf<Person?>(null)
     private var goal by mutableStateOf<String?>(null)
     private var triesToday by mutableStateOf(0)
+    // Sizes a daily-limit pass (see LimitPasses.passMinutes). 0 until loaded, which is the plain five minutes.
+    private var streakDays by mutableStateOf(0)
     private var limitExpiry: kotlinx.coroutines.Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,7 +83,9 @@ class BlockedActivity : ComponentActivity() {
             goal = Goals.pick(repository.goalsFlow.first())?.text
             val now = System.currentTimeMillis()
             val from = HistoryStats.startOfDayMillis(now, java.time.ZoneId.systemDefault())
-            triesToday = HistoryStats.turnedAwayCount(HistoryDatabase.get(this@BlockedActivity).dao().blockEventsBetween(from, now + 1), from, now + 1)
+            val dao = HistoryDatabase.get(this@BlockedActivity).dao()
+            triesToday = HistoryStats.turnedAwayCount(dao.blockEventsBetween(from, now + 1), from, now + 1)
+            streakDays = HistoryStats.currentStreakDays(dao.sessionsBetween(0L, Long.MAX_VALUE), java.time.LocalDate.now(), java.time.ZoneId.systemDefault())
         }
     }
 
@@ -132,7 +136,8 @@ class BlockedActivity : ComponentActivity() {
                         onText = { person?.let { reachOut(it, Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(it.phone)}"))) } },
                         onReturn = { goHome() },
                         onNeedIt = { goUnlock() },
-                        passLabel = if (pkg != null && passesLeft > 0) "Open ${appLabel ?: "it"} for 5 min ($passesLeft left)" else null,
+                        passLabel = if (pkg != null && passesLeft > 0) "Open ${appLabel ?: "it"} for ${passMinutes(fromLimit)} min ($passesLeft left)" else null,
+                        passNote = if (fromLimit && streakDays > 0) "Your $streakDays-day streak adds ${passMinutes(true) - passMinutes(false)} min." else null,
                         onPass = { pkg?.let { openWithPass(it, passKey ?: it, fromLimit) } },
                     )
                 }
@@ -154,12 +159,15 @@ class BlockedActivity : ComponentActivity() {
         }
     }
 
+    /** Minutes a pass lasts here. The label and the grant both use this, so they cannot disagree. A session pass is flat. */
+    private fun passMinutes(fromLimit: Boolean): Int = if (fromLimit) LimitPasses.passMinutes(streakDays) else LimitPasses.passMinutes(0)
+
     // The pass is awaited and given a moment to reach the services before the app opens, or they would
     // bounce it again on its first window event.
     private fun openWithPass(pkg: String, passKey: String, fromLimit: Boolean) {
         lifecycleScope.launch {
             val now = System.currentTimeMillis()
-            val granted = if (fromLimit) repository.grantLimitPass(passKey, now) else repository.grantPass(pkg, now)
+            val granted = if (fromLimit) repository.grantLimitPass(passKey, now, passMinutes(true)) else repository.grantPass(pkg, now)
             if (!granted) return@launch
             delay(400)
             packageManager.getLaunchIntentForPackage(pkg)?.let { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -198,6 +206,7 @@ private fun ShieldScreen(
     onReturn: () -> Unit,
     onNeedIt: () -> Unit,
     passLabel: String?,
+    passNote: String?,
     onPass: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
@@ -240,6 +249,10 @@ private fun ShieldScreen(
             if (passLabel != null) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
                 ReachButton(passLabel, Modifier.fillMaxWidth(), onPass)
+                if (passNote != null) {
+                    Spacer(Modifier.height(NowFocusSpace.s1))
+                    Text(passNote, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral400))
+                }
             }
             if (limitMessage == null) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
