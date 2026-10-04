@@ -57,3 +57,48 @@ describe('editing a policy while a session runs on it', () => {
     expect(checkPolicyEdit(policy(), policy({ mode: 'allowlist' }))).toMatch(/mode/);
   });
 });
+
+describe('editing an allowlist policy while a session runs on it', () => {
+  // The rules are what stays open, so the direction flips: removing one narrows the session, adding one widens it.
+  const allow = (over: Record<string, any> = {}) => policy({
+    mode: 'allowlist',
+    domainRules: [{ id: 'd1', domain: 'github.com', includeSubdomains: true, enabled: true }],
+    applicationRules: [
+      { id: 'a1', platform: 'android', nativeIdentifier: 'com.android.chrome', enabled: true },
+      { id: 'a2', platform: 'windows', nativeIdentifier: 'C:\\Apps\\Code.exe', enabled: true },
+    ],
+    ...over,
+  });
+
+  it('allows removing or disabling an allowed app or site, renames, and unknown fields', () => {
+    const [chrome, code] = allow().applicationRules;
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome] }))).toBeNull();
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome, { ...code, enabled: false }] }))).toBeNull();
+    expect(checkPolicyEdit(allow(), allow({ domainRules: [] }))).toBeNull();
+    expect(checkPolicyEdit(allow(), allow({ name: 'Renamed', futureField: 1 }))).toBeNull();
+    expect(checkPolicyEdit(allow(), allow())).toBeNull();
+  });
+
+  it('rejects allowing one more app or site', () => {
+    const more = { id: 'a3', platform: 'android', nativeIdentifier: 'com.instagram.android', enabled: true };
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [...allow().applicationRules, more] }))).toMatch(/com\.instagram\.android/);
+    const site = { id: 'd2', domain: 'reddit.com', enabled: true };
+    expect(checkPolicyEdit(allow(), allow({ domainRules: [...allow().domainRules, site] }))).toMatch(/reddit\.com/);
+  });
+
+  it('rejects re-enabling an app that was switched off, or widening a site to its subdomains', () => {
+    const [chrome, code] = allow().applicationRules;
+    const off = allow({ applicationRules: [chrome, { ...code, enabled: false }] });
+    expect(checkPolicyEdit(off, allow())).toMatch(/Code\.exe/);
+    const narrow = allow({ domainRules: [{ id: 'd1', domain: 'github.com', includeSubdomains: false, enabled: true }] });
+    expect(checkPolicyEdit(narrow, allow())).toMatch(/subdomain/);
+  });
+
+  it('still refuses to drop a partial rule, which blocks inside an allowed app', () => {
+    expect(checkPolicyEdit(allow({ partial: ['YT_SHORTS'] }), allow({ partial: [] }))).toMatch(/partial/);
+  });
+
+  it('still rejects flipping the mode', () => {
+    expect(checkPolicyEdit(allow(), allow({ mode: 'blocklist' }))).toMatch(/mode/);
+  });
+});

@@ -4,7 +4,7 @@ Normative guide for people writing a client adapter (Android, macOS, iOS, Window
 
 Production base URL: **`https://api.nowfocus.online`** (one build constant per client, overridable in debug builds for a local server). Design background: [`docs/superpowers/specs/2026-09-29-sync-api-design.md`](../../docs/superpowers/specs/2026-09-29-sync-api-design.md).
 
-**Slice status.** Slice 1 syncs `policy` and `bedtime_settings`. The Android adapter implements it (`apps/android/app/src/main/kotlin/app/getnowfocus/android/sync/`, unreleased), and so does macOS (`apps/macos/NowFocusCore/Sync/`, unreleased; the engine compiles into iOS too, which has no account UI yet); Windows doesn't yet. `session` (slice 2) and `shield_item` (slice 3) are specified here so the model doesn't change later, but no adapter implements them yet. `user_settings` exists on the server and no client has any settings to put in it.
+**Slice status.** Slice 1 syncs `policy` and `bedtime_settings`. The Android adapter implements it (`apps/android/app/src/main/kotlin/app/getnowfocus/android/sync/`, unreleased), and so does macOS (`apps/macos/NowFocusCore/Sync/`, unreleased; the engine compiles into iOS too, which has no account UI yet), and Windows (`apps/windows/sync/`, unreleased). `session` (slice 2) and `shield_item` (slice 3) are specified here so the model doesn't change later, but no adapter implements them yet. `user_settings` exists on the server and no client has any settings to put in it.
 
 ## 1. Conventions
 
@@ -50,7 +50,7 @@ Per-change rejection codes and what to do:
 | `code` | Meaning | Adapter action |
 |---|---|---|
 | `invalid_data` / `invalid_change` / `invalid_id` | The server's validation failed (for example an unsafe domain) | Do not retry the same payload. Log, surface "couldn't sync <name>", keep the local value. |
-| `policy_in_use` | A session is running on this policy and the edit would remove, disable or weaken a rule, change `mode`, or delete it | **Adopt the server record and restore it locally.** Additions are always accepted. |
+| `policy_in_use` | A session is running on this policy and the edit would loosen it (blocklist: remove, disable or weaken a rule; allowlist: add or enable one), change `mode`, or delete it | **Adopt the server record and restore it locally.** Additions are always accepted. |
 | `unknown_type` / `read_only` / `not_deletable` | You pushed something the server doesn't accept (`shield_item` is written only through `/v1/always-blocked`) | A bug in the adapter. Do not retry. |
 | session codes (`invalid_transition`, `immutable_field`, `end_shortened`, `session_locked`, `too_early`, `too_long`) | Slice 2 | See section 6. |
 
@@ -67,6 +67,8 @@ Wire shape (extra fields are stored verbatim and returned to every device):
 
 Server-enforced: `name` 1–200 chars; `mode` is `blocklist` or `allowlist`; at most 5000 `domainRules` and 2000 `applicationRules`; every `domainRules[].domain` must survive **hostname normalization** (below) and is stored in that form; every `applicationRules[]` needs a `platform` in `macos|windows|android|ios` and a `nativeIdentifier` of 1–512 characters. Anything else is kept as sent: `categories`, `notificationPolicy`, `feedRules`, future fields.
 
+**Allowlist (`mode: "allowlist"`).** The rules are what stays open and everything else is closed, so `applicationRules` is the set of allowed apps. Clients enforce apps only: `domainRules` of an allowlist are not enforced anywhere and a client writes none. App rules are per platform, so an allowlist can hold zero rules for the platform a device runs on; **a device with none enforces nothing** (and does not start or join a session for it) instead of closing every app. `mode` is chosen when the policy is created and clients never change it: flipping a list in place would turn "block these" into "allow only these". Mid-session the server's direction flips (`policy_in_use` rejects *adding or enabling* a rule, removal is accepted), because removing an allowed app only narrows the session. `partial` still blocks inside an allowed app, so dropping one is rejected in either mode.
+
 **Hostname normalization** (a port of the `normalize()` all three clients already share): trim, lowercase, strip `https://` then `http://`, strip one leading `www.`, cut at the first of `/ : ? #`, then require non-empty, a `.` inside, no leading or trailing `.` or `-`, and only `a-z 0-9 . -`. Unicode, wildcards and underscores are rejected (IDNs arrive as punycode `xn--…`). A domain the server rejects fails that one change with `invalid_data`.
 
 ### Per-platform mapping
@@ -75,7 +77,7 @@ Server-enforced: `name` 1–200 chars; `mode` is `blocklist` or `allowlist`; at 
 |---|---|---|---|
 | `domainRules[]` | `domains: List<String>`. Every domain implies `includeSubdomains: true, enabled: true`. | `domains: [DomainRule]` (same shape; **rename the key**) | `domains` with `include_subdomains` (snake_case) |
 | `applicationRules[]` | `apps: List<AppRule(packageName, label)>` ↔ rules with `platform: "android"`, `nativeIdentifier = packageName`, `displayName = label` | `applications: [ApplicationRule]` (**rename the key**), `platform: "macos"` | `applications` with `native_identifier`, `display_name`, `platform: "windows"` |
-| `mode` | none: Android is blocklist-only | `mode` | `mode` |
+| `mode` | `mode: PolicyMode` (`BLOCKLIST` / `ALLOWLIST`) | `mode` (macOS/iOS enforce blocklists only, see rule 4) | `mode` |
 | `partial` | `partial: Set<PartialRule>` | none yet (listed, not switchable) | `feed_rules` rows, mapped below |
 | ids | lowercase already | **uppercase today: lowercase them** | lowercase already |
 
@@ -88,9 +90,9 @@ Exactly six names, **UPPERCASE**, identical on Android (`PartialRule` enum) and 
 Policies are last-write-wins **as a whole**. If an adapter rebuilds a policy from its lossy local model, it deletes everything it cannot represent, for every device. So:
 
 1. Keep the last server JSON (`rawServerData`) for every policy.
-2. On a local edit, **merge only what this platform owns into that JSON** and push the result. Android owns `name`, the `domainRules` it can express, `applicationRules` with `platform: "android"`, and the `partial` names it knows. Other platforms' app rules, unknown `partial` names, `includeSubdomains: false`, `enabled: false`, `mode`, `categories`, `notificationPolicy`, `feedRules` and unknown fields are carried over untouched.
+2. On a local edit, **merge only what this platform owns into that JSON** and push the result. Android owns `name`, `mode` (set when it creates a policy, never changed afterwards), the `domainRules` it can express, `applicationRules` with `platform: "android"`, and the `partial` names it knows. Other platforms' app rules, unknown `partial` names, `includeSubdomains: false`, `enabled: false`, `categories`, `notificationPolicy`, `feedRules` and unknown fields are carried over untouched.
 3. A newly created policy has no raw JSON and is built from scratch.
-4. **A policy with `mode: "allowlist"` must not be enforced by an adapter that cannot enforce allowlists** (Android): applying its domains as blocks would do the opposite of what the user set. Show it as "not supported on this device".
+4. **A policy with `mode: "allowlist"` must not be enforced by an adapter that cannot enforce allowlists** (macOS and iOS today; Android and Windows can): applying its rules as blocks would do the opposite of what the user set. Show it as "not supported on this device".
 5. A rule for another platform (`applicationRules[].platform` not matching this device) is ignored for enforcement but never dropped.
 
 ## 5. `bedtime_settings` (singleton, id `default`)
@@ -104,6 +106,8 @@ Server-enforced: `enabled`/`lockAtSleep` booleans; the three minutes are integer
 ## 6. `session` (slice 2, not implemented yet)
 
 `{ id, policyId, sessionType: "focus"|"bedtime_winddown", source: "user"|"extension"|"schedule" (default "user"), status: "scheduled"|"active"|"completed"|"cancelled"|"expired"|"error", enforcementMode: "normal"|"strict"|"locked", startAt, endAt, … }`, extras such as `notificationMode`, `deviceId`, `policySnapshot` stored verbatim.
+
+**`policySnapshot` of an allowlist session.** The snapshot is `{ "mode": "allowlist", "domainRules": [], "applicationRules": [], "partial": […] }`: the rule arrays are **empty on purpose**. Some installed clients join a remote session from the snapshot alone (Android 0.6 and earlier read `policySnapshot.applicationRules` as the apps to block), and an allowlist snapshot full of allowed apps would make them block exactly those apps. A receiver that understands `mode: "allowlist"` ignores the snapshot's rules and takes its own platform's apps from the synced policy; with no policy, or no apps for its platform, it does not join.
 
 State machine on the server: statuses only move forward, terminal sessions never change, `policyId`/`sessionType`/`startAt`/`source`/`enforcementMode` are immutable, `endAt` can only be extended on a non-`normal` session, cancelling a `locked` session before `endAt` is `session_locked`, completing a non-`normal` session more than 60 s before `endAt` is `too_early`, and a session longer than 24 hours (at creation or after an extension) is `too_long`. Several sessions may run at once: an adapter that keeps an "at most one active session" invariant must **union or queue** a second running session, never silently replace enforcement. Android's stored status can stay `ACTIVE` after `endAt`; evaluate the status from the clock before pushing.
 

@@ -250,6 +250,16 @@ describe('sync push/pull', () => {
       expect(code(await edit(b, withDomains(pid, ['youtube.com'])))).toBe('applied');
     });
 
+    it('flips the direction for an allowlist: narrowing is accepted, allowing one more app is not', async () => {
+      const apps = ['com.android.chrome', 'com.android.dialer'].map((n) => ({ id: randomUUID(), platform: 'android', nativeIdentifier: n, enabled: true }));
+      const allow = (rules: object[]) => policy(pid, { mode: 'allowlist', domainRules: [], applicationRules: rules });
+      await push(a, [change('policy', pid, allow(apps), { updatedAt: iso(-5 * MIN) })]);
+      await startSession();
+      const more = { id: randomUUID(), platform: 'android', nativeIdentifier: 'com.instagram.android', enabled: true };
+      expect(code(await edit(b, allow([...apps, more])))).toBe('policy_in_use');
+      expect(code(await edit(b, allow([apps[0]])))).toBe('applied');
+    });
+
     it("only guards the policy the session runs on", async () => {
       const other = randomUUID();
       await push(a, [change('policy', other, withDomains(other, ['a.com', 'b.com']), { updatedAt: iso(-10 * MIN) })]);
