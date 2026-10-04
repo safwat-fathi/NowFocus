@@ -11,6 +11,7 @@ export function Shield({ state, onState }: { state: AppState; onState: (s: AppSt
   const shield = state.shield!;
   const session = state.session;
   const isLimit = shield.targetKind === "limit";
+  const bedtime = !!session?.bedtime;
 
   async function backToWork() {
     onState(await api.dismissShield());
@@ -37,14 +38,17 @@ export function Shield({ state, onState }: { state: AppState; onState: (s: AppSt
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div className="shield-kicker">
           <span className="shield-kicker__dot" />
-          {isLimit ? `${shield.targetName} · daily limit` : shield.targetKind === "app" ? `${shield.targetName} · closed by NowFocus` : `${shield.targetName} · blocked by NowFocus`}
+          {/* Who did it (always NowFocus, by name) and to what; the body says which rule. A site is blocked, an app is closed. */}
+          {shield.targetKind === "site" ? `NowFocus blocked ${shield.targetName}` : `NowFocus closed ${shield.targetName}`}
         </div>
         <div style={{ marginTop: "auto" }}>
           <h1 className="shield-title">{shield.targetName} can wait.</h1>
           <p className="shield-body">
             {isLimit
-              ? "You've used today's time. It's back at midnight."
-              : <>{session ? `You're in ${session.profileName}, with ${session.remainingLabel} to go.` : ""} Focus protects what you said mattered.</>}
+              ? `You've used your ${shield.limitMinutes} minutes of ${shield.targetName} today. It's back at midnight.`
+              : bedtime
+                ? `It's bedtime wind-down, with ${session?.remainingLabel} to go.`
+                : <>{session ? `You're in a focus session (${session.profileName}), with ${session.remainingLabel} to go.` : ""} Focus protects what you said mattered.</>}
           </p>
         </div>
       </div>
@@ -52,7 +56,7 @@ export function Shield({ state, onState }: { state: AppState; onState: (s: AppSt
         <div className="shield-side-list">
           {!isLimit && (
             <div className="shield-side-row">
-              <span className="shield-side-row__label">Left in session</span>
+              <span className="shield-side-row__label">{bedtime ? "Left in bedtime" : "Left in session"}</span>
               <span className="shield-side-row__value">{session?.remainingLabel ?? "—"}</span>
             </div>
           )}

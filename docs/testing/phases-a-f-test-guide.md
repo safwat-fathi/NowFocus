@@ -425,6 +425,21 @@ Also expect counting to carry on after the shade/lock steps and during fullscree
 
 ---
 
+# G. Why was this app closed? (all platforms)
+
+### G1. Every close names NowFocus and the rule
+1. Start a Normal focus session that blocks an app (on Android also a website). Open the app.
+2. End it. Turn on Bedtime wind-down (or wait for it) and open a blocked app.
+3. Android and Windows: use up a daily limit and open that app again.
+4. Android: with a Commitment Shield running, open a blocked app.
+
+**Expect:** the top line always reads **NowFocus closed <the app's name>** (a website on Windows reads "blocked"). The line under the big "This can wait." names the rule with its time: "You're in a focus session until 3:45 PM." / "It's bedtime wind-down until 6:00 AM." / "You've used your 30 minutes of <app> today. It's back at midnight." / "Locked by your Commitment Shield until Oct 9." The countdown label says "Left in session", "Left in bedtime", "Locked for" or "Back in". Android's blocked-website notification names the rule too ("Your focus session is on…", "Bedtime wind-down is on…", "Your Commitment Shield is on…") and still never names the site.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+---
+
 # Things I know are rough (you don't need to report these as bugs)
 
 - **Windows has never run on a PC.** Seven files still carry "UNVERIFIED" banners; W0 is the first real test.

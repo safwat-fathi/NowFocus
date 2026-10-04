@@ -45,13 +45,14 @@ enum SessionController {
     static let status = SessionStatus()
 
     @MainActor
-    static func startEnforcement(policy: BlockPolicy, sessionId: String, endAt: Date? = nil) {
+    static func startEnforcement(policy: BlockPolicy, sessionId: String, endAt: Date? = nil, sessionType: SessionType = .focus) {
         DaemonClient.shared.apply(policy: policy)
         AppBlocker.shared.updatePolicy(
             sessionId: sessionId,
             isSessionActive: true,
             blockedApps: policy.applications.filter { $0.enabled }.map { $0.nativeIdentifier },
-            endAt: endAt
+            endAt: endAt,
+            sessionType: sessionType
         )
         status.isActive = true
         status.endAt = endAt

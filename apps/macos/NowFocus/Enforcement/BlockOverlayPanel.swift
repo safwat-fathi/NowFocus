@@ -27,9 +27,9 @@ public class BlockOverlayPanel: NSPanel {
     // canBecomeKey would swallow Cmd+Q for the blocked app underneath, which is the one escape hatch
     // that already works. That's why "I really need it" opens the unlock flow in its own window
     // rather than asking for typing in here.
-    public func show(over rect: NSRect, endAt: Date?) {
+    public func show(over rect: NSRect, endAt: Date?, appName: String?, reason: BlockReason) {
         let view = BlockOverlayView(
-            content: BlockOverlayContent.load(endAt: endAt),
+            content: BlockOverlayContent.load(endAt: endAt, appName: appName, reason: reason),
             onQuit: { [weak self] in self?.onClose?() },
             onNeedIt: { [weak self] in self?.onNeedIt?() }
         )

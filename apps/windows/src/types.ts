@@ -43,6 +43,8 @@ export interface Session {
   progressPct: number;
   /** A cheat day is pausing this session's blocking. */
   paused: boolean;
+  /** A Bedtime wind-down: the shield names it as bedtime, not a focus session. */
+  bedtime: boolean;
 }
 
 export type UnlockPhase = "typing" | "waiting";
@@ -96,6 +98,8 @@ export interface Shield {
   targetName: string;
   /** Passes the running session still has for this app (0 = none offered). */
   passesLeft: number;
+  /** For a daily-limit shield: minutes the limit allowed; 0 otherwise. */
+  limitMinutes: number;
 }
 
 export interface Limit {

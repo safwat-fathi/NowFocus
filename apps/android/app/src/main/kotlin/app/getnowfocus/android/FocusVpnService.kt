@@ -163,9 +163,10 @@ class FocusVpnService : VpnService() {
         private fun handle(packet: ByteArray, length: Int) {
             val query = DnsPacket.parse(packet, length) ?: return // not DNS (e.g. DoT on 853): drop
             val name = DnsPacket.qname(query.dns)
-            if (name != null && DomainValidation.matches(name, rules.liveDomains(System.currentTimeMillis()))) {
+            val now = System.currentTimeMillis()
+            if (name != null && DomainValidation.matches(name, rules.liveDomains(now))) {
                 write(DnsPacket.wrapReply(query, DnsPacket.nxdomain(query.dns)))
-                BlockNotifier.blockedSite(this@FocusVpnService)
+                BlockNotifier.blockedSite(this@FocusVpnService, rules.reasonForDomain(name, now) ?: BlockReason.FOCUS_SESSION)
                 return
             }
             forwarder.execute { forward(query) }

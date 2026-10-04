@@ -459,7 +459,7 @@ struct MenuBarView: View {
             if selectedMode == .strict { VoiceNoteStore.shared.adoptPending(as: session.id) }
             VoiceNoteStore.shared.purge(except: VoiceNoteStore.shared.hasNote(sessionId: session.id) ? session.id : nil)
             noteRecorder = VoiceRecorder()
-            SessionController.startEnforcement(policy: policy, sessionId: session.id, endAt: session.endAt)
+            SessionController.startEnforcement(policy: policy, sessionId: session.id, endAt: session.endAt, sessionType: session.sessionType)
             refreshState()
             loadToday()
         } catch {

@@ -33,7 +33,7 @@ enum AppSync {
                 // a block from a profile a session is using).
                 if let session = try? DatabaseManager.shared.fetchActiveSession(), SessionEngine().isActive(session),
                    let policy = try? DatabaseManager.shared.fetchPolicy(id: session.policyId) {
-                    SessionController.startEnforcement(policy: policy, sessionId: session.id, endAt: session.endAt)
+                    SessionController.startEnforcement(policy: policy, sessionId: session.id, endAt: session.endAt, sessionType: session.sessionType)
                 }
             }
         }

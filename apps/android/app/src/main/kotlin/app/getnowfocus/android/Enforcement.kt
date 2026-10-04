@@ -29,7 +29,15 @@ data class RuleWindow(
     val passesLeft: Int = 0,
     val pausedFrom: Long = 0L,
     val pausedUntil: Long = 0L,
+    /** The session is a Bedtime wind-down, which the block screen names as such. */
+    val bedtime: Boolean = false,
 ) {
+    val reason: BlockReason
+        get() = when {
+            source == BlockSource.COMMITMENT_SHIELD -> BlockReason.COMMITMENT_SHIELD
+            bedtime -> BlockReason.BEDTIME
+            else -> BlockReason.FOCUS_SESSION
+        }
     fun paused(now: Long) = now >= pausedFrom && now < pausedUntil
     fun passed(pkg: String, now: Long) = (passes[pkg] ?: 0L) > now
     /** The moments after [now] when what this window blocks changes, so the services wake and re-check. */
@@ -60,6 +68,11 @@ data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
      * its endAt (not the session's, if any) is what "blocked until" means.
      */
     fun windowsBlocking(pkg: String, now: Long): List<RuleWindow> = blocking(now).filter { pkg in it.packages && !it.passed(pkg, now) }
+
+    /** Why [host] is blocked: the Shield if it blocks it too (the stricter source), else the session; null if no window does. */
+    fun reasonForDomain(host: String, now: Long): BlockReason? =
+        blocking(now).filter { DomainValidation.matches(host, it.domains) }
+            .maxByOrNull { it.source == BlockSource.COMMITMENT_SHIELD }?.reason
 }
 
 /**
@@ -85,6 +98,7 @@ object Enforcement {
                             passesLeft = Passes.passesLeft(it),
                             pausedFrom = cheat?.startAt ?: 0L,
                             pausedUntil = cheat?.endAt ?: 0L,
+                            bedtime = it.sessionType == SessionType.BEDTIME_WINDDOWN,
                         ))
                     }
                 shield?.takeIf { it.endAt > now }

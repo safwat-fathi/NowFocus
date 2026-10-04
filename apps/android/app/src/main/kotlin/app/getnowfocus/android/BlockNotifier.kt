@@ -15,9 +15,9 @@ import androidx.core.content.ContextCompat
 
 /**
  * Tells the user why a site just failed to load: a blocked lookup gets NXDOMAIN, which a browser
- * shows as a bare "can't reach this site". Deliberately names neither the site nor a session:
- * session and Commitment Shield domains are matched together, and a Shield block must not put a
- * domain in the shade or call itself "your session". Hidden on the lock screen for the same reason.
+ * shows as a bare "can't reach this site". Names the rule that blocked it (the Shield when it blocks
+ * the domain too, else the session or bedtime) but never the site: no domain goes in the shade.
+ * Hidden on the lock screen for the same reason.
  *
  * ponytail: a DNS lookup isn't a user attempt (a background app can trigger one with the screen
  * on), so this is throttled to one per minute rather than exact. Needs POST_NOTIFICATIONS, else silent.
@@ -30,7 +30,7 @@ object BlockNotifier {
 
     @Volatile private var lastPostedAt: Long? = null
 
-    fun blockedSite(context: Context) {
+    fun blockedSite(context: Context, reason: BlockReason) {
         val now = System.currentTimeMillis()
         if (!HistoryStats.shouldLogBlockEvent(now, lastPostedAt, THROTTLE_MS)) return
         if (context.getSystemService(PowerManager::class.java)?.isInteractive != true) return
@@ -53,7 +53,7 @@ object BlockNotifier {
             NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_nowfocus_active)
                 .setContentTitle("NowFocus blocked a site")
-                .setContentText("It will load again when the block ends.")
+                .setContentText(BlockCopy.siteNotice(reason))
                 .setVisibility(NotificationCompat.VISIBILITY_SECRET)
                 .setAutoCancel(true)
                 .setTimeoutAfter(TIMEOUT_MS)

@@ -72,6 +72,8 @@ pub struct SessionDto {
     pub progress_pct: f64,
     /// A cheat day is pausing this session's blocking.
     pub paused: bool,
+    /// A Bedtime wind-down: the shield names it as bedtime, not a focus session.
+    pub bedtime: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,6 +161,8 @@ pub struct ShieldDto {
     pub target_name: String,
     /// Passes the running session still has for this app (0 = none offered).
     pub passes_left: usize,
+    /// For a daily-limit shield: the minutes the limit allowed (the screen says "your N minutes"). 0 otherwise.
+    pub limit_minutes: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

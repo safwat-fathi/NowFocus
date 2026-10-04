@@ -13,6 +13,8 @@ public class AppBlocker {
     private var blockedApp: NSRunningApplication?
     private var activeSessionId: String?
     private var activeEndAt: Date?
+    // Bedtime wind-down is a session too, but the block screen names it as bedtime.
+    private var reason: BlockReason = .focusSession
 
     // De-dup window for Stats' "turned away" count: a blocked app bounced
     // repeatedly within 3s of its last logged attempt is one attempt, not
@@ -26,8 +28,9 @@ public class AppBlocker {
         setupObservers()
     }
 
-    public func updatePolicy(sessionId: String?, isSessionActive: Bool, blockedApps: [String], endAt: Date? = nil) {
+    public func updatePolicy(sessionId: String?, isSessionActive: Bool, blockedApps: [String], endAt: Date? = nil, sessionType: SessionType = .focus) {
         self.activeSessionId = sessionId
+        self.reason = sessionType == .bedtime_winddown ? .bedtime : .focusSession
         self.activeEndAt = endAt
         self.isSessionActive = isSessionActive
         self.activeBlockedApps = Set(blockedApps)
@@ -117,7 +120,7 @@ public class AppBlocker {
         for (panel, screen) in zip(overlayPanels, NSScreen.screens) {
             // visibleFrame excludes the menu bar and Dock, so the user is never
             // trapped needing Cmd-Tab to reach NowFocus's own menu.
-            panel.show(over: screen.visibleFrame, endAt: activeEndAt)
+            panel.show(over: screen.visibleFrame, endAt: activeEndAt, appName: blockedApp?.localizedName, reason: reason)
         }
     }
 

@@ -778,6 +778,7 @@ impl AppState {
             target_kind: target_kind.clone(),
             target_name: target_name.clone(),
             passes_left: 0, // filled in per snapshot
+            limit_minutes: 0,
         });
         self.shield_native = None; // only a real app detection (check_foreground_app) sets it
 
@@ -902,6 +903,7 @@ impl AppState {
             target_kind: "limit".to_string(),
             target_name: l.label.clone(),
             passes_left: 0,
+            limit_minutes: (allowed / 60_000) as u32,
         });
         self.shield_native = None;
         Some(l.label.clone())
@@ -1371,6 +1373,7 @@ fn session_to_dto(session: &FocusSession, profile_name: &str) -> SessionDto {
         remaining_label: format_remaining(remaining),
         progress_pct: (elapsed as f64 / total as f64) * 100.0,
         paused: false, // set per snapshot, from the cheat day
+        bedtime: session.session_type == SessionType::BedtimeWinddown,
     }
 }
 

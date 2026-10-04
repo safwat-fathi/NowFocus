@@ -5,18 +5,23 @@ import NowFocusCore
 /// What the block screen shows, gathered each time it appears so the rotation and counts are current.
 struct BlockOverlayContent {
     var endAt: Date?
+    /// What NowFocus closed, and which rule did it (the screen says both, by name).
+    var appName: String?
+    var reason: BlockReason
     var triesToday: Int
     var person: UserConnection?
     /// Only set when there is no one to reach out to.
     var goal: String?
 
-    static func load(endAt: Date?) -> BlockOverlayContent {
+    static func load(endAt: Date?, appName: String?, reason: BlockReason) -> BlockOverlayContent {
         let db = DatabaseManager.shared
         let now = Date()
         let events = (try? db.fetchEvents(from: Calendar.current.startOfDay(for: now), to: now, type: "app_blocked")) ?? []
         let person = try? db.fetchNextConnection()
         return BlockOverlayContent(
             endAt: endAt,
+            appName: appName,
+            reason: reason,
             triesToday: HistoryStats.turnedAwayCount(events),
             person: person,
             goal: person == nil ? (try? db.fetchRandomGoal())?.text : nil
@@ -52,7 +57,7 @@ struct BlockOverlayView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s3) {
-            Text("SHIELDED BY NOWFOCUS")
+            Text(BlockCopy.title(appName: content.appName).uppercased())
                 .font(NowFocusFonts.body(11).weight(.semibold))
                 .tracking(1.1)
                 .foregroundColor(NowFocusColors.neutral700)
@@ -62,13 +67,13 @@ struct BlockOverlayView: View {
                 .foregroundColor(NowFocusColors.ink)
 
             if let endAt = content.endAt {
-                Text("You're in a focus session until \(endAt.formatted(date: .omitted, time: .shortened)).")
+                Text(BlockCopy.reason(content.reason, until: endAt.formatted(date: .omitted, time: .shortened), appName: content.appName))
                     .font(NowFocusFonts.body(15))
                     .foregroundColor(NowFocusColors.neutral800)
             }
 
             VStack(spacing: 0) {
-                sideRow("Left in session") {
+                sideRow(BlockCopy.timeLabel(content.reason)) {
                     if let endAt = content.endAt {
                         // The range's lower bound can't pass its upper one, so clamp if the session just ended.
                         Text(timerInterval: min(Date(), endAt)...endAt, countsDown: true)

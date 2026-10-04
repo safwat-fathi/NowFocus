@@ -46,6 +46,8 @@ class BlockedActivity : ComponentActivity() {
     companion object {
         const val EXTRA_END_AT = "endAt"
         const val EXTRA_SOURCE = "source"
+        /** The blocking session is a Bedtime wind-down (a session block says "bedtime", not "focus session"). */
+        const val EXTRA_BEDTIME = "bedtime"
         const val EXTRA_PACKAGE = "package"
         const val EXTRA_LIMIT_MINUTES = "limitMinutes"
         const val EXTRA_SITE = "site"
@@ -121,14 +123,22 @@ class BlockedActivity : ComponentActivity() {
         val passesLeft = if (fromShield) 0 else intent.getIntExtra(EXTRA_PASSES_LEFT, 0)
         val site = intent.getStringExtra(EXTRA_SITE)
         val appLabel = site ?: pkg?.let { runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(it, 0)).toString() }.getOrNull() }
+        val reason = when {
+            fromShield -> BlockReason.COMMITMENT_SHIELD
+            fromLimit -> BlockReason.DAILY_LIMIT
+            intent.getBooleanExtra(EXTRA_BEDTIME, false) -> BlockReason.BEDTIME
+            else -> BlockReason.FOCUS_SESSION
+        }
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
                     ShieldScreen(
-                        until = until,
+                        title = BlockCopy.title(appLabel),
+                        reasonText = BlockCopy.reason(reason, until, appLabel, intent.getIntExtra(EXTRA_LIMIT_MINUTES, 0)),
+                        timeLabel = BlockCopy.timeLabel(reason),
                         endAt = endAt,
                         fromShield = fromShield,
-                        limitMessage = if (fromLimit) "You've used your ${intent.getIntExtra(EXTRA_LIMIT_MINUTES, 0)} minutes of ${appLabel ?: "this app"} today. It's back at midnight." else null,
+                        fromLimit = fromLimit,
                         person = person,
                         goal = goal,
                         triesToday = triesToday,
@@ -194,10 +204,12 @@ class BlockedActivity : ComponentActivity() {
 
 @Composable
 private fun ShieldScreen(
-    until: String,
+    title: String,
+    reasonText: String,
+    timeLabel: String,
     endAt: Long,
     fromShield: Boolean,
-    limitMessage: String?,
+    fromLimit: Boolean,
     person: Person?,
     goal: String?,
     triesToday: Int,
@@ -212,25 +224,20 @@ private fun ShieldScreen(
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
         // Scrolls on its own so the buttons below stay on screen however much the reach-out card or goal takes.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-        Text(
-            when { fromShield -> "Always blocked by NowFocus"; limitMessage != null -> "Daily limit"; else -> "Shielded by NowFocus" },
-            style = kickerStyle(NowFocusColors.neutral400),
-        )
+        // Who did it (always NowFocus, by name) and to what; the line below says which rule.
+        Text(title.uppercase(), style = kickerStyle(NowFocusColors.neutral400))
         Spacer(Modifier.height(NowFocusSpace.s8))
         Text(
             "This can wait.",
             style = headingStyle(48.sp, color = NowFocusColors.bg),
         )
         Spacer(Modifier.height(NowFocusSpace.s3))
-        Text(
-            when { fromShield -> "Locked by your Commitment Shield until $until."; limitMessage != null -> limitMessage; else -> "You're in a focus session until $until." },
-            style = TextStyle(fontFamily = ArchivoRegular, fontSize = 17.sp, color = NowFocusColors.neutral300),
-        )
+        Text(reasonText, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 17.sp, color = NowFocusColors.neutral300))
         Spacer(Modifier.height(NowFocusSpace.s4))
         // Ticks each half-minute: "1h 12m" doesn't need a per-second clock.
         var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
         LaunchedEffect(Unit) { while (true) { delay(30_000); now = System.currentTimeMillis() } }
-        SideRow(if (fromShield) "Locked for" else if (limitMessage != null) "Back in" else "Left in session", DurationFormat.remaining(endAt - now))
+        SideRow(timeLabel, DurationFormat.remaining(endAt - now))
         SideRow("Tries today", "$triesToday")
         if (person != null) {
             Spacer(Modifier.height(NowFocusSpace.s8))
@@ -254,7 +261,7 @@ private fun ShieldScreen(
                     Text(passNote, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral400))
                 }
             }
-            if (limitMessage == null) {
+            if (!fromLimit) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
                 GhostButton("I really need it", onClick = onNeedIt)
             }

@@ -412,6 +412,16 @@ check(Countdown.text(remaining: 3725) == "1:02:05", "hours, minutes, seconds")
 check(Countdown.text(remaining: -5) == "0:00", "never negative")
 check(Countdown.text(remaining: 59.2) == "1:00", "a fractional second rounds up, so it never shows 0:00 while time remains")
 
+// MARK: What the block screen says (BlockCopyTest on Android)
+
+check(BlockCopy.title(appName: "YouTube") == "NowFocus closed YouTube", "title names NowFocus and the app")
+check(BlockCopy.title(appName: nil) == "NowFocus closed this app", "title without an app name")
+check(BlockCopy.reason(.focusSession, until: "3:45 PM", appName: "YouTube") == "You're in a focus session until 3:45 PM.", "focus session reason")
+check(BlockCopy.reason(.bedtime, until: "6:00 AM", appName: "YouTube") == "It's bedtime wind-down until 6:00 AM.", "bedtime reason")
+check(BlockCopy.reason(.commitmentShield, until: "Oct 9", appName: "YouTube") == "Locked by your Commitment Shield until Oct 9.", "shield reason")
+check(BlockCopy.reason(.dailyLimit, until: "ignored", appName: "YouTube", limitMinutes: 30) == "You've used your 30 minutes of YouTube today. It's back at midnight.", "daily limit reason")
+check(BlockCopy.timeLabel(.bedtime) == "Left in bedtime" && BlockCopy.timeLabel(.focusSession) == "Left in session", "countdown labels")
+
 // MARK: Existing self-checks
 
 HistoryStats.runSelfCheck()
