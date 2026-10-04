@@ -7,7 +7,7 @@ export const ADMIN_PAGE = /* html */ `<!doctype html>
 @media(prefers-color-scheme:dark){:root{--bg:#141414;--fg:#eee;--mute:#999;--line:#333;--acc:#7aa2ff}}
 body{margin:0;padding:16px;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,sans-serif}
 input,select,button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
-button{cursor:pointer}a{color:var(--acc)}
+button{cursor:pointer}a{color:var(--acc)}[hidden]{display:none!important}
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
 .table{overflow-x:auto}table{border-collapse:collapse;width:100%}
 th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
