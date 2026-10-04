@@ -53,6 +53,7 @@ class SessionRepository(context: Context) {
         val SESSION_PASSES = stringPreferencesKey("sessionPasses")
         val SESSION_ORIGIN = stringPreferencesKey("sessionOrigin")
         val SESSION_STARTED_ON = stringPreferencesKey("sessionStartedOn")
+        val SESSION_POLICY_MODE = stringPreferencesKey("sessionPolicyMode")
         val SESSION_SYNC = stringPreferencesKey("sessionSync")
         val JOIN_REMOTE = booleanPreferencesKey("joinRemoteSessions")
         val CHEAT_START = longPreferencesKey("cheatStartAt")
@@ -106,6 +107,8 @@ class SessionRepository(context: Context) {
             passes = p[Keys.SESSION_PASSES]?.let { Passes.fromJson(it) } ?: emptyList(),
             origin = p[Keys.SESSION_ORIGIN]?.let { runCatching { SessionOrigin.valueOf(it) }.getOrNull() } ?: SessionOrigin.USER,
             startedOn = p[Keys.SESSION_STARTED_ON],
+            // Absent in sessions written before whitelist mode: those closed the listed apps.
+            policyMode = PolicyMode.entries.find { it.name == p[Keys.SESSION_POLICY_MODE] } ?: PolicyMode.BLOCKLIST,
         )
     }
 
@@ -332,6 +335,7 @@ class SessionRepository(context: Context) {
             if (session.passes.isNotEmpty()) p[Keys.SESSION_PASSES] = Passes.toJson(session.passes) else p.remove(Keys.SESSION_PASSES)
             p[Keys.SESSION_ORIGIN] = session.origin.name
             if (session.startedOn != null) p[Keys.SESSION_STARTED_ON] = session.startedOn else p.remove(Keys.SESSION_STARTED_ON)
+            p[Keys.SESSION_POLICY_MODE] = session.policyMode.name
         }
     }
 

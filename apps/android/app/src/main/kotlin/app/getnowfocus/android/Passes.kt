@@ -22,7 +22,9 @@ object Passes {
 
     /** The session with a pass for [pkg] added, or null when none may be given. Ends no later than the session. */
     fun grant(session: FocusSession, pkg: String, now: Long): FocusSession? {
-        if (!SessionEngine.isActive(session, now) || passesLeft(session) == 0 || pkg !in session.packages) return null
+        // Only an app this session closes can be passed: a listed one in a blocklist, an unlisted one in an allowlist.
+        val closed = (pkg in session.packages) != (session.policyMode == PolicyMode.ALLOWLIST)
+        if (!SessionEngine.isActive(session, now) || passesLeft(session) == 0 || !closed) return null
         if (session.passes.any { it.packageName == pkg && it.until > now }) return null // already open
         return session.copy(passes = session.passes + AppPass(pkg, minOf(now + DURATION_MS, session.endAt)))
     }

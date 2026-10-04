@@ -4,6 +4,7 @@
     <string name="block_title">NowFocus closed %1$s</string>
     <string name="block_this_app">this app</string>
     <string name="block_reason_session">You\'re in a focus session until %1$s.</string>
+    <string name="block_reason_allowlist">Only the apps you allowed are open until %1$s.</string>
     <string name="block_reason_bedtime">It\'s bedtime wind-down until %1$s.</string>
     <string name="block_reason_shield">Locked by your Commitment Shield until %1$s.</string>
     <plurals name="block_reason_limit">

@@ -111,8 +111,8 @@ private suspend fun startBedtimeIfDue(context: Context, settings: BedtimeSetting
     val existing = repo.sessionFlow.first()
     if (existing != null && SessionEngine.isActive(SessionEngine.evaluateState(existing, now), now)) return
 
-    // A missing profile means nothing to block — skip, like macOS.
-    val policy = repo.policiesFlow.first().find { it.id == policyId } ?: return
+    // A missing profile means nothing to block — skip, like macOS. So does a whitelist with no app on this phone.
+    val policy = repo.policiesFlow.first().find { it.id == policyId }?.takeIf { it.enforcesHere } ?: return
 
     val session = FocusSession(
         id = UUID.randomUUID().toString(),
@@ -121,12 +121,9 @@ private suspend fun startBedtimeIfDue(context: Context, settings: BedtimeSetting
         endAt = window.last + 1, // LongRange is end-exclusive: last + 1 == wake
         status = FocusSessionStatus.SCHEDULED,
         createdAt = now,
-        domains = policy.domains.toSet(),
-        packages = policy.apps.map { it.packageName }.toSet(),
-        partial = policy.partial,
         enforcementMode = EnforcementMode.LOCKED,
         sessionType = SessionType.BEDTIME_WINDDOWN,
-    )
+    ).withPolicy(policy)
     repo.save(SessionEngine.evaluateState(session, now))
     Enforcement.start(context)
 }

@@ -73,6 +73,8 @@ class FocusAccessibilityService : AccessibilityService() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     @Volatile private var rules: ActiveRules = ActiveRules()
+    /** What a whitelist session leaves open; resolved when the service connects (it needs the package manager). */
+    private val essentials by lazy { Essentials(this) }
     // Per-package last-logged time, so one open-attempt's several foreground
     // events don't multi-count in Stats. Not persisted: fine to reset with the service.
     private val lastBlockLogged = mutableMapOf<String, Long>()
@@ -177,7 +179,7 @@ class FocusAccessibilityService : AccessibilityService() {
     /** Whole-app block: returns true when [pkg] was bounced. */
     private fun blockApp(pkg: String): Boolean {
         val now = System.currentTimeMillis()
-        val matching = rules.windowsBlocking(pkg, now)
+        val matching = rules.windowsBlocking(pkg, now, essentials::exempt)
         if (matching.isEmpty()) return false
         // The Commitment Shield is the more restrictive source when both match - see windowsBlocking.
         val bySource = matching.sortedByDescending { it.source == BlockSource.COMMITMENT_SHIELD }

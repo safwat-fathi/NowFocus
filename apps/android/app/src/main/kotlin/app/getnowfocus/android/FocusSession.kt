@@ -39,4 +39,18 @@ data class FocusSession(
     val origin: SessionOrigin = SessionOrigin.USER,
     // REMOTE only: the name of the device it was started on, for the "joined" note.
     val startedOn: String? = null,
+    // What [packages] means: a blocklist closes them, an allowlist closes everything else. Part of the snapshot.
+    val policyMode: PolicyMode = PolicyMode.BLOCKLIST,
+)
+
+/**
+ * The session running [policy]'s rules. The snapshot fields travel together here, so no start path (manual,
+ * schedule, Bedtime, a joined remote session) can take the apps and forget the mode that gives them meaning.
+ */
+fun FocusSession.withPolicy(policy: BlockPolicy) = copy(
+    policyId = policy.id,
+    domains = policy.domains.toSet(),
+    packages = policy.apps.map { it.packageName }.toSet(),
+    partial = policy.partial,
+    policyMode = policy.mode,
 )

@@ -16,11 +16,16 @@
     <!-- The ongoing "session in progress" notification (API 33+ runtime permission, asked on the setup screen). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Android 11+ package visibility: lets the policy editor list launcher apps. -->
+    <!-- Android 11+ package visibility: lets the policy editor list launcher apps, and whitelist mode tell which
+         package is the home launcher (it must never be closed). -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
         </intent>
     </queries>
 

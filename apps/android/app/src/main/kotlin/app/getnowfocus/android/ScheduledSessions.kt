@@ -36,7 +36,8 @@ private suspend fun startDueSchedule(context: Context, repo: SessionRepository, 
     // One session at a time, like Bedtime: a running one holds, and this is re-checked when it ends.
     val existing = repo.sessionFlow.first()
     if (existing != null && SessionEngine.isActive(SessionEngine.evaluateState(existing, now), now)) return
-    val policy = repo.policiesFlow.first().find { it.id == due.schedule.policyId } ?: return
+    // A whitelist with no app on this phone (it was built on another platform) has nothing to enforce here.
+    val policy = repo.policiesFlow.first().find { it.id == due.schedule.policyId }?.takeIf { it.enforcesHere } ?: return
 
     repo.noteScheduleRun(due.schedule.id, due.start)
     repo.save(SessionEngine.evaluateState(
@@ -47,12 +48,9 @@ private suspend fun startDueSchedule(context: Context, repo: SessionRepository, 
             endAt = due.end,
             status = FocusSessionStatus.SCHEDULED,
             createdAt = now,
-            domains = policy.domains.toSet(),
-            packages = policy.apps.map { it.packageName }.toSet(),
-            partial = policy.partial,
             enforcementMode = due.schedule.mode,
             origin = SessionOrigin.SCHEDULE,
-        ),
+        ).withPolicy(policy),
         now,
     ))
     Enforcement.start(context)

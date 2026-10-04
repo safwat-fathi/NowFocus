@@ -161,9 +161,11 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun startSession(policyId: String, durationMinutes: Int, mode: EnforcementMode = EnforcementMode.NORMAL) {
-        val policy = policies.value.find { it.id == policyId } ?: return
+    /** False when nothing started: no such profile, or a whitelist with no app on this phone (it would close everything). */
+    fun startSession(policyId: String, durationMinutes: Int, mode: EnforcementMode = EnforcementMode.NORMAL): Boolean {
+        val policy = policies.value.find { it.id == policyId }?.takeIf { it.enforcesHere } ?: return false
         startSessionOn(policy, durationMinutes, mode)
+        return true
     }
 
     /**
@@ -195,12 +197,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             endAt = now + durationMinutes * 60_000L,
             status = FocusSessionStatus.SCHEDULED,
             createdAt = now,
-            domains = policy.domains.toSet(),
-            packages = policy.apps.map { it.packageName }.toSet(),
-            partial = policy.partial,
             enforcementMode = mode,
             voiceNotePath = voiceNotePath,
-        )
+        ).withPolicy(policy)
         viewModelScope.launch {
             repository.save(SessionEngine.evaluateState(scheduled, now))
             Enforcement.start(getApplication())
@@ -250,8 +249,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun addPolicy(): String {
-        val policy = BlockPolicy(name = "New profile")
+    /** The mode is fixed here for good: an allowlist and a blocklist hold the same rows with opposite meaning. */
+    fun addPolicy(mode: PolicyMode = PolicyMode.BLOCKLIST): String {
+        val policy = BlockPolicy(name = "New profile", mode = mode)
         viewModelScope.launch { repository.updatePolicies { it + policy } }
         return policy.id
     }
@@ -292,12 +292,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             // session's enforcement snapshot so both services pick it up.
             viewModelScope.launch {
                 repository.updatePolicies { list -> list.map { if (it.id == policy.id) policy else it } }
-                val updatedSession = current!!.copy(
-                    domains = policy.domains.toSet(),
-                    packages = policy.apps.map { it.packageName }.toSet(),
-                    partial = policy.partial,
-                )
-                repository.save(updatedSession)
+                repository.save(current!!.withPolicy(policy))
             }
         } else {
             // No active session on this profile — plain save.
@@ -307,14 +302,22 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /**
-     * Returns `true` when the edit removes a domain or app that the stored
-     * version still has — i.e. it weakens enforcement.
+     * Returns `true` when the edit loosens a running session. For a blocklist that is removing a domain or app
+     * the stored version still has. For an allowlist the direction flips: the list is what stays open, so allowing
+     * one more app loosens it, narrowing is fine, and emptying it would leave nothing to enforce. Partial rules
+     * block inside an app in either mode. The mode itself never changes.
      */
     private fun weakensEnforcement(old: BlockPolicy, new: BlockPolicy): Boolean {
-        if (!new.domains.containsAll(old.domains)) return true
+        if (new.mode != old.mode) return true
         val oldPackages = old.apps.map { it.packageName }.toSet()
         val newPackages = new.apps.map { it.packageName }.toSet()
-        if (!newPackages.containsAll(oldPackages)) return true
+        if (old.mode == PolicyMode.ALLOWLIST) {
+            if (!oldPackages.containsAll(newPackages)) return true
+            if (oldPackages.isNotEmpty() && newPackages.isEmpty()) return true
+        } else {
+            if (!new.domains.containsAll(old.domains)) return true
+            if (!newPackages.containsAll(oldPackages)) return true
+        }
         return !new.partial.containsAll(old.partial)
     }
 

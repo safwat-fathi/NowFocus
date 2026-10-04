@@ -31,13 +31,24 @@ data class RuleWindow(
     val pausedUntil: Long = 0L,
     /** The session is a Bedtime wind-down, which the block screen names as such. */
     val bedtime: Boolean = false,
+    /** [packages] are the only apps left open and everything else is closed. Never set on the Shield. */
+    val allowlist: Boolean = false,
 ) {
     val reason: BlockReason
         get() = when {
             source == BlockSource.COMMITMENT_SHIELD -> BlockReason.COMMITMENT_SHIELD
             bedtime -> BlockReason.BEDTIME
+            allowlist -> BlockReason.ALLOWLIST_SESSION
             else -> BlockReason.FOCUS_SESSION
         }
+
+    /**
+     * Whether this window closes [pkg]. An allowlist with no app on this phone closes nothing: its apps may all
+     * belong to another platform, and closing everything would be the worst way to find that out. [exempt] is what
+     * an allowlist must never close (see [Essentials]); a blocklist ignores it.
+     */
+    fun closes(pkg: String, exempt: (String) -> Boolean): Boolean =
+        if (allowlist) packages.isNotEmpty() && pkg !in packages && !exempt(pkg) else pkg in packages
     fun paused(now: Long) = now >= pausedFrom && now < pausedUntil
     fun passed(pkg: String, now: Long) = (passes[pkg] ?: 0L) > now
     /** The moments after [now] when what this window blocks changes, so the services wake and re-check. */
@@ -55,8 +66,10 @@ data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
     private fun liveWindows(now: Long) = windows.filter { it.endAt > now }
     /** Live and not paused by a cheat day: what is actually blocking. */
     private fun blocking(now: Long) = liveWindows(now).filter { !it.paused(now) }
-    fun liveDomains(now: Long): Set<String> = blocking(now).flatMap { it.domains }.toSet()
-    fun livePackages(now: Long): Set<String> = blocking(now).flatMap { w -> w.packages.filter { !w.passed(it, now) } }.toSet()
+    // An allowlist never filters sites: its leftover domains must not be DNS-blocked, they are not what to close.
+    fun liveDomains(now: Long): Set<String> = blocking(now).filterNot { it.allowlist }.flatMap { it.domains }.toSet()
+    /** The apps blocklists close right now; an allowlist closes "everything else", which has no list. */
+    fun livePackages(now: Long): Set<String> = blocking(now).filterNot { it.allowlist }.flatMap { w -> w.packages.filter { !w.passed(it, now) } }.toSet()
     fun livePartial(now: Long): Set<PartialRule> = blocking(now).flatMap { it.partial }.toSet()
     fun nextExpiryAfter(now: Long): Long? = liveWindows(now).flatMap { it.changesAfter(now) }.minOrNull()
     fun hasLiveWindow(now: Long): Boolean = liveWindows(now).isNotEmpty()
@@ -67,11 +80,12 @@ data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
      * exists for it), so that's what the block screen must communicate, and
      * its endAt (not the session's, if any) is what "blocked until" means.
      */
-    fun windowsBlocking(pkg: String, now: Long): List<RuleWindow> = blocking(now).filter { pkg in it.packages && !it.passed(pkg, now) }
+    fun windowsBlocking(pkg: String, now: Long, exempt: (String) -> Boolean = { false }): List<RuleWindow> =
+        blocking(now).filter { it.closes(pkg, exempt) && !it.passed(pkg, now) }
 
     /** Why [host] is blocked: the Shield if it blocks it too (the stricter source), else the session; null if no window does. */
     fun reasonForDomain(host: String, now: Long): BlockReason? =
-        blocking(now).filter { DomainValidation.matches(host, it.domains) }
+        blocking(now).filter { !it.allowlist && DomainValidation.matches(host, it.domains) }
             .maxByOrNull { it.source == BlockSource.COMMITMENT_SHIELD }?.reason
 }
 
@@ -99,6 +113,7 @@ object Enforcement {
                             pausedFrom = cheat?.startAt ?: 0L,
                             pausedUntil = cheat?.endAt ?: 0L,
                             bedtime = it.sessionType == SessionType.BEDTIME_WINDDOWN,
+                            allowlist = it.policyMode == PolicyMode.ALLOWLIST,
                         ))
                     }
                 shield?.takeIf { it.endAt > now }
