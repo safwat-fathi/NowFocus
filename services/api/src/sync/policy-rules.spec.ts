@@ -60,36 +60,45 @@ describe('editing a policy while a session runs on it', () => {
 
 describe('editing an allowlist policy while a session runs on it', () => {
   // The rules are what stays open, so the direction flips: removing one narrows the session, adding one widens it.
+  const app = (platform: string, nativeIdentifier: string, over: Record<string, any> = {}) =>
+    ({ id: nativeIdentifier, platform, nativeIdentifier, enabled: true, ...over });
+  const chrome = app('android', 'com.android.chrome');
+  const dialer = app('android', 'com.android.dialer');
+  const code = app('windows', 'C:\\Apps\\Code.exe');
   const allow = (over: Record<string, any> = {}) => policy({
     mode: 'allowlist',
     domainRules: [{ id: 'd1', domain: 'github.com', includeSubdomains: true, enabled: true }],
-    applicationRules: [
-      { id: 'a1', platform: 'android', nativeIdentifier: 'com.android.chrome', enabled: true },
-      { id: 'a2', platform: 'windows', nativeIdentifier: 'C:\\Apps\\Code.exe', enabled: true },
-    ],
+    applicationRules: [chrome, dialer, code],
     ...over,
   });
 
-  it('allows removing or disabling an allowed app or site, renames, and unknown fields', () => {
-    const [chrome, code] = allow().applicationRules;
-    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome] }))).toBeNull();
-    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome, { ...code, enabled: false }] }))).toBeNull();
+  it('allows narrowing, renames and unknown fields', () => {
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome, code] }))).toBeNull();
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome, { ...dialer, enabled: false }, code] }))).toBeNull();
     expect(checkPolicyEdit(allow(), allow({ domainRules: [] }))).toBeNull();
     expect(checkPolicyEdit(allow(), allow({ name: 'Renamed', futureField: 1 }))).toBeNull();
     expect(checkPolicyEdit(allow(), allow())).toBeNull();
   });
 
+  it("rejects emptying a platform's allowed apps, since a device with none enforces nothing", () => {
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome, dialer] }))).toMatch(/windows/);
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [code] }))).toMatch(/android/);
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome, dialer, { ...code, enabled: false }] }))).toMatch(/windows/);
+    // a platform that never had an allowed app isn't owed one
+    const androidOnly = allow({ applicationRules: [chrome, dialer] });
+    expect(checkPolicyEdit(androidOnly, allow({ applicationRules: [chrome] }))).toBeNull();
+  });
+
   it('rejects allowing one more app or site', () => {
-    const more = { id: 'a3', platform: 'android', nativeIdentifier: 'com.instagram.android', enabled: true };
-    expect(checkPolicyEdit(allow(), allow({ applicationRules: [...allow().applicationRules, more] }))).toMatch(/com\.instagram\.android/);
+    const more = app('android', 'com.instagram.android');
+    expect(checkPolicyEdit(allow(), allow({ applicationRules: [chrome, dialer, code, more] }))).toMatch(/com\.instagram\.android/);
     const site = { id: 'd2', domain: 'reddit.com', enabled: true };
     expect(checkPolicyEdit(allow(), allow({ domainRules: [...allow().domainRules, site] }))).toMatch(/reddit\.com/);
   });
 
   it('rejects re-enabling an app that was switched off, or widening a site to its subdomains', () => {
-    const [chrome, code] = allow().applicationRules;
-    const off = allow({ applicationRules: [chrome, { ...code, enabled: false }] });
-    expect(checkPolicyEdit(off, allow())).toMatch(/Code\.exe/);
+    const off = allow({ applicationRules: [chrome, { ...dialer, enabled: false }, code] });
+    expect(checkPolicyEdit(off, allow())).toMatch(/dialer/);
     const narrow = allow({ domainRules: [{ id: 'd1', domain: 'github.com', includeSubdomains: false, enabled: true }] });
     expect(checkPolicyEdit(narrow, allow())).toMatch(/subdomain/);
   });

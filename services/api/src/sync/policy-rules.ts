@@ -20,6 +20,11 @@ function checkAllowlistEdit(prev: Data, next: Data): string | null {
   for (const r of live(next.applicationRules)) {
     if (!prevApps.has(appKey(r))) return `"${r.nativeIdentifier}" (${r.platform}) cannot be allowed while a session is running on this policy`;
   }
+  // A device with no allowed app on its platform enforces nothing, so emptying a platform would end the session there.
+  const nextPlatforms = new Set(live(next.applicationRules).map((r) => r.platform));
+  for (const p of new Set(live(prev.applicationRules).map((r) => r.platform))) {
+    if (!nextPlatforms.has(p)) return `the last allowed ${p} app cannot be removed while a session is running on this policy`;
+  }
   return null;
 }
 
