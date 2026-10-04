@@ -42,6 +42,10 @@ class FocusAccessibilityService : AccessibilityService() {
             private set
 
         private const val CHECK_DELAY_MS = 150L
+        /** SystemUI starts the launcher 20-60 ms after GLOBAL_ACTION_HOME; the block screen must start after that. */
+        private const val HOME_SETTLE_MS = 300L
+        /** One open fires several window events (the second came 480 ms after the first); only the first bounces. */
+        private const val BOUNCE_DEDUPE_MS = 1_500L
         private const val MAX_NODES = 400
         private const val MAX_DEPTH = 30
         private const val SYSTEM_UI = "com.android.systemui"
@@ -72,6 +76,8 @@ class FocusAccessibilityService : AccessibilityService() {
     // Per-package last-logged time, so one open-attempt's several foreground
     // events don't multi-count in Stats. Not persisted: fine to reset with the service.
     private val lastBlockLogged = mutableMapOf<String, Long>()
+    // Separate from lastBlockLogged: partial and site blocks write there too, and must not swallow a bounce.
+    private val lastBounce = mutableMapOf<String, Long>()
     private val historyDao by lazy { HistoryDatabase.get(this).dao() }
 
     // Device-local settings the service reads alongside the block rules (see limitApp and frictionApp).
@@ -178,10 +184,8 @@ class FocusAccessibilityService : AccessibilityService() {
         val blocking = bySource.first()
 
         logBlock(pkg, now)
-
-        // Home first, so Back from the block screen can't land in the blocked app.
-        performGlobalAction(GLOBAL_ACTION_HOME)
-        startActivity(
+        bounce(
+            pkg,
             Intent(this, BlockedActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 .putExtra(BlockedActivity.EXTRA_END_AT, blocking.endAt)
@@ -191,6 +195,24 @@ class FocusAccessibilityService : AccessibilityService() {
                 .putExtra(BlockedActivity.EXTRA_PASSES_LEFT, blocking.passesLeft)
         )
         return true
+    }
+
+    /**
+     * Home first, so Back from the block screen can't land in the blocked app, then the screen.
+     * GLOBAL_ACTION_HOME is only a request to SystemUI: started at once, the screen ends up under the
+     * launcher and is destroyed unseen, so it starts after a short wait. A repeat event of the same open
+     * is dropped, or its second HOME would bury the screen again.
+     * ponytail: fixed wait; if a slow device needs more, start on the launcher's own window event instead.
+     */
+    private fun bounce(pkg: String, screen: Intent) {
+        val now = System.currentTimeMillis()
+        if (!HistoryStats.shouldLogBlockEvent(now, lastBounce[pkg], BOUNCE_DEDUPE_MS)) return
+        lastBounce[pkg] = now
+        performGlobalAction(GLOBAL_ACTION_HOME)
+        scope.launch {
+            delay(HOME_SETTLE_MS)
+            startActivity(screen)
+        }
     }
 
     /**
@@ -211,8 +233,8 @@ class FocusAccessibilityService : AccessibilityService() {
             val passUntil = LimitPasses.activeUntil(limitPasses, pkg, now, day)
             if (passUntil > now) { recheckLimitAfter(pkg, passUntil - now); return false }
             logBlock(pkg, now)
-            performGlobalAction(GLOBAL_ACTION_HOME)
-            startActivity(
+            bounce(
+                pkg,
                 Intent(this, BlockedActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     .putExtra(BlockedActivity.EXTRA_END_AT, UsageMath.nextMidnight(now, java.time.ZoneId.systemDefault()))
