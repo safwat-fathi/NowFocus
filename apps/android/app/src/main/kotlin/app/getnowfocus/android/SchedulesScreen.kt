@@ -62,6 +62,7 @@ fun SchedulesScreen(
     }
     BackHandler(onBack = onBack)
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
+    val locale = LocalContext.current.appLocale()
     val defaultName = stringResource(R.string.sched_default_name)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
@@ -77,7 +78,7 @@ fun SchedulesScreen(
                     Text(s.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
                     Text(
                         stringResource(
-                            R.string.sched_row, Schedules.daysLabel(s.days).text(), formatClock(s.startMinute, is24Hour), formatClock(s.endMinute, is24Hour),
+                            R.string.sched_row, Schedules.daysLabel(s.days).text(), formatClock(s.startMinute, is24Hour, locale), formatClock(s.endMinute, is24Hour, locale),
                             policies.find { it.id == s.policyId }?.name ?: stringResource(R.string.sched_no_profile), stringResource(s.mode.labelRes()),
                         ),
                         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),

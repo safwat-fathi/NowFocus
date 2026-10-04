@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notif_blocked_channel">المواقع المحجوبة</string>
+    <string name="notif_blocked_title">حجب NowFocus موقعًا</string>
+    <string name="notif_session_channel">جلسة التركيز</string>
+    <string name="notif_session_title">جلسة تركيز قيد التقدم</string>
+    <string name="notif_session_text">لن تُحمَّل المواقع المحجوبة حتى ينتهي المؤقت.</string>
+    <string name="overlay_recommendations_off">التوصيات متوقفة أثناء تركيزك</string>
+</resources>

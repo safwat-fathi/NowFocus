@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.platform.LocalContext
 
 /**
  * Modernist design tokens, ported 1:1 from the Claude Design system's
@@ -94,19 +96,25 @@ val ArchivoRegular = FontFamily(archivoWeight(FontWeight.Normal, 400))
 val ArchivoSemiBold = FontFamily(archivoWeight(FontWeight.SemiBold, 600))
 val ArchivoBlack = FontFamily(archivoWeight(FontWeight.ExtraBold, 800))
 
+/** Arabic letters join, so any letter-spacing pulls the word apart: it is dropped when the app speaks Arabic. */
+@Composable
+private fun spacing(sp: TextUnit): TextUnit = if (LocalContext.current.appLocale().language == "ar") 0.sp else sp
+
+@Composable
 fun kickerStyle(color: Color = NowFocusColors.accent700) = TextStyle(
     fontFamily = ArchivoSemiBold,
     fontWeight = FontWeight.SemiBold,
     fontSize = 11.sp,
-    letterSpacing = 1.1.sp,
+    letterSpacing = spacing(1.1.sp),
     color = color,
 )
 
-fun headingStyle(size: androidx.compose.ui.unit.TextUnit, color: Color = NowFocusColors.text) = TextStyle(
+@Composable
+fun headingStyle(size: TextUnit, color: Color = NowFocusColors.text) = TextStyle(
     fontFamily = ArchivoBlack,
     fontWeight = FontWeight.ExtraBold,
     fontSize = size,
-    letterSpacing = (-0.02).sp * (size.value / 16f),
+    letterSpacing = spacing((-0.02).sp * (size.value / 16f)),
     color = color,
 )
 
@@ -251,7 +259,7 @@ fun TagPill(text: String, modifier: Modifier = Modifier, accent: Boolean = true)
             style = TextStyle(
                 fontFamily = ArchivoRegular,
                 fontSize = 11.sp,
-                letterSpacing = 0.2.sp,
+                letterSpacing = spacing(0.2.sp),
                 color = if (accent) NowFocusColors.accent800 else NowFocusColors.neutral800,
             ),
         )

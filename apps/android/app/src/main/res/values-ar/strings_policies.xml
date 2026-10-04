@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rules_title">القواعد</string>
+    <string name="policies_kicker">ملفات التركيز</string>
+    <string name="policies_new">+ ملف جديد</string>
+    <string name="policies_remove_q">إزالة %1$s؟</string>
+    <string name="policies_remove_body">سيُحذف هذا الملف.</string>
+    <string name="policies_remove_bedtime">سيُحذف هذا الملف. تستخدمه تهدئة وقت النوم وستتوقف عن الحجب حتى تختار ملفًا آخر.</string>
+    <string name="protections_kicker">الحمايات</string>
+    <string name="not_set_up">غير مُعدّ</string>
+    <string name="shield_title">درع الالتزام</string>
+    <string name="shield_summary">%1$s · مقفل 14 يومًا</string>
+    <string name="bedtime_title">تهدئة وقت النوم</string>
+    <string name="bedtime_every_night">كل ليلة</string>
+    <plurals name="people_shown">
+        <item quantity="zero">لا أحد يظهر في شاشة الحجب</item>
+        <item quantity="one">واحد يظهر في شاشة الحجب</item>
+        <item quantity="two">اثنان يظهران في شاشة الحجب</item>
+        <item quantity="few">%1$d يظهرون في شاشة الحجب</item>
+        <item quantity="many">%1$d يظهرون في شاشة الحجب</item>
+        <item quantity="other">%1$d يظهرون في شاشة الحجب</item>
+    </plurals>
+    <plurals name="goals_count">
+        <item quantity="zero">لا أهداف تذكّرك بالسبب</item>
+        <item quantity="one">هدف واحد يذكّرك بالسبب</item>
+        <item quantity="two">هدفان يذكّرانك بالسبب</item>
+        <item quantity="few">%1$d أهداف تذكّرك بالسبب</item>
+        <item quantity="many">%1$d هدفًا يذكّرك بالسبب</item>
+        <item quantity="other">%1$d هدف يذكّرك بالسبب</item>
+    </plurals>
+    <plurals name="n_sites">
+        <item quantity="zero">لا مواقع</item>
+        <item quantity="one">موقع واحد</item>
+        <item quantity="two">موقعان</item>
+        <item quantity="few">%1$d مواقع</item>
+        <item quantity="many">%1$d موقعًا</item>
+        <item quantity="other">%1$d موقع</item>
+    </plurals>
+    <plurals name="n_limits">
+        <item quantity="zero">لا حدود</item>
+        <item quantity="one">حد واحد</item>
+        <item quantity="two">حدّان</item>
+        <item quantity="few">%1$d حدود</item>
+        <item quantity="many">%1$d حدًّا</item>
+        <item quantity="other">%1$d حد</item>
+    </plurals>
+    <plurals name="n_apps">
+        <item quantity="zero">لا تطبيقات</item>
+        <item quantity="one">تطبيق واحد</item>
+        <item quantity="two">تطبيقان</item>
+        <item quantity="few">%1$d تطبيقات</item>
+        <item quantity="many">%1$d تطبيقًا</item>
+        <item quantity="other">%1$d تطبيق</item>
+    </plurals>
+    <string name="sites_apps">%1$s · %2$s</string>
+
+    <string name="policy_cant_remove">لا يمكنك إزالة الحجب أثناء جلسة تركيز تعمل على هذا الملف.</string>
+    <string name="policy_name">اسم الملف</string>
+    <string name="policy_websites">المواقع المحجوبة</string>
+    <string name="policy_subdomains">+ النطاقات الفرعية</string>
+    <string name="policy_add_site_hint">أضف موقعًا، مثل youtube.com</string>
+    <string name="policy_apps">التطبيقات المحجوبة</string>
+    <string name="policy_add_app">+ إضافة تطبيق…</string>
+    <string name="picker_title">اختر تطبيقًا لحجبه</string>
+    <string name="picker_search">ابحث في التطبيقات</string>
+    <string name="picker_none">لا توجد تطبيقات مطابقة</string>
+
+    <string name="partial_kicker">الحجب الجزئي · تجريبي</string>
+    <string name="partial_need_a11y">فعّل NowFocus في إعدادات إمكانية الوصول، وإلا فلن تُطبَّق هذه القواعد.</string>
+    <string name="partial_yt_shorts">YouTube Shorts</string>
+    <string name="partial_yt_shorts_sub">يخرج من مشغّل Shorts وعلامة تبويبه</string>
+    <string name="partial_yt_home">الصفحة الرئيسية في YouTube</string>
+    <string name="partial_yt_home_sub">يخفي الفيديوهات المقترحة في علامة تبويب الرئيسية</string>
+    <string name="partial_yt_related">التالي / ذات الصلة في YouTube</string>
+    <string name="partial_yt_related_sub">يخفي القائمة أسفل الفيديو الجاري</string>
+    <string name="partial_fb_reels">Facebook Reels</string>
+    <string name="partial_fb_reels_sub">يخرج من علامة تبويب Reels ومشغّلها</string>
+    <string name="partial_ig_reels">Instagram Reels والاستكشاف</string>
+    <string name="partial_ig_reels_sub">يخرج من علامة تبويب Reels ومشغّلها وعلامة الاستكشاف</string>
+    <string name="partial_x_for_you">خلاصة «لك» في X</string>
+    <string name="partial_x_for_you_sub">يخفي الخط الزمني «لك»؛ ويبقى «المتابَعون» مفتوحًا</string>
+</resources>

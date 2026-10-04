@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="back">‹ رجوع</string>
+    <string name="back_devices">‹ الأجهزة</string>
+    <string name="back_rules">‹ القواعد</string>
+    <string name="back_to_focus">‹ العودة إلى التركيز</string>
+    <string name="cancel">إلغاء</string>
+    <string name="remove">إزالة</string>
+    <string name="delete">حذف</string>
+    <string name="deleting">جارٍ الحذف…</string>
+    <string name="loading">جارٍ التحميل…</string>
+    <string name="please_wait">يرجى الانتظار…</string>
+    <string name="next">التالي</string>
+    <string name="save">حفظ</string>
+    <string name="add">إضافة</string>
+    <string name="name">الاسم</string>
+    <string name="on">مفعّل</string>
+    <string name="off">متوقف</string>
+    <string name="mode_normal">عادي</string>
+    <string name="mode_strict">صارم</string>
+    <string name="mode_locked">مقفل</string>
+</resources>

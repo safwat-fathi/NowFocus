@@ -68,7 +68,7 @@ object Schedules {
         return Occurrence(s, start.toInstant().toEpochMilli(), end.toInstant().toEpochMilli())
     }
 
-    private fun today(now: Long, zone: ZoneId) = LocalDate.ofInstant(Instant.ofEpochMilli(now), zone)
+    private fun today(now: Long, zone: ZoneId) = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()   // LocalDate.ofInstant needs API 34
 
     /** The enabled occurrence running at [now] (today's or one that crossed midnight), the longest-lasting if several. */
     fun current(schedules: List<Schedule>, now: Long, zone: ZoneId): Occurrence? {

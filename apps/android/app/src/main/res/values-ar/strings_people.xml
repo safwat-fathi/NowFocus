@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="people_title">الأشخاص المهمّون</string>
+    <string name="people_intro">حين يُفتح تطبيق محجوب، نوجّهك إلى من تحدثت معه منذ أطول وقت. لا شيء يغادر هذا الهاتف.</string>
+    <string name="people_last_talked">آخر حديث</string>
+    <string name="people_this_week">هذا الأسبوع</string>
+    <string name="people_two_weeks">نحو أسبوعين</string>
+    <string name="people_month">نحو شهر</string>
+    <string name="people_longer">أطول</string>
+    <string name="people_cant_remember">لا أتذكر</string>
+    <string name="people_add">+ إضافة شخص</string>
+    <string name="people_pick_failed">تعذّرت قراءة جهة الاتصال. اختر جهة لها رقم هاتف.</string>
+</resources>

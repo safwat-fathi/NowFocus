@@ -25,7 +25,7 @@ object CheatDays {
     const val GAP_DAYS = 7L
 
     private fun dayStart(date: LocalDate, zone: ZoneId) = date.atStartOfDay(zone).toInstant().toEpochMilli()
-    private fun dateOf(millis: Long, zone: ZoneId) = LocalDate.ofInstant(Instant.ofEpochMilli(millis), zone)
+    private fun dateOf(millis: Long, zone: ZoneId) = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()   // LocalDate.ofInstant needs API 34
 
     /** [existing] is the latest cheat day, used or scheduled; a new one must be a week clear of it. */
     fun canSchedule(now: Long, dayStart: Long, existing: CheatDay?, zone: ZoneId): Boolean {

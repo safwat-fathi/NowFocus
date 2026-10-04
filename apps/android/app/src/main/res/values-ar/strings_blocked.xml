@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="blocked_wait">هذا يمكن أن ينتظر.</string>
+    <string name="blocked_tries">المحاولات اليوم</string>
+    <string name="blocked_remember">تذكّر</string>
+    <string name="blocked_back">العودة إلى التركيز</string>
+    <string name="blocked_need_it">أحتاجه فعلًا</string>
+    <string name="blocked_reach_out">أو تواصل مع شخص بدلًا من ذلك</string>
+    <string name="blocked_since">لم تتحدث مع %1$s منذ نحو %2$s.</string>
+    <string name="blocked_reach_instead">تواصل مع %1$s بدلًا من ذلك.</string>
+    <string name="blocked_call">اتصال</string>
+    <string name="blocked_text">رسالة</string>
+    <string name="blocked_it">التطبيق</string>
+    <string name="blocked_pass">افتح %1$s لمدة %2$d د (المتبقي %3$d)</string>
+    <plurals name="blocked_pass_note">
+        <item quantity="zero">سلسلتك البالغة %1$d يوم تضيف %2$d د.</item>
+        <item quantity="one">سلسلتك البالغة يومًا واحدًا تضيف %2$d د.</item>
+        <item quantity="two">سلسلتك البالغة يومين تضيف %2$d د.</item>
+        <item quantity="few">سلسلتك البالغة %1$d أيام تضيف %2$d د.</item>
+        <item quantity="many">سلسلتك البالغة %1$d يومًا تضيف %2$d د.</item>
+        <item quantity="other">سلسلتك البالغة %1$d يوم تضيف %2$d د.</item>
+    </plurals>
+</resources>

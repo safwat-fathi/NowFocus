@@ -1,6 +1,7 @@
 package app.getnowfocus.android
 
 import android.content.Intent
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -46,6 +47,8 @@ val FRICTION_INTENTS = listOf(R.string.friction_specific, R.string.friction_bore
 
 class FrictionActivity : ComponentActivity() {
     companion object { const val EXTRA_PACKAGE = "package" }
+
+    override fun attachBaseContext(newBase: Context) = super.attachBaseContext(newBase.localized())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="limits_title">الحدود اليومية</string>
+    <string name="limits_intro">«30 دقيقة من Instagram في اليوم.» بعد بلوغه يُحجب التطبيق أو الموقع حتى منتصف الليل. يُحسب وقت المواقع من شريط العنوان في متصفحك. خفض الحد أو إزالته يسري فورًا ما لم يكن قد استُنفد؛ أما رفعه فيسري من منتصف الليل فقط.</string>
+    <string name="limits_need_usage">تحتاج الحدود إلى إذن الوصول إلى الاستخدام لمعرفة مدة فتح التطبيق. حتى تسمح به لن تُطبَّق.</string>
+    <string name="limits_allow_usage">السماح بالوصول إلى الاستخدام</string>
+    <string name="limits_used_secs">%1$d ث</string>
+    <string name="limits_none">بلا حد</string>
+    <string name="limits_used_of">%1$s من %2$d د اليوم</string>
+    <string name="limits_removed_midnight">" · يُزال عند منتصف الليل"</string>
+    <string name="limits_from_midnight">" · %1$d د من منتصف الليل"</string>
+    <string name="limits_used_up">استُنفد</string>
+    <string name="limits_add">+ إضافة حد…</string>
+    <string name="limits_add_site">+ إضافة حد لموقع…</string>
+    <string name="limits_site_need_a11y">تحتاج حدود المواقع إلى تشغيل خدمة إمكانية الوصول الخاصة بـ NowFocus. حتى ذلك الحين لا تُحتسب.</string>
+    <string name="limits_website">الموقع</string>
+    <string name="limits_site_hint">مثال: youtube.com</string>
+    <string name="limits_minutes_per_day">دقائق في اليوم</string>
+    <string name="limits_used_up_note">استُنفد اليوم: رفعه أو إزالته يسري من منتصف الليل. التصريح في شاشة الحجب هو السبيل إلى وقت إضافي اليوم.</string>
+    <string name="limits_remove">إزالة الحد</string>
+    <string name="friction_apps_title">احتكاك الفتح</string>
+    <string name="friction_apps_intro">افتح أحد هذه التطبيقات فيطلب منك NowFocus أولًا أن تتنفس عشر ثوانٍ وتقول لماذا جئت. ثم يُفتح التطبيق ويبقى مفتوحًا عشر دقائق. يعمل في أي وقت، داخل الجلسة أو خارجها.</string>
+    <string name="friction_apps_add">+ إضافة تطبيق…</string>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="cheat_title">يوم استراحة</string>
+    <string name="cheat_intro">يوم كامل يتوقف فيه الحجب: الجلسات، ووقت النوم، والجداول، والحدود. يبقى درع الالتزام قيد التشغيل دائمًا.</string>
+    <string name="cheat_rule">تحدده قبل 24 ساعة على الأقل، ولك يوم واحد في الأسبوع، فيكون خطة لا اندفاعًا.</string>
+    <string name="cheat_on_now">مفعّل الآن</string>
+    <string name="cheat_paused_until">الحجب متوقف حتى %1$s.</string>
+    <string name="cheat_end_early">إنهاؤه مبكرًا</string>
+    <string name="cheat_set_for">محدد في %1$s</string>
+    <string name="cheat_starts_at">يبدأ في %1$s. إلغاؤه يعيد إليك أسبوعك.</string>
+    <string name="cheat_cancel">إلغاؤه</string>
+    <string name="cheat_pick">اختر يومًا</string>
+    <string name="cheat_confirm_title">هل تجعل %1$s يوم استراحتك؟</string>
+    <string name="cheat_confirm_body">يتوقف الحجب من منتصف الليل حتى منتصف الليل التالي. يمكنك إلغاؤه قبل ذلك.</string>
+    <string name="cheat_confirm_yes">نعم، خطّط له</string>
+    <string name="cheat_row_paused">الحجب متوقف حتى منتصف الليل</string>
+    <string name="cheat_row_planned">مخطَّط</string>
+    <string name="cheat_row_idle">يوم استراحة مخطَّط من الحجب</string>
+</resources>

@@ -1,6 +1,7 @@
 package app.getnowfocus.android
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.VpnService
@@ -77,15 +78,21 @@ class MainActivity : FragmentActivity() {   // FragmentActivity: BiometricPrompt
     companion object {
         const val EXTRA_ROUTE = "route"
         const val ROUTE_UNLOCK = "unlock"
+        /** Set just before recreate() when the language changes, so the user lands back on Settings. */
+        const val ROUTE_SETTINGS = "settings"
     }
+
+    override fun attachBaseContext(newBase: Context) = super.attachBaseContext(newBase.localized())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val startOnUnlock = intent.getStringExtra(EXTRA_ROUTE) == ROUTE_UNLOCK
+        val startOnSettings = intent.getStringExtra(EXTRA_ROUTE) == ROUTE_SETTINGS
+        if (startOnSettings) intent.removeExtra(EXTRA_ROUTE)   // once: a later rotation should not come back here
         setContent {
             NowFocusTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = NowFocusColors.bg) {
-                    App(viewModel(), startOnUnlock = startOnUnlock)
+                    App(viewModel(), startOnUnlock = startOnUnlock, startOnSettings = startOnSettings)
                 }
             }
         }
@@ -111,6 +118,7 @@ private sealed interface Screen {
     data object CheatDay : Screen
     data object Limits : Screen
     data object Friction : Screen
+    data object Settings : Screen
     data object About : Screen
 }
 
@@ -123,9 +131,9 @@ private val DURATIONS = listOf(
 private const val UNLOCK_WAIT_MS = 30_000L
 
 @Composable
-private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
+private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, startOnSettings: Boolean = false) {
     val context = LocalContext.current
-    var screen by remember { mutableStateOf<Screen>(if (startOnUnlock) Screen.Unlock else Screen.Home) }
+    var screen by remember { mutableStateOf<Screen>(if (startOnUnlock) Screen.Unlock else if (startOnSettings) Screen.Settings else Screen.Home) }
     // Commitment and Bedtime open from both Home and Rules; Back returns to whichever opened them.
     var backTo by remember { mutableStateOf<Screen>(Screen.Home) }
     val policies by viewModel.policies.collectAsStateWithLifecycle()
@@ -210,7 +218,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
     }
 
     val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy ||
-        screen is Screen.Stats || screen is Screen.Devices || screen is Screen.Active
+        screen is Screen.Stats || screen is Screen.Devices || screen is Screen.Active || screen is Screen.Settings
 
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
@@ -294,11 +302,6 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                                 },
                                 tag = if (cheat?.isActive(now) == true) stringResource(R.string.on) else null,
                                 onClick = { screen = Screen.CheatDay },
-                            ),
-                            ProtectionEntry(
-                                stringResource(R.string.about_title),
-                                stringResource(R.string.about_row, BuildConfig.VERSION_NAME),
-                                onClick = { screen = Screen.About },
                             ),
                         ),
                     )
@@ -399,7 +402,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     onCancel = viewModel::cancelCheatDay,
                     onBack = { screen = Screen.Policies },
                 )
-                Screen.About -> AboutScreen(onBack = { screen = Screen.Policies })
+                Screen.Settings -> SettingsScreen(onOpenAbout = { screen = Screen.About })
+                Screen.About -> AboutScreen(onBack = { screen = Screen.Settings })
             }
         }
         if (tabsVisible) {
@@ -408,6 +412,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                 onRules = { screen = Screen.Policies },
                 onDevices = { screen = Screen.Devices },
                 onStats = { screen = Screen.Stats },
+                onSettings = { screen = Screen.Settings },
                 selected = screen,
             )
         }
@@ -415,16 +420,18 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
 }
 
 @Composable
-private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onDevices: () -> Unit, onStats: () -> Unit, selected: Screen) {
+private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onDevices: () -> Unit, onStats: () -> Unit, onSettings: () -> Unit, selected: Screen) {
     val rulesSelected = selected is Screen.Policies || selected is Screen.EditPolicy
     val devicesSelected = selected is Screen.Devices || selected is Screen.Account
     val statsSelected = selected is Screen.Stats
+    val settingsSelected = selected is Screen.Settings
     SectionRule(thick = true)
     Row(Modifier.fillMaxWidth().background(NowFocusColors.bg)) {
-        TabItem(stringResource(R.string.tab_focus), selected = !rulesSelected && !devicesSelected && !statsSelected, modifier = Modifier.weight(1f), onClick = onFocus)
+        TabItem(stringResource(R.string.tab_focus), selected = !rulesSelected && !devicesSelected && !statsSelected && !settingsSelected, modifier = Modifier.weight(1f), onClick = onFocus)
         TabItem(stringResource(R.string.rules_title), selected = rulesSelected, modifier = Modifier.weight(1f), onClick = onRules)
         TabItem(stringResource(R.string.devices_title), selected = devicesSelected, modifier = Modifier.weight(1f), onClick = onDevices)
         TabItem(stringResource(R.string.stats_title), selected = statsSelected, modifier = Modifier.weight(1f), onClick = onStats)
+        TabItem(stringResource(R.string.settings_title), selected = settingsSelected, modifier = Modifier.weight(1f), onClick = onSettings)
     }
 }
 
@@ -466,8 +473,9 @@ private fun HomeScreen(
     onOpenCommitment: () -> Unit,
     onOpenBedtime: () -> Unit,
 ) {
-    val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d")) }
     val context = LocalContext.current
+    val locale = context.appLocale()
+    val today = remember(locale) { LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM d", locale)) }
     val is24Hour = DateFormat.is24HourFormat(context)
     // Today's numbers, re-read when the user returns or a session starts/ends.
     var todayRows by remember { mutableStateOf<List<SessionHistoryRow>>(emptyList()) }
@@ -542,7 +550,7 @@ private fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(stringResource(R.string.bedtime_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
-                    TagPill(stringResource(R.string.home_tonight, formatClock(bedtime.windDownMinute, is24Hour)), accent = false)
+                    TagPill(stringResource(R.string.home_tonight, formatClock(bedtime.windDownMinute, is24Hour, locale)), accent = false)
                 }
                 SectionRule()
             }
@@ -899,6 +907,7 @@ private fun UnlockScreen(
 private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
     val context = LocalContext.current
     val zone = remember { ZoneId.systemDefault() }
+    val locale = context.appLocale()
     val today = remember { LocalDate.now(zone) }
     val monday = remember { today.with(DayOfWeek.MONDAY) }
     val weekFrom = remember { monday.atStartOfDay(zone).toInstant().toEpochMilli() }
@@ -932,7 +941,7 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.stats_this_week), style = headingStyle(28.sp), modifier = Modifier.weight(1f))
             Text(
-                "${monday.format(DateTimeFormatter.ofPattern("MMM d"))} – ${monday.plusDays(6).format(DateTimeFormatter.ofPattern("d"))}",
+                "${monday.format(DateTimeFormatter.ofPattern("MMM d", locale))} – ${monday.plusDays(6).format(DateTimeFormatter.ofPattern("d", locale))}",
                 style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
             )
         }
@@ -1010,7 +1019,7 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
             // "tried to open a blocked app", not "reached for your phone": attempts are only logged while a session or shield is on.
             Text(
                 pluralStringResource(
-                    R.plurals.stats_urge, urge.count, urge.count, hourLabel(urge.hour), hourLabel(urge.hour + 1), appLabelFor(context, urge.topPackage), URGE_WINDOW_DAYS,
+                    R.plurals.stats_urge, urge.count, urge.count, hourLabel(locale, urge.hour), hourLabel(locale, urge.hour + 1), appLabelFor(context, urge.topPackage), URGE_WINDOW_DAYS,
                 ),
                 style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp),
             )
@@ -1031,15 +1040,15 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 listOf(0, 6, 12, 18).forEach { h ->
-                    Text(hourLabel(h), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 11.sp, color = NowFocusColors.neutral700))
+                    Text(hourLabel(locale, h), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 11.sp, color = NowFocusColors.neutral700))
                 }
             }
             // Each app's own busiest hour, with a way to act on it.
             HistoryStats.appUrges(urgeEvents, zone).forEach { u ->
                 val label = appLabelFor(context, u.packageName)
                 Spacer(Modifier.height(NowFocusSpace.s3))
-                Text(stringResource(R.string.stats_urge_app, label, hourLabel(u.hour), u.hourCount, u.total), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp))
-                GhostButton(stringResource(R.string.stats_block_at, label, hourLabel(u.hour))) { onScheduleBlock(AppRule(u.packageName, label), u.hour) }
+                Text(stringResource(R.string.stats_urge_app, label, hourLabel(locale, u.hour), u.hourCount, u.total), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp))
+                GhostButton(stringResource(R.string.stats_block_at, label, hourLabel(locale, u.hour))) { onScheduleBlock(AppRule(u.packageName, label), u.hour) }
             }
         }
         Spacer(Modifier.height(NowFocusSpace.s3))
@@ -1062,7 +1071,7 @@ private fun StatCell(label: String, value: String, modifier: Modifier = Modifier
 private const val URGE_WINDOW_DAYS = 28
 
 /** 0-24 -> "12 AM" ... "3 PM"; 24 wraps to midnight so an hour's closing edge reads right. */
-private fun hourLabel(hour: Int): String = LocalTime.of(hour % 24, 0).format(DateTimeFormatter.ofPattern("h a"))
+private fun hourLabel(locale: java.util.Locale, hour: Int): String = LocalTime.of(hour % 24, 0).format(DateTimeFormatter.ofPattern("h a", locale))
 
 private fun appLabelFor(context: android.content.Context, packageName: String): String = try {
     val pm = context.packageManager
@@ -1328,7 +1337,7 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
 internal fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier, onChange: (Int) -> Unit) {
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
     var editing by remember { mutableStateOf(false) }
-    val clock = formatClock(minutes, is24Hour)
+    val clock = formatClock(minutes, is24Hour, LocalContext.current.appLocale())
     Column(modifier.clickable { editing = true }.padding(vertical = NowFocusSpace.s2)) {
         Text(label, style = kickerStyle(NowFocusColors.neutral700))
         // AM/PM rides small beside the digits so three tiles still fit one row on a narrow phone.

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="about_title">حول التطبيق</string>
+    <string name="about_version">الإصدار %1$s</string>
+    <string name="about_tagline">يحجب التطبيقات التي تشتّتك، ويبقيها محجوبة حتى تنتهي.</string>
+    <string name="about_website">الموقع</string>
+    <string name="about_privacy">سياسة الخصوصية</string>
+    <string name="about_terms">الشروط</string>
+    <string name="about_source">الشيفرة المصدرية</string>
+    <string name="about_support">تواصل مع الدعم</string>
+    <string name="about_row">الإصدار %1$s، الخصوصية، الشروط، الدعم</string>
+</resources>

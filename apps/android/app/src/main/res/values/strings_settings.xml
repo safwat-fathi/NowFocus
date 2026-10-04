@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_language">LANGUAGE</string>
+    <string name="lang_system">System default</string>
+    <!-- Each language names itself in its own script, so it can be found from the wrong language. -->
+    <string name="lang_english" translatable="false">English</string>
+    <string name="lang_arabic" translatable="false">العربية</string>
+</resources>

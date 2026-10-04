@@ -24,11 +24,14 @@ sealed interface UiText {
 
 fun uiText(@StringRes id: Int, vararg args: Any): UiText = UiText.Res(id, args.toList())
 
-/** An arg that is itself a [UiText] is resolved first, so "End this session now? %1$s left." can take a duration. */
+/**
+ * [context] must already speak the app language: an activity (wrapped in attachBaseContext) or `context.localized()`.
+ * An arg that is itself a [UiText] is resolved first, so "End this session now? %1$s left." can take a duration.
+ */
 fun UiText.resolve(context: Context): String = when (this) {
-    is UiText.Res -> context.localized().getString(id, *resolveArgs(args, context))
-    is UiText.Plural -> context.localized().resources.getQuantityString(id, count, *resolveArgs(args, context))
-    is UiText.Joined -> parts.joinToString(context.localized().getString(separator)) { it.resolve(context) }
+    is UiText.Res -> context.getString(id, *resolveArgs(args, context))
+    is UiText.Plural -> context.resources.getQuantityString(id, count, *resolveArgs(args, context))
+    is UiText.Joined -> parts.joinToString(context.getString(separator)) { it.resolve(context) }
     is UiText.Raw -> text
 }
 

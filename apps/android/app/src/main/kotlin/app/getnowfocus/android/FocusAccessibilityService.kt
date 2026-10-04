@@ -436,7 +436,8 @@ class FocusAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.OPAQUE,
-        ).apply { gravity = Gravity.TOP or Gravity.START; x = m.left; y = m.top }
+        // LEFT, not START: x is an absolute screen coordinate, and START would put it on the right edge in Arabic.
+        ).apply { @Suppress("RtlHardcoded") gravity = Gravity.TOP or Gravity.LEFT; x = m.left; y = m.top }
         try {
             val existing = overlay
             if (existing != null) {

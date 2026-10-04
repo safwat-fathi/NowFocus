@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="account_title">الحساب</string>
+    <string name="lock_prompt_title">فتح الحساب</string>
+    <string name="lock_body">مقفل. استخدم بصمتك لعرض حسابك وأجهزتك وتسجيل الخروج. جلسات التركيز والحجب لا تتأثر.</string>
+    <string name="lock_unlock">فك القفل بالبصمة</string>
+    <string name="account_intro">اختياري. سجّل الدخول لمزامنة ملفات التركيز وإعدادات وقت النوم بين أجهزتك. الأشخاص والأهداف والملاحظات الصوتية والإحصاءات تبقى على هذا الهاتف، ويواصل NowFocus الحجب من النسخة الموجودة على هاتفك حتى دون اتصال.</string>
+    <string name="account_email">البريد الإلكتروني</string>
+    <string name="account_password">كلمة المرور (8 أحرف على الأقل)</string>
+    <string name="account_sign_in">تسجيل الدخول</string>
+    <string name="account_create">إنشاء حساب</string>
+    <string name="account_signed_in">تم تسجيل الدخول</string>
+    <string name="account_syncing">جارٍ المزامنة…</string>
+    <string name="account_synced">تمت المزامنة %1$s</string>
+    <string name="account_waiting">في انتظار المزامنة</string>
+    <plurals name="account_rejected">
+        <item quantity="zero">تعذّرت مزامنة %1$d تغيير. تبقى على هذا الهاتف؛ وتعديلها مجددًا يعيد المحاولة.</item>
+        <item quantity="one">تعذّرت مزامنة تغيير واحد. يبقى على هذا الهاتف؛ وتعديله مجددًا يعيد المحاولة.</item>
+        <item quantity="two">تعذّرت مزامنة تغييرين. يبقيان على هذا الهاتف؛ وتعديلهما مجددًا يعيد المحاولة.</item>
+        <item quantity="few">تعذّرت مزامنة %1$d تغييرات. تبقى على هذا الهاتف؛ وتعديلها مجددًا يعيد المحاولة.</item>
+        <item quantity="many">تعذّرت مزامنة %1$d تغييرًا. تبقى على هذا الهاتف؛ وتعديلها مجددًا يعيد المحاولة.</item>
+        <item quantity="other">تعذّرت مزامنة %1$d تغيير. تبقى على هذا الهاتف؛ وتعديلها مجددًا يعيد المحاولة.</item>
+    </plurals>
+    <string name="account_sync_now">زامِن الآن</string>
+    <string name="account_join_title">الانضمام إلى الجلسات من أجهزتي الأخرى</string>
+    <string name="account_join_sub">الجلسة التي تبدأها على جهاز آخر تبدأ هنا أيضًا، لمدة تصل إلى 24 ساعة. أوقف هذا الخيار لإبقاء هذا الهاتف منفصلًا.</string>
+    <string name="account_lock_title">اطلب البصمة لفتح الحساب</string>
+    <string name="account_lock_sub">هذه الشاشة فقط. جلسات التركيز والحجب لا تُقفل أبدًا.</string>
+    <string name="account_devices_kicker">الأجهزة على هذا الحساب</string>
+    <string name="account_this_phone">هذا الهاتف</string>
+    <string name="account_signout_note">تسجيل الخروج يُبقي ملفات التركيز ووقت النوم ودرع الالتزام على هذا الهاتف. يستمر الحجب كما هو.</string>
+    <string name="account_sign_out">تسجيل الخروج</string>
+    <string name="account_delete">حذف الحساب…</string>
+    <string name="account_delete_title">حذف الحساب؟</string>
+    <string name="account_delete_body">سيُحذف حسابك وكل ما زامنته معه نهائيًا، على كل الأجهزة. لن يُحذف شيء على هذا الهاتف، ولن يتأثر الحجب.</string>
+    <string name="account_confirm_password">أكّد بكلمة المرور</string>
+</resources>

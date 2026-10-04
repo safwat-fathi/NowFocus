@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="goals_title">أهدافك</string>
+    <string name="goals_intro">ما الذي تركّز من أجله. يظهر أثناء انتظارك لإنهاء جلسة صارمة مبكرًا، وفي شاشة الحجب حين لا يكون هناك شخص تتواصل معه. يبقى على هذا الهاتف.</string>
+    <string name="goals_hint">أضف هدفًا، مثل: إنهاء رسالتي</string>
+    <string name="goals_priority">الأولوية</string>
+</resources>

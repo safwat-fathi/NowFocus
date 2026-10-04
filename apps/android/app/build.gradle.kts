@@ -37,6 +37,14 @@ android {
         }
     }
 
+    // Language splits would strip the Arabic resources from a Play download for a user who picks it in the app.
+    bundle { language { enableSplit = false } }
+
+    lint {
+        // Arabic ships in the app: a missing string or a missing plural form must fail lint, not show English.
+        error += setOf("MissingTranslation", "ExtraTranslation", "MissingQuantity")
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

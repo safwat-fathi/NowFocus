@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="block_title">أغلق NowFocus %1$s</string>
+    <string name="block_this_app">هذا التطبيق</string>
+    <string name="block_reason_session">أنت في جلسة تركيز حتى %1$s.</string>
+    <string name="block_reason_allowlist">التطبيقات التي سمحت بها فقط مفتوحة حتى %1$s.</string>
+    <string name="block_reason_bedtime">تهدئة وقت النوم قيد التشغيل حتى %1$s.</string>
+    <string name="block_reason_shield">مقفل بدرع الالتزام حتى %1$s.</string>
+    <plurals name="block_reason_limit">
+        <item quantity="zero">استخدمت %1$d دقيقة من %2$s اليوم. يعود عند منتصف الليل.</item>
+        <item quantity="one">استخدمت دقيقة واحدة من %2$s اليوم. يعود عند منتصف الليل.</item>
+        <item quantity="two">استخدمت دقيقتين من %2$s اليوم. يعود عند منتصف الليل.</item>
+        <item quantity="few">استخدمت %1$d دقائق من %2$s اليوم. يعود عند منتصف الليل.</item>
+        <item quantity="many">استخدمت %1$d دقيقة من %2$s اليوم. يعود عند منتصف الليل.</item>
+        <item quantity="other">استخدمت %1$d دقيقة من %2$s اليوم. يعود عند منتصف الليل.</item>
+    </plurals>
+    <string name="block_time_session">المتبقي في الجلسة</string>
+    <string name="block_time_bedtime">المتبقي في وقت النوم</string>
+    <string name="block_time_shield">مقفل لمدة</string>
+    <string name="block_time_limit">يعود بعد</string>
+    <string name="block_site_session">جلسة التركيز قيد التشغيل. سيُحمَّل الموقع من جديد عند انتهائها.</string>
+    <string name="block_site_bedtime">تهدئة وقت النوم قيد التشغيل. سيُحمَّل الموقع من جديد عند انتهائها.</string>
+    <string name="block_site_shield">درع الالتزام قيد التشغيل. سيُحمَّل الموقع من جديد عند انتهائه.</string>
+    <string name="block_site_limit">استُنفد حدك اليومي. سيُحمَّل الموقع من جديد عند منتصف الليل.</string>
+
+    <string name="duration_lt_min">&lt;1 د</string>
+    <string name="duration_m">%1$d د</string>
+    <string name="duration_h">%1$d س</string>
+    <string name="duration_hm">%1$d س %2$d د</string>
+    <string name="duration_d">%1$d ي</string>
+    <string name="duration_dh">%1$d ي %2$d س</string>
+
+    <string name="sep_comma">"، "</string>
+    <string name="sep_space">" "</string>
+
+    <string name="sync_offline">لا يوجد اتصال. ستُعاد المحاولة.</string>
+    <string name="sync_signed_out">تم تسجيل خروج هذا الجهاز. سجّل الدخول مجددًا لمواصلة المزامنة.</string>
+    <string name="sync_err_network">تعذّر الوصول إلى NowFocus. تحقق من اتصالك وحاول مرة أخرى.</string>
+    <string name="sync_err_session_ended">انتهت صلاحية جلسة الدخول. سجّل الدخول مجددًا.</string>
+    <string name="sync_err_invalid_credentials">البريد الإلكتروني أو كلمة المرور غير صحيحة.</string>
+    <string name="sync_err_email_taken">يوجد حساب بهذا البريد الإلكتروني بالفعل. سجّل الدخول بدلًا من ذلك.</string>
+    <string name="sync_err_wrong_password">كلمة المرور غير صحيحة.</string>
+    <string name="sync_err_rate_limited">محاولات كثيرة. انتظر دقيقة ثم حاول مجددًا.</string>
+    <string name="sync_err_server">يواجه NowFocus مشكلة حاليًا. حاول بعد قليل.</string>
+    <string name="sync_err_generic">حدث خطأ ما.</string>
+
+    <string name="day_mon">إث</string>
+    <string name="day_tue">ثل</string>
+    <string name="day_wed">أر</string>
+    <string name="day_thu">خم</string>
+    <string name="day_fri">جم</string>
+    <string name="day_sat">سب</string>
+    <string name="day_sun">أح</string>
+    <string name="days_every_day">كل يوم</string>
+    <string name="days_range">%1$s-%2$s</string>
+
+    <string name="priority_high">عالية</string>
+    <string name="priority_medium">متوسطة</string>
+    <string name="priority_low">منخفضة</string>
+
+    <plurals name="since_days">
+        <item quantity="zero">%1$d يوم</item>
+        <item quantity="one">يوم واحد</item>
+        <item quantity="two">يومان</item>
+        <item quantity="few">%1$d أيام</item>
+        <item quantity="many">%1$d يومًا</item>
+        <item quantity="other">%1$d يوم</item>
+    </plurals>
+    <plurals name="since_weeks">
+        <item quantity="zero">%1$d أسبوع</item>
+        <item quantity="one">أسبوع واحد</item>
+        <item quantity="two">أسبوعان</item>
+        <item quantity="few">%1$d أسابيع</item>
+        <item quantity="many">%1$d أسبوعًا</item>
+        <item quantity="other">%1$d أسبوع</item>
+    </plurals>
+    <plurals name="since_months">
+        <item quantity="zero">%1$d شهر</item>
+        <item quantity="one">شهر واحد</item>
+        <item quantity="two">شهران</item>
+        <item quantity="few">%1$d أشهر</item>
+        <item quantity="many">%1$d شهرًا</item>
+        <item quantity="other">%1$d شهر</item>
+    </plurals>
+
+    <plurals name="week_share_head">
+        <item quantity="zero">أسبوعي مع NowFocus: %1$d س %2$d د من التركيز في %3$d جلسة (%4$d مكتملة).</item>
+        <item quantity="one">أسبوعي مع NowFocus: %1$d س %2$d د من التركيز في جلسة واحدة (%4$d مكتملة).</item>
+        <item quantity="two">أسبوعي مع NowFocus: %1$d س %2$d د من التركيز في جلستين (%4$d مكتملة).</item>
+        <item quantity="few">أسبوعي مع NowFocus: %1$d س %2$d د من التركيز في %3$d جلسات (%4$d مكتملة).</item>
+        <item quantity="many">أسبوعي مع NowFocus: %1$d س %2$d د من التركيز في %3$d جلسة (%4$d مكتملة).</item>
+        <item quantity="other">أسبوعي مع NowFocus: %1$d س %2$d د من التركيز في %3$d جلسة (%4$d مكتملة).</item>
+    </plurals>
+    <string name="week_share_score">درجة التركيز %1$d.</string>
+    <plurals name="week_share_streak">
+        <item quantity="zero">سلسلة %1$d يوم.</item>
+        <item quantity="one">سلسلة يوم واحد.</item>
+        <item quantity="two">سلسلة يومين.</item>
+        <item quantity="few">سلسلة %1$d أيام.</item>
+        <item quantity="many">سلسلة %1$d يومًا.</item>
+        <item quantity="other">سلسلة %1$d يوم.</item>
+    </plurals>
+    <plurals name="week_share_turned_away">
+        <item quantity="zero">لم تُحجب أي محاولة.</item>
+        <item quantity="one">حُجبت محاولة واحدة.</item>
+        <item quantity="two">حُجبت محاولتان.</item>
+        <item quantity="few">حُجبت %1$d محاولات.</item>
+        <item quantity="many">حُجبت %1$d محاولة.</item>
+        <item quantity="other">حُجبت %1$d محاولة.</item>
+    </plurals>
+
+    <string name="cred_bad_email">أدخل بريدًا إلكترونيًا صحيحًا.</string>
+    <string name="cred_short_password">يجب ألا تقل كلمة المرور عن 8 أحرف.</string>
+    <string name="ago_now">الآن</string>
+    <string name="ago_seconds">منذ %1$d ث</string>
+    <string name="ago_minutes">منذ %1$d د</string>
+    <string name="ago_hours">منذ %1$d س</string>
+</resources>

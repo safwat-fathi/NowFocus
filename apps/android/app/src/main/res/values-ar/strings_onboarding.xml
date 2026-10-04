@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onb_setup">هيّا نُعدّه</string>
+    <string name="onb_skip">تخطَّ الآن</string>
+    <string name="onb_continue">متابعة</string>
+    <string name="onb_start">ابدأ 10 دقائق</string>
+    <string name="onb_welcome">مرحبًا بك في NOWFOCUS</string>
+    <string name="onb_welcome_title">أنت من يقرر ما يستحق انتباهك.</string>
+    <string name="onb_welcome_body">ابدأ جلسة تركيز فتتوقف المواقع والتطبيقات التي تختارها عن الوصول إليك.</string>
+    <string name="onb_point1">نقرة واحدة تبدأ جلسة تركيز</string>
+    <string name="onb_point2">يحجب المواقع والتطبيقات التي تختارها</string>
+    <string name="onb_point3">بلا زر إيقاف سريع بخمس ثوانٍ، إن اخترت الصارم أو المقفل</string>
+    <string name="onb_step2">الخطوة 2 من 5 · الأهداف</string>
+    <string name="onb_step2_title">من أجل ماذا تركّز؟</string>
+    <string name="onb_step2_body">سنذكّرك أثناء انتظارك لإنهاء جلسة صارمة مبكرًا، وحين يُفتح تطبيق محجوب. يبقى على هذا الهاتف.</string>
+    <string name="onb_step3">الخطوة 3 من 5 · الأشخاص</string>
+    <string name="onb_step3_title">من يهمّك؟</string>
+    <string name="onb_step3_body">حين يُفتح تطبيق محجوب، سنوجّهك إلى شخص لم تتحدث معه منذ مدة، بنقرة واحدة للاتصال أو المراسلة. لا شيء يغادر هذا الهاتف.</string>
+    <string name="onb_step4">الخطوة 4 من 5 · الأذونات</string>
+    <string name="onb_step4_title">بضعة أذونات ليصمد الحجب فعلًا.</string>
+    <string name="onb_step4_body">كل شيء يعمل على هذا الهاتف. تصفحك وقوائم تطبيقاتك لا تغادره.</string>
+    <string name="onb_perm_blocking">يرصد فتح تطبيق محجوب. ومع تفعيل الحجب الجزئي يقرأ أيضًا شاشات YouTube وFacebook وInstagram وX أثناء الجلسة (تجريبي)، على الجهاز فقط</string>
+    <string name="onb_perm_filter">يحجب المواقع على الجهاز، دون توجيه أي حركة بيانات إلى أي مكان</string>
+    <string name="onb_perm_dnd">يتيح لتهدئة وقت النوم تهدئة الإشعارات</string>
+    <string name="onb_allowed">مسموح</string>
+    <string name="onb_allow">السماح</string>
+    <string name="onb_step5">الخطوة 5 من 5 · جلستك الأولى</string>
+    <string name="onb_step5_title">أي تطبيق يسرق وقتك؟</string>
+    <string name="onb_step5_body">اختر واحدًا، وسنحجبه 10 دقائق. يمكنك إنهاء الجلسة في أي وقت.</string>
+    <string name="onb_pick_app">+ اختر تطبيقًا…</string>
+    <string name="onb_add_another">+ أضف تطبيقًا آخر…</string>
+    <string name="onb_blocking_needed">مطلوب لحجب التطبيق. فعّل NowFocus في إعدادات إمكانية الوصول</string>
+    <string name="restricted_settings_hint">الزر باهت؟ افتح معلومات التطبيق ← ⋮ ← السماح بالإعدادات المقيّدة أولًا.</string>
+</resources>

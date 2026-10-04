@@ -32,8 +32,8 @@ private val body = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, colo
 fun CheatDayScreen(cheat: CheatDay?, now: Long, onSchedule: (Long) -> Boolean, onCancel: () -> Unit, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
-    fun day(millis: Long) = DateUtils.formatDateTime(context, millis, DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_ABBREV_ALL)
-    fun time(millis: Long) = DateUtils.formatDateTime(context, millis, DateUtils.FORMAT_SHOW_TIME)
+    fun day(millis: Long) = formatDay(context, millis)
+    fun time(millis: Long) = formatTime(context, millis)
     var confirming by remember { mutableStateOf<Long?>(null) }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {

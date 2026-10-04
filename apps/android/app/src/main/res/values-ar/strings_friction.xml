@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="friction_specific">شيء محدد</string>
+    <string name="friction_bored">مجرد ملل</string>
+    <string name="friction_avoiding">أتجنب شيئًا</string>
+    <string name="friction_kicker">وقفة قبل %1$s</string>
+    <string name="friction_in">شهيق</string>
+    <string name="friction_out">زفير</string>
+    <string name="friction_ready">جاهز حين تكون جاهزًا.</string>
+    <string name="friction_what">ماذا تريد أن تفعل هنا؟</string>
+    <string name="friction_open">فتح %1$s</string>
+    <string name="friction_not_now">ليس الآن</string>
+</resources>

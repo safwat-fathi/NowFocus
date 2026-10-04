@@ -1,6 +1,7 @@
 package app.getnowfocus.android
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -72,6 +73,8 @@ class BlockedActivity : ComponentActivity() {
     private var streakDays by mutableStateOf(0)
     private var limitExpiry: kotlinx.coroutines.Job? = null
 
+    override fun attachBaseContext(newBase: Context) = super.attachBaseContext(newBase.localized())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         renderContent()
@@ -107,7 +110,7 @@ class BlockedActivity : ComponentActivity() {
         val endAt = intent.getLongExtra(EXTRA_END_AT, 0L)
         // Date, not just time: a Commitment Shield block can be many days out,
         // and a bare time ("3:45 PM") would read as today.
-        val until = DateUtils.formatDateTime(this, endAt, DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH)
+        val until = formatDayTime(this, endAt)
         // Defaults to SESSION: absent only if this Activity is ever launched some other way.
         val source = intent.getStringExtra(EXTRA_SOURCE)
         val fromShield = source == BlockSource.COMMITMENT_SHIELD.name
