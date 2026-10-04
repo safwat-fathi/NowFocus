@@ -72,6 +72,15 @@ Real disaster, on the VPS: stop the app (`pm2 stop nowfocus-api`), recreate an e
 - **`JWT_SECRET` rotation:** change it in `.env` and restart. Only 15-minute access tokens die; refresh tokens are hashed in the database and survive, so devices stay signed in.
 - **`DATABASE_URL` / DB password:** change the role password, update `.env`, restart the app. `backup.sh` reads the same `.env`.
 
+## Monitoring checklist
+
+Tick each when done on the VPS or the monitoring site (first three done 2026-10-04):
+
+- [x] **External uptime monitor:** free UptimeRobot or Better Stack check on `https://api.nowfocus.online/healthz`, 5-minute interval, alert by email. It must check the 200 status or the `"ok"` body, so a 503 `db_unavailable` also alerts.
+- [x] **Backup cron installed:** step 6 above; `crontab -l` shows the `backup.sh` line.
+- [x] **Backup dead-man switch:** `HEALTHCHECK_URL` set in `~/.config/nowfocus-backup.env` (healthchecks.io, period 12h, grace 2h).
+- [ ] **Restore drill done once**, then every quarter (see above).
+
 ## When `/healthz` fails
 
 `pm2 logs nowfocus-api --lines 50 --nostream`. A 503 `db_unavailable` means Postgres is unreachable (`systemctl status postgresql`). A missing `REVISION` shows `"sha":"dev"`, so redo the release block. Wrong sha after a release means pm2 is still running the old build: `pm2 restart nowfocus-api --update-env`.
