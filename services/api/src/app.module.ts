@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AdminModule } from './admin/admin.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { ShieldModule } from './shield/shield.module.js';
@@ -19,6 +20,7 @@ import { MetaController } from './meta.controller.js';
     ShieldModule,
     RealtimeModule,
     WaitlistModule,
+    AdminModule,
   ],
   controllers: [MetaController],
 })

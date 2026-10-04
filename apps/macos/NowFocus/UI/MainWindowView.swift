@@ -21,6 +21,7 @@ struct MainWindowView: View {
         case people = "People who matter"
         case goals = "Your goals"
         case general = "General"
+        case about = "About"
 
         var id: String { rawValue }
     }
@@ -84,6 +85,7 @@ struct MainWindowView: View {
 
             NowFocusRule()
             navRow(.general, systemImage: "gearshape")
+            navRow(.about, systemImage: "info.circle")
         }
         .frame(width: 220)
         .background(NowFocusColors.ground)
@@ -127,6 +129,7 @@ struct MainWindowView: View {
         case .people:     PeopleView()
         case .goals:      GoalsView()
         case .general:    GeneralSettingsView(updaterController: updaterController)
+        case .about:      AboutView()
         }
     }
 }

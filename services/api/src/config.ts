@@ -8,6 +8,8 @@ export class Config {
   trustProxy!: number;
   githubToken?: string;
   githubRepo?: string;
+  /** Shared secret for /admin. Unset = admin routes 404. */
+  adminToken?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -20,6 +22,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (jwtSecret.length < 32) throw new Error('JWT_SECRET must be at least 32 characters');
   const trustProxy = Number(env.TRUST_PROXY ?? 1);
   if (!Number.isInteger(trustProxy) || trustProxy < 0) throw new Error('TRUST_PROXY must be a non-negative integer (proxy hops)');
+  const adminToken = env.ADMIN_TOKEN || undefined;
+  if (adminToken && adminToken.length < 32) throw new Error('ADMIN_TOKEN must be at least 32 characters');
   return {
     databaseUrl: need('DATABASE_URL'),
     jwtSecret,
@@ -28,5 +32,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     trustProxy,
     githubToken: env.GITHUB_TOKEN,
     githubRepo: env.GITHUB_REPO ?? 'safwat-fathi/NowFocus',
+    adminToken,
   };
 }

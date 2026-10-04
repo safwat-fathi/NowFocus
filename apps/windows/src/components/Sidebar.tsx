@@ -54,6 +54,11 @@ export function Sidebar({ state, screen, onNavigate }: { state: AppState; screen
         {state.cheatDay?.active && <span className="nav-item__dot" />}
       </button>
 
+      <button className="nav-item" data-active={screen === "about"} onClick={() => onNavigate("about")}>
+        <FocusIcon />
+        <span className="nav-item__label">About</span>
+      </button>
+
       <div className="sidebar__footer">
         <div className="sidebar__footer-title">This PC</div>
         <div className="sidebar__footer-sub">

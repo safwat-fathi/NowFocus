@@ -109,6 +109,7 @@ private sealed interface Screen {
     data object CheatDay : Screen
     data object Limits : Screen
     data object Friction : Screen
+    data object About : Screen
 }
 
 // Same presets as the macOS menu bar picker.
@@ -293,6 +294,11 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                                 tag = if (cheat?.isActive(now) == true) "On" else null,
                                 onClick = { screen = Screen.CheatDay },
                             ),
+                            ProtectionEntry(
+                                "About",
+                                "Version ${BuildConfig.VERSION_NAME}, privacy, terms, support",
+                                onClick = { screen = Screen.About },
+                            ),
                         ),
                     )
                 }
@@ -392,6 +398,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false) {
                     onCancel = viewModel::cancelCheatDay,
                     onBack = { screen = Screen.Policies },
                 )
+                Screen.About -> AboutScreen(onBack = { screen = Screen.Policies })
             }
         }
         if (tabsVisible) {

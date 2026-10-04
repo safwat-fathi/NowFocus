@@ -5,6 +5,7 @@ import { UnlockDialog } from "./components/UnlockDialog";
 import { api } from "./lib/api";
 import type { AppState, ScreenId } from "./types";
 
+import { About } from "./screens/About";
 import { CheatDay } from "./screens/CheatDay";
 import { Limits } from "./screens/Limits";
 import { Onboarding } from "./screens/Onboarding";
@@ -82,6 +83,7 @@ export default function App() {
           {view === "schedules" && <Schedules state={state} onState={refresh} />}
           {view === "limits" && <Limits state={state} onState={refresh} />}
           {view === "cheatday" && <CheatDay state={state} onState={refresh} />}
+          {view === "about" && <About />}
           {view === "tray" && <Tray state={state} onState={refresh} onOpen={() => navigate(state.session ? "active" : "focus")} />}
           {view === "shield" && <Shield state={state} onState={refresh} />}
         </div>

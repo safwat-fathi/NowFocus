@@ -84,3 +84,7 @@ Tick each when done on the VPS or the monitoring site (first three done 2026-10-
 ## When `/healthz` fails
 
 `pm2 logs nowfocus-api --lines 50 --nostream`. A 503 `db_unavailable` means Postgres is unreachable (`systemctl status postgresql`). A missing `REVISION` shows `"sha":"dev"`, so redo the release block. Wrong sha after a release means pm2 is still running the old build: `pm2 restart nowfocus-api --update-env`.
+
+## Admin dashboard
+
+`https://api.nowfocus.online/admin` lists waitlist signups and feature requests. Enable it by adding `ADMIN_TOKEN=$(openssl rand -hex 32)` to the VPS `.env` and running `pm2 restart nowfocus-api`. Unset = the routes return 404. Rotate by changing the value and restarting.

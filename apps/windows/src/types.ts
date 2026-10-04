@@ -201,4 +201,5 @@ export type ScreenId =
   | "schedules"
   | "cheatday"
   | "limits"
+  | "about"
   | "tray";
