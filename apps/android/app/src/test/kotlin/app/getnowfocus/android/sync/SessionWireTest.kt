@@ -3,7 +3,10 @@ package app.getnowfocus.android.sync
 import app.getnowfocus.android.EnforcementMode
 import app.getnowfocus.android.FocusSession
 import app.getnowfocus.android.FocusSessionStatus
+import app.getnowfocus.android.AppRule
+import app.getnowfocus.android.BlockPolicy
 import app.getnowfocus.android.PartialRule
+import app.getnowfocus.android.PolicyMode
 import app.getnowfocus.android.SessionOrigin
 import app.getnowfocus.android.SessionType
 import org.json.JSONObject
@@ -122,6 +125,39 @@ class SessionWireTest {
         assertEquals("Galaxy", o.getString("startedOn"))
         assertEquals("a.com", o.getJSONObject("policySnapshot").getJSONArray("domainRules").getJSONObject(0).getString("domain"))
         assertEquals("android", o.getJSONObject("policySnapshot").getJSONArray("applicationRules").getJSONObject(0).getString("platform"))
+    }
+
+    @Test
+    fun `a whitelist session goes out with its mode and empty rule arrays`() {
+        // Android 0.6 joins from the snapshot alone and would read allowed apps as apps to block.
+        val s = local(id = "abc").copy(domains = setOf("a.com"), packages = setOf("com.code"), partial = setOf(PartialRule.FB_REELS), policyMode = PolicyMode.ALLOWLIST)
+        val snap = SessionWire.toWire(s, "Galaxy", null).getJSONObject("policySnapshot")
+        assertEquals("allowlist", snap.getString("mode"))
+        assertEquals(0, snap.getJSONArray("domainRules").length())
+        assertEquals(0, snap.getJSONArray("applicationRules").length())
+        assertEquals("FB_REELS", snap.getJSONArray("partial").getString(0))
+        assertEquals("blocklist", SessionWire.toWire(local(id = "abc"), "Galaxy", null).getJSONObject("policySnapshot").getString("mode"))
+    }
+
+    @Test
+    fun `a pulled session carries the mode its device wrote, a missing one is a blocklist`() {
+        assertEquals(PolicyMode.BLOCKLIST, SessionWire.parse(record())!!.policyMode)
+        val allow = record { getJSONObject("policySnapshot").put("mode", "allowlist") }
+        assertEquals(PolicyMode.ALLOWLIST, SessionWire.parse(allow)!!.policyMode)
+    }
+
+    @Test
+    fun `a whitelist is only enforceable here with the synced policy and an app on this phone`() {
+        val allow = SessionWire.parse(record { getJSONObject("policySnapshot").put("mode", "allowlist") })!!
+        val list = BlockPolicy(id = "p1", name = "n", mode = PolicyMode.ALLOWLIST, apps = listOf(AppRule("com.code", "Code")))
+        assertFalse("policy not here yet: wait", SessionWire.enforceable(allow, emptyList()))
+        assertFalse("no app on this phone", SessionWire.enforceable(allow, listOf(list.copy(apps = emptyList()))))
+        assertFalse("a blocklist under the same id is not what the other device meant", SessionWire.enforceable(allow, listOf(list.copy(mode = PolicyMode.BLOCKLIST))))
+        assertTrue(SessionWire.enforceable(allow, listOf(list)))
+        // A snapshot without a mode (an older device) over a policy that is a whitelist here must still not be applied as blocks.
+        val old = SessionWire.parse(record())!!
+        assertFalse(SessionWire.enforceable(old, listOf(list.copy(apps = emptyList()))))
+        assertTrue("an ordinary blocklist session is unchanged", SessionWire.enforceable(old, emptyList()))
     }
 
     @Test

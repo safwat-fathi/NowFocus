@@ -5,6 +5,7 @@ import app.getnowfocus.android.BedtimeSettings
 import app.getnowfocus.android.BlockPolicy
 import app.getnowfocus.android.DomainValidation
 import app.getnowfocus.android.PartialRule
+import app.getnowfocus.android.PolicyMode
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -13,15 +14,19 @@ import java.util.UUID
  * Android's lossy [BlockPolicy] <-> the server's policy `data` (services/api/WIRE_FORMAT.md, section 4).
  *
  * The one rule that matters: policies are last-write-wins as a whole, so an edit must be MERGED into the last
- * server JSON, never rebuilt from the Android model. Android owns the name, the domains, the apps with
- * `platform: "android"` and the `partial` names it knows; every other field and rule is carried over untouched.
+ * server JSON, never rebuilt from the Android model. Android owns the name, the mode (set when a policy is
+ * created, never changed), the domains, the apps with `platform: "android"` and the `partial` names it knows;
+ * every other field and rule is carried over untouched.
  */
 object PolicyWire {
     const val PLATFORM = "android"
     private val KNOWN_PARTIAL = PartialRule.entries.map { it.name }.toSet()
 
-    /** Android has no allowlist mode. Applying an allowlist's domains as blocks would do the opposite of what the user set. */
-    fun supported(raw: JSONObject): Boolean = raw.s("mode") != "allowlist"
+    /** A mode this build knows (a missing one is a blocklist). A future mode is kept but never enforced: guessing its meaning could do the opposite of what the user set. */
+    fun supported(raw: JSONObject): Boolean = raw.s("mode").let { it == null || it == "blocklist" || it == "allowlist" }
+
+    private fun modeOf(raw: JSONObject) = if (raw.s("mode") == "allowlist") PolicyMode.ALLOWLIST else PolicyMode.BLOCKLIST
+    private fun modeName(m: PolicyMode) = m.name.lowercase()
 
     fun toLocal(raw: JSONObject): BlockPolicy {
         val domains = raw.arr("domainRules").objects().filter { it.b("enabled", true) }.mapNotNull { it.s("domain") }
@@ -35,13 +40,15 @@ object PolicyWire {
             domains = domains,
             apps = apps,
             partial = BlockPolicy.partialFromNames(partial),
+            mode = modeOf(raw),
         )
     }
 
     /** `raw` is the last server record (null for a brand-new profile). Never mutates it. */
     fun merge(local: BlockPolicy, raw: JSONObject?): JSONObject {
-        val out = raw?.copy() ?: JSONObject().put("mode", "blocklist")
+        val out = raw?.copy() ?: JSONObject()
         out.put("id", local.id.lowercase())
+        out.put("mode", modeName(local.mode))
         out.put("name", local.name)
         out.put("domainRules", mergeDomains(local.domains, out.arr("domainRules").objects()))
         out.put("applicationRules", mergeApps(local.apps, out.arr("applicationRules").objects()))
@@ -104,12 +111,13 @@ object PolicyWire {
         a.id.lowercase() == b.id.lowercase() && a.name == b.name &&
             a.domains.map(::domainKey).toSet() == b.domains.map(::domainKey).toSet() &&
             a.apps.associate { it.packageName to it.label } == b.apps.associate { it.packageName to it.label } &&
-            a.partial == b.partial
+            a.partial == b.partial && a.mode == b.mode
 
     /** A stable string for the content of [p] (order and domain spelling don't matter). */
     internal fun canonical(p: BlockPolicy): String = listOf(
         p.id.lowercase(), p.name, p.domains.map(::domainKey).toSortedSet().joinToString(","),
         p.apps.map { it.packageName + "=" + it.label }.sorted().joinToString(","), p.partial.map { it.name }.sorted().joinToString(","),
+        p.mode.name,
     ).joinToString("\u0001")
 
     /** The key two spellings of one domain share; unparseable input falls back to trimmed lowercase. */

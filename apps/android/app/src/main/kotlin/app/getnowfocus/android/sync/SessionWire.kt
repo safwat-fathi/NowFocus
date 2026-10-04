@@ -6,6 +6,7 @@ import app.getnowfocus.android.EnforcementMode
 import app.getnowfocus.android.FocusSession
 import app.getnowfocus.android.FocusSessionStatus
 import app.getnowfocus.android.PartialRule
+import app.getnowfocus.android.PolicyMode
 import app.getnowfocus.android.SessionType
 import org.json.JSONArray
 import org.json.JSONObject
@@ -23,6 +24,8 @@ data class RemoteSession(
     val domains: Set<String>,
     val packages: Set<String>,
     val partial: Set<PartialRule>,
+    /** What the originating device says the list means. A whitelist's [domains] and [packages] are empty on the wire. */
+    val policyMode: PolicyMode,
     val startedOn: String?,
     /** The server's JSON for it. A status change is pushed by merging into this, so another device's extras survive. */
     val raw: JSONObject,
@@ -77,6 +80,7 @@ object SessionWire {
             packages = snap?.arr("applicationRules")?.objects().orEmpty().filter { it.s("platform") == PolicyWire.PLATFORM && it.b("enabled", true) }
                 .mapNotNull { it.s("nativeIdentifier") }.toSet(),
             partial = BlockPolicy.partialFromNames(snap?.arr("partial")?.items().orEmpty().filterIsInstance<String>()),
+            policyMode = if (snap?.s("mode") == "allowlist") PolicyMode.ALLOWLIST else PolicyMode.BLOCKLIST,
             startedOn = o.s("startedOn"),
             raw = o,
         )
@@ -97,6 +101,17 @@ object SessionWire {
         return if (busy) SessionDecision.Defer else SessionDecision.Join
     }
 
+    /**
+     * Whether this phone can enforce [remote]. A whitelist is this phone's own allowed apps from the synced
+     * policy (never the snapshot, which is empty for one), so it needs that policy here with an app on it:
+     * otherwise it waits, the policy may arrive in a later pull, and never closes everything in the meantime.
+     */
+    fun enforceable(remote: RemoteSession, policies: List<BlockPolicy>): Boolean {
+        val policy = policies.find { it.id == remote.policyId }
+        val allowlist = remote.policyMode == PolicyMode.ALLOWLIST || policy?.mode == PolicyMode.ALLOWLIST
+        return !allowlist || (policy?.mode == PolicyMode.ALLOWLIST && policy.enforcesHere)
+    }
+
     fun wireStatus(s: FocusSessionStatus) = s.name.lowercase()
 
     /** The session as the server stores it. With [base] (a session joined from elsewhere) only what changes is touched. */
@@ -109,9 +124,14 @@ object SessionWire {
         s.cancelledAt?.let { o.put("cancelledAt", iso(it)) }
         if (base == null) {
             o.put("startedOn", deviceName)
+            // A whitelist's rule arrays are empty on purpose: a client that joins from the snapshot alone (Android 0.6
+            // and earlier) would read the allowed apps as apps to block. Receivers that know the mode take their own
+            // platform's apps from the synced policy instead (WIRE_FORMAT.md section 6).
+            val allow = s.policyMode == PolicyMode.ALLOWLIST
             o.put("policySnapshot", JSONObject()
-                .put("domainRules", JSONArray().also { a -> s.domains.sorted().forEach { a.put(JSONObject().put("domain", it).put("includeSubdomains", true).put("enabled", true)) } })
-                .put("applicationRules", JSONArray().also { a -> s.packages.sorted().forEach { a.put(JSONObject().put("platform", PolicyWire.PLATFORM).put("nativeIdentifier", it).put("enabled", true)) } })
+                .put("mode", s.policyMode.name.lowercase())
+                .put("domainRules", JSONArray().also { a -> if (!allow) s.domains.sorted().forEach { a.put(JSONObject().put("domain", it).put("includeSubdomains", true).put("enabled", true)) } })
+                .put("applicationRules", JSONArray().also { a -> if (!allow) s.packages.sorted().forEach { a.put(JSONObject().put("platform", PolicyWire.PLATFORM).put("nativeIdentifier", it).put("enabled", true)) } })
                 .put("partial", JSONArray(s.partial.map { it.name })))
         }
         return o

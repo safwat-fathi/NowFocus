@@ -4,9 +4,11 @@ import app.getnowfocus.android.AppRule
 import app.getnowfocus.android.BedtimeSettings
 import app.getnowfocus.android.BlockPolicy
 import app.getnowfocus.android.PartialRule
+import app.getnowfocus.android.PolicyMode
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -99,10 +101,30 @@ class WireMapperTest {
         assertEquals(listOf("ok.com"), m.getJSONArray("domainRules").objects().map { it.getString("domain") })
     }
 
-    @Test fun `allowlist profiles are unsupported on Android`() {
-        assertFalse(PolicyWire.supported(JSONObject("""{"id":"a","name":"n","mode":"allowlist"}""")))
+    @Test fun `a mode this build does not know is unsupported, a missing one is a blocklist`() {
+        assertFalse(PolicyWire.supported(JSONObject("""{"id":"a","name":"n","mode":"quarantine"}""")))
+        assertTrue(PolicyWire.supported(JSONObject("""{"id":"a","name":"n","mode":"allowlist"}""")))
         assertTrue(PolicyWire.supported(raw))
         assertTrue(PolicyWire.supported(JSONObject("""{"id":"a","name":"n"}""")))
+        assertEquals(PolicyMode.BLOCKLIST, PolicyWire.toLocal(JSONObject("""{"id":"a","name":"n"}""")).mode)
+    }
+
+    @Test fun `an allowlist keeps its mode and its other platforms' apps through an edit`() {
+        val serverRaw = JSONObject("""{"id":"a","name":"Only these","mode":"allowlist","domainRules":[],
+            "applicationRules":[{"id":"r1","platform":"windows","nativeIdentifier":"C:\\\\Code.exe","enabled":true}]}""")
+        val local = PolicyWire.toLocal(serverRaw)
+        assertEquals(PolicyMode.ALLOWLIST, local.mode)
+        assertTrue("only this platform's apps are local", local.apps.isEmpty())
+        val merged = PolicyWire.merge(local.copy(apps = listOf(AppRule("com.code", "Code"))), serverRaw)
+        assertEquals("allowlist", merged.getString("mode"))
+        assertEquals(setOf("windows", "android"), merged.getJSONArray("applicationRules").objects().map { it.getString("platform") }.toSet())
+    }
+
+    @Test fun `a new allowlist is sent as one, and the mode counts as a change`() {
+        val p = BlockPolicy(id = "a", name = "n", mode = PolicyMode.ALLOWLIST)
+        assertEquals("allowlist", PolicyWire.merge(p, null).getString("mode"))
+        assertFalse(PolicyWire.same(p, p.copy(mode = PolicyMode.BLOCKLIST)))
+        assertNotEquals(PolicyWire.canonical(p), PolicyWire.canonical(p.copy(mode = PolicyMode.BLOCKLIST)))
     }
 
     @Test fun `same ignores order, case and the spelling of a domain`() {

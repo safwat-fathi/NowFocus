@@ -6,11 +6,13 @@ import app.getnowfocus.android.Enforcement
 import app.getnowfocus.android.FocusSession
 import app.getnowfocus.android.FocusSessionStatus
 import app.getnowfocus.android.HistoryDatabase
+import app.getnowfocus.android.PolicyMode
 import app.getnowfocus.android.SessionEngine
 import app.getnowfocus.android.SessionNotifier
 import app.getnowfocus.android.SessionOrigin
 import app.getnowfocus.android.SessionRepository
 import app.getnowfocus.android.toHistoryRow
+import app.getnowfocus.android.withPolicy
 import kotlinx.coroutines.flow.first
 import org.json.JSONObject
 
@@ -100,7 +102,8 @@ class RepositorySessionSync(
         val waiting = st.pending.values.mapNotNull { json ->
             runCatching { JSONObject(json) }.getOrNull()?.let { o -> SessionWire.parse(ServerRecord(SessionWire.TYPE, o.s("id") ?: "", json, false, 0, 0)) }
         }
-        val best = waiting.filter { joinEnabled && SessionWire.decide(it, local, now, true) == SessionDecision.Join }.maxByOrNull { it.endAt }
+        val policies = repository.policiesFlow.first()
+        val best = waiting.filter { joinEnabled && SessionWire.enforceable(it, policies) && SessionWire.decide(it, local, now, true) == SessionDecision.Join }.maxByOrNull { it.endAt }
         if (best == null) {
             // Drop what is over or no longer worth waiting for, so the list can't grow forever.
             val live = waiting.filter { it.endAt > now }.map { it.id }.toSet()
@@ -111,16 +114,19 @@ class RepositorySessionSync(
     }
 
     private suspend fun join(remote: RemoteSession, now: Long) {
-        // The snapshot only knows the originating device's own apps, so add what this account's synced profile says for Android.
         val policy = repository.policiesFlow.first().find { it.id == remote.policyId }
-        val session = FocusSession(
+        val base = FocusSession(
             id = remote.id, policyId = remote.policyId, startAt = remote.startAt, endAt = remote.endAt,
             status = FocusSessionStatus.SCHEDULED, createdAt = now,
+            enforcementMode = remote.mode, origin = SessionOrigin.REMOTE, startedOn = remote.startedOn,
+        )
+        val session = (if (policy != null && policy.mode == PolicyMode.ALLOWLIST) base.withPolicy(policy)
+        // The snapshot only knows the originating device's own apps, so add what this account's synced profile says for Android.
+        else base.copy(
             domains = remote.domains + policy?.domains.orEmpty().mapNotNull(DomainValidation::normalize),
             packages = remote.packages + policy?.apps.orEmpty().map { it.packageName },
             partial = remote.partial + policy?.partial.orEmpty(),
-            enforcementMode = remote.mode, origin = SessionOrigin.REMOTE, startedOn = remote.startedOn,
-        ).let { SessionEngine.evaluateState(it, now) }
+        )).let { SessionEngine.evaluateState(it, now) }
         repository.save(session)
         edit { st ->
             st.copy(

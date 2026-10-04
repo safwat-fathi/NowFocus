@@ -1,7 +1,9 @@
 package app.getnowfocus.android.sync
 
 import app.getnowfocus.android.BedtimeSettings
+import app.getnowfocus.android.AppRule
 import app.getnowfocus.android.BlockPolicy
+import app.getnowfocus.android.PolicyMode
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -123,9 +125,20 @@ class SyncLogicTest {
         assertEquals(1, SyncLogic.planPush(after.edit(4000) { it.map { p -> p.copy(name = "A2") } }, 5000).size)
     }
 
-    @Test fun `an allowlist profile is kept but never pushed, shown or turned into a deletion`() {
+    @Test fun `an allowlist profile is imported with its mode and pushed back as one`() {
+        val allow = BlockPolicy(id = "al", name = "Only these", apps = listOf(AppRule("com.code", "Code")), mode = PolicyMode.ALLOWLIST)
+        val pulled = SyncLogic.applyPulled(synced(), listOf(rec(allow, 100)), 6).local
+        assertEquals(PolicyMode.ALLOWLIST, pulled.policies.single().mode)
+        assertTrue(pulled.state.policies["al"]!!.imported)
+        assertTrue(SyncLogic.planPush(pulled, 200).isEmpty())                  // adopting server data must never echo it back
+        val edited = pulled.edit(300) { it.map { p -> p.copy(apps = p.apps + AppRule("com.mail", "Mail")) } }
+        val out = SyncLogic.planPush(edited, 400).single()
+        assertEquals("allowlist", JSONObject(out.dataJson!!).getString("mode"))
+    }
+
+    @Test fun `a profile in a mode this build does not know is kept but never pushed, shown or turned into a deletion`() {
         val allow = policy("al", "Allow", "ok.com")
-        val pulled = SyncLogic.applyPulled(synced(), listOf(rec(allow, 100, mode = "allowlist")), 6).local
+        val pulled = SyncLogic.applyPulled(synced(), listOf(rec(allow, 100, mode = "quarantine")), 6).local
         assertTrue(pulled.policies.isEmpty())                                  // not shown, not enforced
         assertFalse(pulled.state.policies["al"]!!.imported)
         assertTrue(SyncLogic.planPush(pulled, 200).isEmpty())
