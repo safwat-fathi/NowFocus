@@ -2,7 +2,8 @@
 //! sections 4 and 5).
 //!
 //! The one rule that matters: policies are last-write-wins as a whole, so an edit is MERGED into the last
-//! server JSON, never rebuilt from the Windows model. Windows owns the name, the domain rules, the apps with
+//! server JSON, never rebuilt from the Windows model. Windows owns the name, the mode (set when a profile is created,
+//! never changed), the domain rules, the apps with
 //! `platform: "windows"` and the four feed names it can express; every other field and rule (Android's
 //! apps, `YT_RELATED`, `categories`, unknown fields) is carried over untouched.
 
@@ -42,10 +43,24 @@ fn domain_key(d: &str) -> String {
     domain_validation::normalize(d).unwrap_or_else(|| d.trim().to_lowercase())
 }
 
-/// Windows can't enforce allowlists (`network_enforcer::apply` ignores the mode), so applying an allowlist's
-/// domains as blocks would do the opposite of what the user set.
+/// A mode this build knows (a missing one is a blocklist). A future mode is kept but never enforced:
+/// guessing its meaning could do the opposite of what the user set.
 pub fn supported(raw: &Value) -> bool {
-    s(raw, "mode") != Some("allowlist")
+    matches!(s(raw, "mode"), None | Some("blocklist") | Some("allowlist"))
+}
+
+fn mode_of(raw: &Value) -> PolicyMode {
+    match s(raw, "mode") {
+        Some("allowlist") => PolicyMode::Allowlist,
+        _ => PolicyMode::Blocklist,
+    }
+}
+
+fn mode_str(mode: PolicyMode) -> &'static str {
+    match mode {
+        PolicyMode::Blocklist => "blocklist",
+        PolicyMode::Allowlist => "allowlist",
+    }
 }
 
 /// `existing` (the profile we already hold) lends its rule ids so a pull doesn't churn them.
@@ -115,7 +130,7 @@ pub fn to_local(raw: &Value, existing: Option<&Profile>) -> Option<Profile> {
         policy: BlockPolicy {
             id,
             name: s(raw, "name").unwrap_or("").to_string(),
-            mode: PolicyMode::Blocklist,
+            mode: mode_of(raw),
             domains,
             applications,
             categories: existing
@@ -134,6 +149,7 @@ pub fn to_local(raw: &Value, existing: Option<&Profile>) -> Option<Profile> {
 
 type Canon = (
     String,
+    PolicyMode,
     BTreeMap<String, (bool, bool)>,
     BTreeMap<String, String>,
     BTreeSet<String>,
@@ -142,6 +158,7 @@ type Canon = (
 fn canon(p: &Profile) -> Canon {
     (
         p.policy.name.clone(),
+        p.policy.mode,
         p.policy
             .domains
             .iter()
@@ -172,10 +189,9 @@ pub fn canonical(p: &Profile) -> String {
 
 /// `raw` is the last server record (`None` for a brand-new profile). Never mutates it.
 pub fn merge(local: &Profile, raw: Option<&Value>) -> Value {
-    let mut out = raw
-        .cloned()
-        .unwrap_or_else(|| json!({ "mode": "blocklist" }));
+    let mut out = raw.cloned().unwrap_or_else(|| json!({}));
     out["id"] = json!(local.policy.id.to_lowercase());
+    out["mode"] = json!(mode_str(local.policy.mode));
     out["name"] = json!(local.policy.name);
     let existing_domains: Vec<Value> = arr(&out, "domainRules").to_vec();
     out["domainRules"] = Value::Array(merge_domains(&local.policy.domains, &existing_domains));

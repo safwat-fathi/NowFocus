@@ -20,9 +20,13 @@ export interface FeedRule {
   enabled: boolean;
 }
 
+/** Fixed when a profile is created: a blocklist closes what it lists, an allowlist closes everything else. */
+export type PolicyMode = "blocklist" | "allowlist";
+
 export interface Profile {
   id: string;
   name: string;
+  mode: PolicyMode;
   domains: DomainRule[];
   applications: ApplicationRule[];
   feeds: FeedRule[];

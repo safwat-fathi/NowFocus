@@ -35,6 +35,8 @@ pub struct FeedRuleDto {
 pub struct ProfileDto {
     pub id: String,
     pub name: String,
+    /// `"blocklist"` or `"allowlist"`; fixed when the profile is created.
+    pub mode: now_focus_core::PolicyMode,
     pub domains: Vec<DomainRuleDto>,
     pub applications: Vec<ApplicationRuleDto>,
     pub feeds: Vec<FeedRuleDto>,

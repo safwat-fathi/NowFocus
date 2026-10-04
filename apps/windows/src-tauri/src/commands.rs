@@ -36,11 +36,15 @@ pub fn get_state(state: State<SharedState>) -> Result<AppStateDto, String> {
 }
 
 #[tauri::command]
-pub fn create_profile(state: State<SharedState>, name: String) -> Result<AppStateDto, String> {
+pub fn create_profile(
+    state: State<SharedState>,
+    name: String,
+    mode: now_focus_core::PolicyMode,
+) -> Result<AppStateDto, String> {
     state
         .lock()
         .map_err(|_| "app state lock poisoned")?
-        .create_profile(name)?;
+        .create_profile(name, mode)?;
     changed(&state)
 }
 

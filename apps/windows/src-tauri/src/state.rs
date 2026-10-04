@@ -10,9 +10,9 @@ use now_focus_core::daily_limit::{self, DailyLimit};
 use now_focus_core::history_stats::BlockEvent;
 use now_focus_core::schedule::{self, Schedule};
 use now_focus_core::{
-    bedtime_schedule, domain_validation, history_stats, passes, session_engine, ApplicationRule,
-    BedtimeSettings, DomainRule, EnforcementMode, FocusSession, FocusSessionStatus, Profile,
-    SessionOrigin, SessionType,
+    allowlist, bedtime_schedule, domain_validation, history_stats, passes, session_engine,
+    ApplicationRule, BedtimeSettings, DomainRule, EnforcementMode, FocusSession,
+    FocusSessionStatus, PolicyMode, Profile, SessionOrigin, SessionType,
 };
 use now_focus_ipc::CommitmentStatusWire;
 
@@ -356,8 +356,9 @@ impl AppState {
 
     // ---- Profiles ------------------------------------------------------
 
-    pub fn create_profile(&mut self, name: String) -> Result<(), String> {
-        let profile = Profile::new(name);
+    /// The mode is fixed here: a blocklist and an allowlist hold the same kind of rows with opposite meaning.
+    pub fn create_profile(&mut self, name: String, mode: PolicyMode) -> Result<(), String> {
+        let profile = Profile::with_mode(name, mode);
         self.db.save_profile(&profile).map_err(|e| e.to_string())
     }
 
@@ -373,6 +374,9 @@ impl AppState {
     /// `domErr` field the Profiles screen shows inline.
     pub fn add_domain(&mut self, profile_id: &str, raw: &str) -> Result<(), String> {
         let mut profile = self.require_profile(profile_id)?;
+        if profile.policy.mode == PolicyMode::Allowlist {
+            return Err("Websites aren\u{2019}t filtered in whitelist mode. Allow a browser and every site works.".to_string());
+        }
         let Some(domain) = domain_validation::normalize(raw) else {
             return Err(
                 "That doesn't look like a website. Try something like example.com".to_string(),
@@ -403,6 +407,10 @@ impl AppState {
         display_name: String,
     ) -> Result<(), String> {
         let mut profile = self.require_profile(profile_id)?;
+        // The rules are what stays open, so allowing one more app is the edit that weakens a running session.
+        if profile.policy.mode == PolicyMode::Allowlist && self.session_active_on(profile_id)? {
+            return Err("You can\u{2019}t allow more apps while a focus session is running on this profile.".to_string());
+        }
         if profile
             .policy
             .applications
@@ -419,9 +427,15 @@ impl AppState {
     }
 
     pub fn remove_application(&mut self, profile_id: &str, rule_id: &str) -> Result<(), String> {
-        self.reject_if_active(profile_id)?;
         let mut profile = self.require_profile(profile_id)?;
+        if profile.policy.mode == PolicyMode::Blocklist {
+            self.reject_if_active(profile_id)?;
+        }
         profile.policy.applications.retain(|a| a.id != rule_id);
+        // Narrowing a running allowlist is fine, but its last app going would leave nothing to enforce.
+        if !allowlist::enforces_here(&profile.policy) && self.session_active_on(profile_id)? {
+            return Err("You can\u{2019}t remove the last allowed app while a focus session is running on this profile.".to_string());
+        }
         self.save_edited(profile)
     }
 
@@ -460,15 +474,19 @@ impl AppState {
     /// If a session is currently active on `profile_id`, return `Err` —
     /// removals/disabling of blocks are refused while the session is running.
     fn reject_if_active(&mut self, profile_id: &str) -> Result<(), String> {
-        if let Some(session) = self.recover()? {
-            if session.policy_id == profile_id && session_engine::is_active(&session, Utc::now()) {
-                return Err(
-                    "You can\u{2019}t remove blocks while a focus session is running on this profile."
-                        .to_string(),
-                );
-            }
+        if self.session_active_on(profile_id)? {
+            return Err(
+                "You can\u{2019}t remove blocks while a focus session is running on this profile."
+                    .to_string(),
+            );
         }
         Ok(())
+    }
+
+    fn session_active_on(&mut self, profile_id: &str) -> Result<bool, String> {
+        Ok(self.recover()?.is_some_and(|s| {
+            s.policy_id == profile_id && session_engine::is_active(&s, Utc::now())
+        }))
     }
 
     /// If a session is currently active on `profile_id`, re-push the given
@@ -501,6 +519,9 @@ impl AppState {
             return Err("A session is already running".to_string());
         }
         let profile = self.require_profile(profile_id)?;
+        if !allowlist::enforces_here(&profile.policy) {
+            return Err("Add at least one app to allow before you start.".to_string());
+        }
         let mode = parse_mode(mode)?;
         let now = Utc::now();
         let mut session = FocusSession::new(
@@ -642,6 +663,10 @@ impl AppState {
         let Ok(Some(profile)) = self.db.get_profile(&due.policy_id) else {
             return;
         };
+        // An allowlist with no app for this PC (it was built on another platform) has nothing to enforce here.
+        if !allowlist::enforces_here(&profile.policy) {
+            return;
+        }
 
         let mut session = FocusSession::new(&profile.policy.id, now, due.end, &self.device_id);
         session.enforcement_mode = due.mode;
@@ -840,16 +865,31 @@ impl AppState {
         if self
             .passes
             .iter()
-            .any(|(p, until)| *until > now && p.eq_ignore_ascii_case(exe_path))
+            .any(|(p, until)| *until > now && allowlist::same_exe(p, exe_path))
         {
             return None;
         }
         let profile = self.db.get_profile(&session.policy_id).ok()??;
+        if profile.policy.mode == PolicyMode::Allowlist {
+            if !allowlist::closes(
+                &profile.policy,
+                exe_path,
+                own_exe().as_deref(),
+                &system_root(),
+            ) {
+                return None;
+            }
+            // No rule names an app the list doesn't have, so the Shield and a pass go by the exe itself.
+            let display_name = allowlist::display_name(exe_path);
+            let _ = self.record_block_attempt("app".to_string(), display_name.clone());
+            self.shield_native = Some(exe_path.to_string());
+            return Some(display_name);
+        }
         let matched = profile
             .policy
             .applications
             .iter()
-            .find(|a| a.enabled && a.native_identifier.eq_ignore_ascii_case(exe_path))?;
+            .find(|a| a.enabled && allowlist::same_exe(&a.native_identifier, exe_path))?;
         let display_name = matched.display_name.clone();
         let native = matched.native_identifier.clone();
         let _ = self.record_block_attempt("app".to_string(), display_name.clone());
@@ -1065,7 +1105,13 @@ impl AppState {
 
         if let Some((start, end)) = decision.start_window {
             if let Some(policy_id) = &settings.policy_id {
-                if let Ok(Some(profile)) = self.db.get_profile(policy_id) {
+                if let Some(profile) = self
+                    .db
+                    .get_profile(policy_id)
+                    .ok()
+                    .flatten()
+                    .filter(|p| allowlist::enforces_here(&p.policy))
+                {
                     let mut bedtime = FocusSession::new(
                         &profile.policy.id,
                         local_naive_to_utc(start),
@@ -1222,7 +1268,7 @@ impl AppState {
     }
 
     /// Starts enforcing a session another device started. `false` when it can't be: the profile isn't here, it
-    /// is an allowlist (Windows can't enforce those), or a session is already running.
+    /// is an allowlist with no app for this PC, or a session is already running.
     pub fn sync_join(
         &mut self,
         remote: &now_focus_sync::session::RemoteSession,
@@ -1235,7 +1281,7 @@ impl AppState {
         else {
             return Ok(false);
         };
-        if profile.policy.mode == now_focus_core::PolicyMode::Allowlist {
+        if !allowlist::enforces_here(&profile.policy) {
             return Ok(false);
         }
         if self
@@ -1287,6 +1333,16 @@ impl AppState {
     }
 }
 
+fn own_exe() -> Option<String> {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.to_str().map(String::from))
+}
+
+fn system_root() -> String {
+    std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_string())
+}
+
 fn parse_mode(mode: &str) -> Result<EnforcementMode, String> {
     match mode {
         "normal" => Ok(EnforcementMode::Normal),
@@ -1308,6 +1364,7 @@ fn profile_to_dto(profile: &Profile) -> ProfileDto {
     ProfileDto {
         id: profile.policy.id.clone(),
         name: profile.policy.name.clone(),
+        mode: profile.policy.mode,
         domains: profile
             .policy
             .domains
@@ -1560,7 +1617,9 @@ mod tests {
         let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
 
         // Create a profile and start a session on it.
-        state.create_profile("Test Profile".into()).unwrap();
+        state
+            .create_profile("Test Profile".into(), PolicyMode::Blocklist)
+            .unwrap();
 
         // The seeded "Deep Work" profile may exist too; find "Test Profile".
         let snap = state.snapshot().unwrap();
@@ -1701,7 +1760,9 @@ mod tests {
     }
 
     fn app_profile(state: &mut AppState) -> String {
-        state.create_profile("Apps".into()).unwrap();
+        state
+            .create_profile("Apps".into(), PolicyMode::Blocklist)
+            .unwrap();
         let id = state
             .snapshot()
             .unwrap()
@@ -1880,7 +1941,7 @@ mod tests {
         state.use_pass().unwrap();
         assert!(state.snapshot().unwrap().shield.is_none());
         assert!(
-            state.check_foreground_app(r"c:pps\chat.EXE").is_none(),
+            state.check_foreground_app(r"c:\apps\chat.EXE").is_none(),
             "open for the pass, matched case-insensitively"
         );
 
@@ -2038,5 +2099,225 @@ mod tests {
             state.snapshot().unwrap().cheat_day.is_none(),
             "cancelling a planned day removes it"
         );
+    }
+    // ---- whitelist mode -------------------------------------------------------
+
+    /// An allowlist profile with `apps` allowed (before any session), and its id.
+    fn allow_profile(state: &mut AppState, apps: &[&str]) -> String {
+        state
+            .create_profile("Only these".into(), PolicyMode::Allowlist)
+            .unwrap();
+        let id = state
+            .snapshot()
+            .unwrap()
+            .profiles
+            .iter()
+            .find(|p| p.name == "Only these")
+            .unwrap()
+            .id
+            .clone();
+        for app in apps {
+            state
+                .add_application(&id, (*app).into(), "App".into())
+                .unwrap();
+        }
+        id
+    }
+
+    fn fresh() -> (AppState, Arc<Mutex<Vec<BlockPolicy>>>) {
+        let db = Database::open_in_memory().unwrap();
+        let (fake, log) = FakeEnforcer::new();
+        (AppState::open_with_db(db, Box::new(fake)).unwrap(), log)
+    }
+
+    #[test]
+    fn a_whitelist_session_closes_unlisted_apps_and_keeps_listed_ones() {
+        let (mut state, _) = fresh();
+        let id = allow_profile(&mut state, &[r"C:\Apps\Code.exe"]);
+        state.start_session(&id, 60, "normal").unwrap();
+
+        assert_eq!(
+            state
+                .check_foreground_app(r"C:\Games\Steam\steam.exe")
+                .as_deref(),
+            Some("steam"),
+            "named by its file, no rule has a name for it"
+        );
+        assert!(state.check_foreground_app(r"c:\apps\CODE.exe").is_none());
+    }
+
+    #[test]
+    fn a_whitelist_never_closes_nowfocus_or_the_windows_directory() {
+        let (mut state, _) = fresh();
+        let id = allow_profile(&mut state, &[r"C:\Apps\Code.exe"]);
+        state.start_session(&id, 60, "normal").unwrap();
+
+        let own = own_exe().expect("test binary has a path");
+        assert!(state.check_foreground_app(&own).is_none());
+        let explorer = format!(r"{}\explorer.exe", system_root());
+        assert!(state.check_foreground_app(&explorer).is_none());
+    }
+
+    #[test]
+    fn a_pass_reopens_an_app_a_whitelist_closed() {
+        let (mut state, _) = fresh();
+        let id = allow_profile(&mut state, &[r"C:\Apps\Code.exe"]);
+        state.start_session(&id, 60, "strict").unwrap();
+
+        assert!(state.check_foreground_app(r"C:\Games\Game.exe").is_some());
+        state.use_pass().unwrap();
+        assert!(state.check_foreground_app(r"c:\games\game.EXE").is_none());
+        assert!(
+            state.check_foreground_app(r"C:\Games\Other.exe").is_some(),
+            "a pass is for the one app"
+        );
+    }
+
+    #[test]
+    fn a_whitelist_with_no_app_cannot_start_and_closes_nothing() {
+        let (mut state, _) = fresh();
+        let id = allow_profile(&mut state, &[]);
+        assert!(state
+            .start_session(&id, 60, "normal")
+            .unwrap_err()
+            .contains("at least one app"));
+
+        // The same list reaching a running session some other way (a sync pull, a schedule) must still close nothing.
+        let now = Utc::now();
+        let session = FocusSession::new(&id, now, now + ChronoDuration::hours(1), "dev");
+        state.db.save_session(&session).unwrap();
+        assert!(state.check_foreground_app(r"C:\Games\Game.exe").is_none());
+    }
+
+    #[test]
+    fn the_enforcer_is_given_the_mode_with_the_policy() {
+        let (mut state, log) = fresh();
+        let id = allow_profile(&mut state, &[r"C:\Apps\Code.exe"]);
+        state.start_session(&id, 60, "normal").unwrap();
+        let applied = log.lock().unwrap();
+        assert_eq!(applied.len(), 1);
+        assert_eq!(
+            applied[0].mode,
+            PolicyMode::Allowlist,
+            "the service decides what the mode means for the hosts file"
+        );
+    }
+
+    #[test]
+    fn websites_cannot_be_added_to_a_whitelist() {
+        let (mut state, _) = fresh();
+        let id = allow_profile(&mut state, &[]);
+        assert!(state
+            .add_domain(&id, "example.com")
+            .unwrap_err()
+            .contains("whitelist"));
+    }
+
+    #[test]
+    fn a_running_whitelist_can_shrink_but_not_grow_or_empty() {
+        let (mut state, _) = fresh();
+        let id = allow_profile(&mut state, &[r"C:\Apps\A.exe", r"C:\Apps\B.exe"]);
+        state.start_session(&id, 60, "normal").unwrap();
+
+        assert!(state
+            .add_application(&id, r"C:\Apps\C.exe".into(), "C".into())
+            .unwrap_err()
+            .contains("allow more apps"));
+
+        let rules = |s: &mut AppState| {
+            s.snapshot()
+                .unwrap()
+                .profiles
+                .iter()
+                .find(|p| p.id == id)
+                .unwrap()
+                .applications
+                .clone()
+        };
+        let first = rules(&mut state)[0].id.clone();
+        state.remove_application(&id, &first).unwrap();
+        let last = rules(&mut state)[0].id.clone();
+        assert!(state
+            .remove_application(&id, &last)
+            .unwrap_err()
+            .contains("last allowed app"));
+    }
+
+    #[test]
+    fn an_idle_whitelist_can_be_edited_freely_and_a_blocklist_keeps_its_rule() {
+        let (mut state, _) = fresh();
+        let id = allow_profile(&mut state, &[r"C:\Apps\A.exe"]);
+        state
+            .add_application(&id, r"C:\Apps\B.exe".into(), "B".into())
+            .unwrap();
+        let rule = state
+            .snapshot()
+            .unwrap()
+            .profiles
+            .iter()
+            .find(|p| p.id == id)
+            .unwrap()
+            .applications[0]
+            .id
+            .clone();
+        state.remove_application(&id, &rule).unwrap();
+
+        let blocks = app_profile(&mut state);
+        state.start_session(&blocks, 60, "normal").unwrap();
+        let rule = state
+            .snapshot()
+            .unwrap()
+            .profiles
+            .iter()
+            .find(|p| p.id == blocks)
+            .unwrap()
+            .applications[0]
+            .id
+            .clone();
+        assert!(state
+            .remove_application(&blocks, &rule)
+            .unwrap_err()
+            .contains("remove blocks"));
+    }
+
+    #[test]
+    fn the_profile_reports_its_mode() {
+        let (mut state, _) = fresh();
+        allow_profile(&mut state, &[]);
+        let modes: Vec<_> = state
+            .snapshot()
+            .unwrap()
+            .profiles
+            .iter()
+            .map(|p| (p.name.clone(), p.mode))
+            .collect();
+        assert!(modes.contains(&("Only these".to_string(), PolicyMode::Allowlist)));
+        assert!(modes.contains(&("Deep Work".to_string(), PolicyMode::Blocklist)));
+    }
+
+    #[test]
+    fn a_joined_whitelist_session_needs_an_app_for_this_pc() {
+        let (mut state, _) = fresh();
+        let empty = allow_profile(&mut state, &[]);
+        let now = Utc::now();
+        let remote = |pid: &str| now_focus_sync::session::RemoteSession {
+            id: "00000000-0000-4000-8000-0000000000aa".into(),
+            policy_id: pid.into(),
+            status: "active".into(),
+            mode: EnforcementMode::Normal,
+            start_at: now,
+            end_at: now + ChronoDuration::hours(1),
+            started_on: None,
+            raw: serde_json::json!({}),
+        };
+        assert!(
+            !state.sync_join(&remote(&empty)).unwrap(),
+            "no Windows app on the list: don't join"
+        );
+
+        state
+            .add_application(&empty, r"C:\Apps\Code.exe".into(), "Code".into())
+            .unwrap();
+        assert!(state.sync_join(&remote(&empty)).unwrap());
     }
 }

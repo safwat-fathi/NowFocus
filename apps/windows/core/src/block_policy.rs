@@ -80,11 +80,17 @@ pub struct BlockPolicy {
 
 impl BlockPolicy {
     pub fn new(name: impl Into<String>) -> Self {
+        Self::with_mode(name, PolicyMode::Blocklist)
+    }
+
+    /// The mode is chosen here and never changes: flipping a list in place would turn "block these"
+    /// into "allow only these".
+    pub fn with_mode(name: impl Into<String>, mode: PolicyMode) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),
             name: name.into(),
-            mode: PolicyMode::Blocklist,
+            mode,
             domains: Vec::new(),
             applications: Vec::new(),
             categories: Vec::new(),
@@ -120,8 +126,12 @@ pub struct Profile {
 
 impl Profile {
     pub fn new(name: impl Into<String>) -> Self {
+        Self::with_mode(name, PolicyMode::Blocklist)
+    }
+
+    pub fn with_mode(name: impl Into<String>, mode: PolicyMode) -> Self {
         Self {
-            policy: BlockPolicy::new(name),
+            policy: BlockPolicy::with_mode(name, mode),
             feed_rules: Vec::new(),
         }
     }

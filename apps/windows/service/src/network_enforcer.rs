@@ -17,7 +17,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use now_focus_core::{domain_validation, hosts_block, BlockPolicy};
+use now_focus_core::{allowlist, domain_validation, hosts_block, BlockPolicy};
 
 const SESSION_START: &str = "### FOCUS APP BLOCK START ###";
 const SESSION_END: &str = "### FOCUS APP BLOCK END ###";
@@ -38,13 +38,9 @@ fn backup_path() -> PathBuf {
 // ---- Session block ----------------------------------------------------
 
 pub fn apply(policy: &BlockPolicy) -> Result<(), String> {
-    let lines = domain_lines(
-        policy
-            .domains
-            .iter()
-            .filter(|d| d.enabled)
-            .map(|d| (d.domain.as_str(), d.include_subdomains)),
-    );
+    // `blocked_domains` is empty for an allowlist: every caller routes through here, so this is the one place
+    // that keeps an allowlist's domains from being written as blocks.
+    let lines = domain_lines(allowlist::blocked_domains(policy));
     rewrite_region(SESSION_START, SESSION_END, &lines)
 }
 

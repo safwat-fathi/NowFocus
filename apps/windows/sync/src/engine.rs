@@ -498,17 +498,102 @@ mod tests {
         );
     }
 
+    const ALLOW_ID: &str = "00000000-0000-4000-8000-000000000001";
+
+    fn put_allowlist(ea: &Engine<FakeHost, FakeApi>, data: serde_json::Value) {
+        let mut s = ea.api.0.lock().unwrap();
+        s.seq += 1;
+        let seq = s.seq;
+        s.records.insert(
+            ("policy".into(), ALLOW_ID.into()),
+            (data, Utc::now(), seq, 1),
+        );
+    }
+
     #[test]
-    fn an_allowlist_profile_is_kept_but_never_imported() {
+    fn an_allowlist_profile_is_imported_with_its_windows_apps_and_mode() {
         let ((_ha, ea), (hb, eb)) = pair();
-        {
-            let mut s = ea.api.0.lock().unwrap();
-            s.seq += 1;
-            let seq = s.seq;
-            s.records.insert(("policy".into(), "00000000-0000-4000-8000-000000000001".into()), (json!({ "id": "00000000-0000-4000-8000-000000000001", "name": "Only these", "mode": "allowlist", "domainRules": [] }), Utc::now(), seq, 1));
-        }
+        put_allowlist(
+            &ea,
+            json!({
+                "id": ALLOW_ID, "name": "Only these", "mode": "allowlist", "domainRules": [],
+                "applicationRules": [
+                    { "id": "r1", "platform": "windows", "nativeIdentifier": "C:\\Apps\\Code.exe", "displayName": "Code", "enabled": true },
+                    { "id": "r2", "platform": "android", "nativeIdentifier": "com.android.chrome", "enabled": true },
+                ],
+            }),
+        );
         eb.sync_once().unwrap();
-        assert!(hb.profiles().iter().all(|p| p.policy.name != "Only these"));
+        let p = hb
+            .profiles()
+            .into_iter()
+            .find(|p| p.policy.name == "Only these")
+            .expect("imported");
+        assert_eq!(p.policy.mode, now_focus_core::PolicyMode::Allowlist);
+        assert_eq!(
+            p.policy.applications.len(),
+            1,
+            "only this platform's rules are local"
+        );
+    }
+
+    #[test]
+    fn editing_an_allowlist_keeps_its_mode_and_the_other_platforms_apps() {
+        let ((_ha, ea), (hb, eb)) = pair();
+        put_allowlist(
+            &ea,
+            json!({
+                "id": ALLOW_ID, "name": "Only these", "mode": "allowlist", "domainRules": [],
+                "applicationRules": [{ "id": "r2", "platform": "android", "nativeIdentifier": "com.android.chrome", "enabled": true }],
+            }),
+        );
+        eb.sync_once().unwrap();
+        hb.edit(|l| {
+            let p = l
+                .profiles
+                .iter_mut()
+                .find(|p| p.policy.name == "Only these")
+                .unwrap();
+            p.policy
+                .applications
+                .push(now_focus_core::ApplicationRule::new(
+                    r"C:\Apps\Code.exe",
+                    "Code",
+                ));
+            p.policy.updated_at = Utc::now();
+        });
+        eb.sync_once().unwrap();
+        let s = ea.api.0.lock().unwrap();
+        let (data, ..) = &s.records[&("policy".to_string(), ALLOW_ID.to_string())];
+        assert_eq!(data["mode"], "allowlist");
+        let ids: Vec<_> = data["applicationRules"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["nativeIdentifier"].as_str().unwrap().to_string())
+            .collect();
+        assert!(
+            ids.contains(&"com.android.chrome".to_string()),
+            "Android's rule survives"
+        );
+        assert!(
+            ids.contains(&r"C:\Apps\Code.exe".to_string()),
+            "Windows' rule was pushed"
+        );
+    }
+
+    #[test]
+    fn a_mode_this_build_does_not_know_is_kept_but_never_imported() {
+        let ((_ha, ea), (hb, eb)) = pair();
+        put_allowlist(
+            &ea,
+            json!({ "id": ALLOW_ID, "name": "From the future", "mode": "quarantine", "domainRules": [] }),
+        );
+        eb.sync_once().unwrap();
+        assert!(hb
+            .profiles()
+            .iter()
+            .all(|p| p.policy.name != "From the future"));
     }
 
     #[test]

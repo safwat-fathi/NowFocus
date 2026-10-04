@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
-import type { AppState, DeviceInfo, Schedule } from "../types";
+import type { AppState, DeviceInfo, PolicyMode, Schedule } from "../types";
 
 // One wrapper per #[tauri::command] in src-tauri/src/commands.rs. Every
 // mutating call returns the fresh AppState — same "recompute everything
@@ -10,7 +10,8 @@ import type { AppState, DeviceInfo, Schedule } from "../types";
 export const api = {
   getState: () => invoke<AppState>("get_state"),
 
-  createProfile: (name: string) => invoke<AppState>("create_profile", { name }),
+  createProfile: (name: string, mode: PolicyMode = "blocklist") =>
+    invoke<AppState>("create_profile", { name, mode }),
   renameProfile: (profileId: string, name: string) =>
     invoke<AppState>("rename_profile", { profileId, name }),
   addDomain: (profileId: string, domain: string) =>

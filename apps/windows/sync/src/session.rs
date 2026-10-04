@@ -11,7 +11,8 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use now_focus_core::session_engine;
 use now_focus_core::{
-    EnforcementMode, FocusSession, FocusSessionStatus, Profile, SessionOrigin, SessionType,
+    EnforcementMode, FocusSession, FocusSessionStatus, PolicyMode, Profile, SessionOrigin,
+    SessionType,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -141,6 +142,14 @@ fn wire_mode(m: EnforcementMode) -> &'static str {
     }
 }
 
+fn feed_names(p: &Profile) -> Vec<Value> {
+    FEEDS
+        .iter()
+        .filter(|(key, _)| p.feed_rules.iter().any(|f| f.enabled && f.feed_key == *key))
+        .map(|(_, name)| json!(name))
+        .collect()
+}
+
 /// The session as the server stores it. With `base` (a session joined from elsewhere) only what changes is touched.
 pub fn to_wire(
     sess: &FocusSession,
@@ -164,8 +173,12 @@ pub fn to_wire(
     }
     if base.is_none() {
         o["startedOn"] = json!(device_name);
+        // An allowlist's snapshot has empty rules on purpose: a client that joins from the snapshot alone
+        // (Android 0.6 and earlier) would read the allowed apps as apps to block. Receivers that know
+        // the mode take their own platform's apps from the synced policy instead (WIRE_FORMAT.md section 6).
+        let allowlist = profile.is_some_and(|p| p.policy.mode == PolicyMode::Allowlist);
         let (domains, apps, partial) = match profile {
-            Some(p) => (
+            Some(p) if !allowlist => (
                 p.policy
                     .domains
                     .iter()
@@ -176,16 +189,17 @@ pub fn to_wire(
                     .iter()
                     .map(|a| json!({ "platform": wire::PLATFORM, "nativeIdentifier": a.native_identifier, "displayName": a.display_name, "enabled": a.enabled }))
                     .collect::<Vec<_>>(),
-                FEEDS
-                    .iter()
-                    .filter(|(key, _)| p.feed_rules.iter().any(|f| f.enabled && f.feed_key == *key))
-                    .map(|(_, name)| json!(name))
-                    .collect::<Vec<_>>(),
+                feed_names(p),
             ),
+            Some(p) => (vec![], vec![], feed_names(p)),
             None => (vec![], vec![], vec![]),
         };
-        o["policySnapshot"] =
-            json!({ "domainRules": domains, "applicationRules": apps, "partial": partial });
+        o["policySnapshot"] = json!({
+            "mode": if allowlist { "allowlist" } else { "blocklist" },
+            "domainRules": domains,
+            "applicationRules": apps,
+            "partial": partial,
+        });
     }
     o
 }
@@ -235,7 +249,7 @@ pub trait SessionHost {
     fn local_session(&self) -> Result<Option<FocusSession>, String>;
     fn profile(&self, id: &str) -> Result<Option<Profile>, String>;
     fn join_enabled(&self) -> Result<bool, String>;
-    /// Starts enforcing `remote` here. `false` when it can't (the profile isn't here, or it's an allowlist).
+    /// Starts enforcing `remote` here. `false` when it can't (the profile isn't here, or it's an allowlist with no app for this PC).
     fn join(&self, remote: &RemoteSession) -> Result<bool, String>;
     fn end_local(&self, id: &str) -> Result<(), String>;
     fn extend_local(&self, id: &str, end: DateTime<Utc>) -> Result<(), String>;

@@ -4,6 +4,7 @@
 //! each module's doc comment for the macOS/Android source it ports from.
 //! `cargo test` here is expected to pass on any host OS.
 
+pub mod allowlist;
 pub mod bedtime_schedule;
 pub mod block_policy;
 pub mod cheat_day;
