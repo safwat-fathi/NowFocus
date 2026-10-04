@@ -268,7 +268,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                         bedtime = bedtime,
                         now = now,
                         onOpen = { screen = Screen.EditPolicy(it) },
-                        onAdd = { screen = Screen.EditPolicy(viewModel.addPolicy()) },
+                        onAdd = { mode -> screen = Screen.EditPolicy(viewModel.addPolicy(mode)) },
                         onDelete = viewModel::deletePolicy,
                         onBack = { screen = Screen.Home },
                         onOpenCommitment = { backTo = Screen.Policies; screen = Screen.Commitment },
@@ -646,7 +646,7 @@ private fun SetupScreen(
                 Spacer(Modifier.width(NowFocusSpace.s3))
                 Column {
                     Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
-                    Text(sitesAppsText(p.domains.size, p.apps.size), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+                    Text(profileSummary(p), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
                 }
             }
             SectionRule()
@@ -734,10 +734,16 @@ private fun SetupScreen(
         }
 
         Spacer(Modifier.height(NowFocusSpace.s6))
-        PrimaryButton(stringResource(R.string.setup_start, stringResource(DURATIONS.first { it.second == minutes }.first))) {
+        if (!selected.enforcesHere) {
+            Text(
+                stringResource(R.string.setup_allow_empty),
+                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.accent700),
+            )
+        } else PrimaryButton(stringResource(R.string.setup_start, stringResource(DURATIONS.first { it.second == minutes }.first))) {
             // Finalize an in-progress note first so startSession adopts a complete file.
             if (recording) recorder.stop()
-            val consentIntent = VpnService.prepare(context)
+            // A whitelist filters no sites, so there is nothing for the VPN to do and no consent to ask for.
+            val consentIntent = if (selected.mode == PolicyMode.ALLOWLIST) null else VpnService.prepare(context)
             if (consentIntent == null) {
                 onStart(selected.id, minutes, mode)
             } else {
@@ -1297,7 +1303,7 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
                     Spacer(Modifier.width(NowFocusSpace.s3))
                     Column {
                         Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
-                        Text(sitesAppsText(p.domains.size, p.apps.size), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+                        Text(profileSummary(p), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
                     }
                 }
                 SectionRule()

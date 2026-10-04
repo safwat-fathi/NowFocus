@@ -50,6 +50,8 @@ class BlockedActivity : ComponentActivity() {
         const val EXTRA_SOURCE = "source"
         /** The blocking session is a Bedtime wind-down (a session block says "bedtime", not "focus session"). */
         const val EXTRA_BEDTIME = "bedtime"
+        /** The session is a whitelist: this app was closed because it is not on the list. */
+        const val EXTRA_ALLOWLIST = "allowlist"
         const val EXTRA_PACKAGE = "package"
         const val EXTRA_LIMIT_MINUTES = "limitMinutes"
         const val EXTRA_SITE = "site"
@@ -131,6 +133,7 @@ class BlockedActivity : ComponentActivity() {
             fromShield -> BlockReason.COMMITMENT_SHIELD
             fromLimit -> BlockReason.DAILY_LIMIT
             intent.getBooleanExtra(EXTRA_BEDTIME, false) -> BlockReason.BEDTIME
+            intent.getBooleanExtra(EXTRA_ALLOWLIST, false) -> BlockReason.ALLOWLIST_SESSION
             else -> BlockReason.FOCUS_SESSION
         }
         setContent {

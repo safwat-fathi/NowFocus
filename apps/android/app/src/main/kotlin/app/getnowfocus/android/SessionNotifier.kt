@@ -53,7 +53,7 @@ object SessionNotifier {
             NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_nowfocus_active)
                 .setContentTitle(t.getString(R.string.notif_session_title))
-                .setContentText(t.getString(R.string.notif_session_text))
+                .setContentText(t.getString(if (session.policyMode == PolicyMode.ALLOWLIST) R.string.notif_session_text_allowlist else R.string.notif_session_text))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(open)

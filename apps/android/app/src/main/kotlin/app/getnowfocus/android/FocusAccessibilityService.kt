@@ -193,6 +193,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 .putExtra(BlockedActivity.EXTRA_END_AT, blocking.endAt)
                 .putExtra(BlockedActivity.EXTRA_SOURCE, blocking.source.name)
                 .putExtra(BlockedActivity.EXTRA_BEDTIME, blocking.bedtime)
+                .putExtra(BlockedActivity.EXTRA_ALLOWLIST, blocking.allowlist)
                 .putExtra(BlockedActivity.EXTRA_PACKAGE, pkg)
                 .putExtra(BlockedActivity.EXTRA_PASSES_LEFT, blocking.passesLeft)
         )

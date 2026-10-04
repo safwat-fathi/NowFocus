@@ -34,6 +34,21 @@
     </plurals>
     <string name="sites_apps">%1$s · %2$s</string>
 
+    <string name="policies_new_title">New profile</string>
+    <string name="policies_new_block">Block these</string>
+    <string name="policies_new_block_sub">Close the apps and sites you pick.</string>
+    <string name="policies_new_allow">Allow only these</string>
+    <string name="policies_new_allow_sub">Close everything except the apps you pick.</string>
+    <string name="setup_allow_empty">Allow at least one app on this phone before you start this profile.</string>
+    <string name="policies_none_allowed">No apps allowed on this phone yet</string>
+    <plurals name="policies_apps_allowed">
+        <item quantity="one">%1$d app allowed</item>
+        <item quantity="other">%1$d apps allowed</item>
+    </plurals>
+    <string name="policy_allowed_apps">ALLOWED APPLICATIONS</string>
+    <string name="policy_allow_note">Everything else closes during a session, except your launcher, phone, messages, Settings and keyboard. Websites aren\'t filtered: allow a browser and every site works.</string>
+    <string name="policy_cant_allow">During a session you can only take apps off this list, and never the last one.</string>
+    <string name="picker_title_allow">Select an app to allow</string>
     <string name="policy_cant_remove">You can\'t remove blocks while a focus session is running on this profile.</string>
     <string name="policy_name">Profile name</string>
     <string name="policy_websites">BLOCKED WEBSITES</string>
