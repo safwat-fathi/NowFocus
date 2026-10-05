@@ -142,7 +142,7 @@ export const ar: Record<Key, Message> = {
   "active.protected": "محمي",
   "active.turnedAway": "مشتتات محجوبة",
   "active.cheat": "يوم استراحة: الحجب متوقف حتى منتصف الليل.",
-  "active.note": "تظهر المواقع المحجوبة «تعذّر الوصول» حتى تنتهي الجلسة. هذا NowFocus، وليس إنترنتك.",
+  "active.note": "تُغلق التطبيقات المحجوبة وتظهر المواقع المحجوبة «تعذّر الوصول» حتى تنتهي الجلسة. هذا NowFocus، وليس إنترنتك.",
   "active.lockedUntil": "مقفل حتى {time}",
   "active.endEarly": "إنهاء الجلسة مبكرًا",
 

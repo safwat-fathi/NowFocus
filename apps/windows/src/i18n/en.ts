@@ -128,7 +128,7 @@ export const en = {
   "active.protected": "Protected",
   "active.turnedAway": "Distractions turned away",
   "active.cheat": "Cheat day: blocking is paused until midnight.",
-  "active.note": "Blocked sites show “can’t be reached” until the session ends. That’s NowFocus, not your internet.",
+  "active.note": "Blocked apps close and blocked sites show “can’t be reached” until the session ends. That’s NowFocus, not your internet.",
   "active.lockedUntil": "Locked until {time}",
   "active.endEarly": "End session early",
 

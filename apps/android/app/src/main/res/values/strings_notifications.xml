@@ -5,6 +5,6 @@
     <string name="notif_session_channel">Focus session</string>
     <string name="notif_session_title">Focus session in progress</string>
     <string name="notif_session_text_allowlist">Only your allowed apps stay open until the timer ends.</string>
-    <string name="notif_session_text">Blocked sites won\'t load until the timer ends.</string>
+    <string name="notif_session_text">Blocked apps and websites won\'t open until the timer ends.</string>
     <string name="overlay_recommendations_off">Recommendations are off while you focus</string>
 </resources>

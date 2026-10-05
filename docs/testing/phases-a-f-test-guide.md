@@ -136,7 +136,7 @@ Also note whether Chrome with "Use secure DNS" on, and Firefox with DNS over HTT
 2. Pull down the notification shade. Lock the phone and look at the lock screen.
 3. Leave the phone for 10 minutes with the session running and **no browser open**, screen on a few times.
 
-**Expect:** the session notification says "Blocked sites won't load until the timer ends." After the site fails, one notification "NowFocus blocked a site / It will load again when the block ends." appears (at most once a minute, names no site, **not** visible on the lock screen). In step 3, check whether that notification appears with nobody trying a site: if it does, tell me, I will remove it.
+**Expect:** the session notification says "Blocked apps and websites won't open until the timer ends." After the site fails, one notification "NowFocus blocked a site / It will load again when the block ends." appears (at most once a minute, names no site, **not** visible on the lock screen). In step 3, check whether that notification appears with nobody trying a site: if it does, tell me, I will remove it.
 
 **Result:** [ ] pass  [ ] fail  [ ] skipped
 **Notes (did it fire by itself?):**
@@ -174,7 +174,7 @@ Also note whether Chrome with "Use secure DNS" on, and Firefox with DNS over HTT
 **Notes:**
 
 ### A-W3. Blocked-site wording
-The Active screen should say blocked sites show "can't be reached" until the session ends.
+The Active screen should say blocked apps close and blocked sites show "can't be reached" until the session ends.
 
 **Result:** [ ] pass  [ ] fail  [ ] skipped
 **Notes:**
