@@ -44,6 +44,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 
 /**
  * Modernist design tokens, ported 1:1 from the Claude Design system's
@@ -135,8 +138,12 @@ fun NowFocusTheme(content: @Composable () -> Unit) {
             outline = NowFocusColors.divider,
         ),
         shapes = Shapes(square, square, square, square, square),
-        content = content,
-    )
+    ) {
+        // The window's own direction comes from the system configuration (the device language), not from our
+        // wrapped context, so the app language sets it here. Dialogs read the same local.
+        val rtl = LocalContext.current.appLocale().language == "ar"
+        CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr, content = content)
+    }
 }
 
 /**
