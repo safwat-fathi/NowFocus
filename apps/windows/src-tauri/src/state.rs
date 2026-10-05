@@ -183,12 +183,10 @@ impl AppState {
 
         let session_dto = match &session {
             Some(s) if session_engine::is_active(s, Utc::now()) => {
-                let profile_name = profiles
-                    .iter()
-                    .find(|p| p.policy.id == s.policy_id)
-                    .map(|p| p.policy.name.clone())
-                    .unwrap_or_default();
-                Some(session_to_dto(s, &profile_name))
+                let profile = profiles.iter().find(|p| p.policy.id == s.policy_id);
+                let profile_name = profile.map(|p| p.policy.name.clone()).unwrap_or_default();
+                let allowlist = profile.is_some_and(|p| p.policy.mode == PolicyMode::Allowlist);
+                Some(session_to_dto(s, &profile_name, allowlist))
             }
             _ => None,
         };
@@ -1411,7 +1409,7 @@ fn format_remaining(remaining: ChronoDuration) -> String {
     }
 }
 
-fn session_to_dto(session: &FocusSession, profile_name: &str) -> SessionDto {
+fn session_to_dto(session: &FocusSession, profile_name: &str, allowlist: bool) -> SessionDto {
     let now = Utc::now();
     let remaining = (session.end_at - now).max(ChronoDuration::zero());
     let total = (session.end_at - session.start_at)
@@ -1431,6 +1429,7 @@ fn session_to_dto(session: &FocusSession, profile_name: &str) -> SessionDto {
         progress_pct: (elapsed as f64 / total as f64) * 100.0,
         paused: false, // set per snapshot, from the cheat day
         bedtime: session.session_type == SessionType::BedtimeWinddown,
+        allowlist,
     }
 }
 

@@ -49,6 +49,8 @@ export interface Session {
   paused: boolean;
   /** A Bedtime wind-down: the shield names it as bedtime, not a focus session. */
   bedtime: boolean;
+  /** A whitelist: only the profile's apps are left open. */
+  allowlist: boolean;
 }
 
 export type UnlockPhase = "typing" | "waiting";

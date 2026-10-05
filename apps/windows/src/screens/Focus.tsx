@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../lib/api";
+import { canStart, profileSummary } from "../lib/profile";
 import type { AppState, SessionMode } from "../types";
 import { ArrowRightIcon } from "../components/Icons";
 
@@ -100,9 +101,7 @@ export function Focus({
             <button key={p.id} className="profile-pick" data-selected={p.id === profileId} onClick={() => setProfileId(p.id)}>
               <span className="profile-pick__dot" />
               <span className="profile-pick__name">{p.name}</span>
-              <span className="profile-pick__meta">
-                {p.domains.length} sites · {p.applications.length} apps
-              </span>
+              <span className="profile-pick__meta">{profileSummary(p)}</span>
             </button>
           ))}
 
@@ -124,11 +123,14 @@ export function Focus({
             ))}
           </div>
           <p className="mode-desc">{MODE_DESC[mode]}</p>
+          {!canStart(state.profiles.find((p) => p.id === profileId)) && (
+            <p className="mode-desc">Allow at least one app on this PC before you start this profile.</p>
+          )}
 
           <button
             className="btn btn-primary"
             onClick={start}
-            disabled={!profileId || starting}
+            disabled={!canStart(state.profiles.find((p) => p.id === profileId)) || starting}
             style={{ width: "100%", minHeight: 56, justifyContent: "space-between", fontSize: 16, marginTop: "auto" }}
           >
             {starting ? "Starting…" : `Start ${DURATIONS.find((d) => d[1] === duration)?.[0]}`}

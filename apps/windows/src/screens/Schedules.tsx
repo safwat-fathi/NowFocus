@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { api } from "../lib/api";
+import { profileSummary } from "../lib/profile";
 import type { AppState, Schedule, SessionMode } from "../types";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -88,7 +89,7 @@ export function Schedules({ state, onState }: { state: AppState; onState: (s: Ap
             <button key={p.id} className="profile-pick" data-selected={p.id === e.policyId} onClick={() => set({ policyId: p.id })}>
               <span className="profile-pick__dot" />
               <span className="profile-pick__name">{p.name}</span>
-              <span className="profile-pick__meta">{p.domains.length} sites · {p.applications.length} apps</span>
+              <span className="profile-pick__meta">{profileSummary(p)}</span>
             </button>
           ))}
 

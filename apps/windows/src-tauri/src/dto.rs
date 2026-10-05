@@ -76,6 +76,8 @@ pub struct SessionDto {
     pub paused: bool,
     /// A Bedtime wind-down: the shield names it as bedtime, not a focus session.
     pub bedtime: bool,
+    /// A whitelist: only the profile's apps are left open, so the shield says what is closed and why.
+    pub allowlist: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

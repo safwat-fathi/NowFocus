@@ -48,7 +48,9 @@ export function Shield({ state, onState }: { state: AppState; onState: (s: AppSt
               ? `You've used your ${shield.limitMinutes} minutes of ${shield.targetName} today. It's back at midnight.`
               : bedtime
                 ? `It's bedtime wind-down, with ${session?.remainingLabel} to go.`
-                : <>{session ? `You're in a focus session (${session.profileName}), with ${session.remainingLabel} to go.` : ""} Focus protects what you said mattered.</>}
+                : session?.allowlist
+                  ? `Only the apps you allowed are open, with ${session.remainingLabel} to go.`
+                  : <>{session ? `You're in a focus session (${session.profileName}), with ${session.remainingLabel} to go.` : ""} Focus protects what you said mattered.</>}
           </p>
         </div>
       </div>

@@ -1,15 +1,20 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "../lib/api";
-import type { AppState, Profile } from "../types";
+import type { AppState, PolicyMode, Profile } from "../types";
+import { profileSummary } from "../lib/profile";
 import { GlobeIcon, PlusIcon, RemoveIcon } from "../components/Icons";
 
 export function Profiles({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
   const [editId, setEditId] = useState(state.profiles[0]?.id ?? "");
   const profile = state.profiles.find((p) => p.id === editId) ?? state.profiles[0];
 
-  async function addProfile() {
-    const next = await api.createProfile("New profile");
+  // The mode is chosen here and never changes: the same rows mean opposite things in the two modes.
+  const [choosing, setChoosing] = useState(false);
+
+  async function addProfile(mode: PolicyMode) {
+    setChoosing(false);
+    const next = await api.createProfile(mode === "allowlist" ? "New whitelist" : "New profile", mode);
     onState(next);
     const created = next.profiles[next.profiles.length - 1];
     if (created) setEditId(created.id);
@@ -20,16 +25,27 @@ export function Profiles({ state, onState }: { state: AppState; onState: (s: App
       <div className="profile-list">
         <div className="profile-list__header">
           <span className="screen-title" style={{ fontSize: 26 }}>Profiles</span>
-          <button className="btn btn-icon" onClick={addProfile} title="New profile" style={{ width: 36, height: 36 }}>
+          <button className="btn btn-icon" onClick={() => setChoosing(!choosing)} title="New profile" style={{ width: 36, height: 36 }}>
             <PlusIcon size={18} />
           </button>
         </div>
+        {choosing && (
+          <div style={{ padding: "0 20px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+            <button className="btn btn-secondary" onClick={() => addProfile("blocklist")} style={{ minHeight: 40, justifyContent: "flex-start" }}>
+              Block these
+            </button>
+            <button className="btn btn-secondary" onClick={() => addProfile("allowlist")} style={{ minHeight: 40, justifyContent: "flex-start" }}>
+              Allow only these
+            </button>
+            <p style={{ fontSize: 12, color: "var(--color-neutral-700)", margin: 0 }}>
+              Block closes what you list. Allow only closes everything except the apps you list.
+            </p>
+          </div>
+        )}
         {state.profiles.map((p) => (
           <button key={p.id} className="profile-list-item" data-active={p.id === profile?.id} onClick={() => setEditId(p.id)}>
             <span className="profile-list-item__name">{p.name}</span>
-            <span className="profile-list-item__meta">
-              {p.domains.length} sites · {p.applications.length} apps
-            </span>
+            <span className="profile-list-item__meta">{profileSummary(p)}</span>
           </button>
         ))}
         <p style={{ fontSize: 12, color: "var(--color-neutral-700)", padding: "16px 20px", margin: "auto 0 0" }}>
@@ -48,6 +64,8 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
   const [name, setName] = useState(profile.name);
   const [newDomain, setNewDomain] = useState("");
   const [domainError, setDomainError] = useState("");
+  const [appError, setAppError] = useState("");
+  const allow = profile.mode === "allowlist";
 
   async function saveName() {
     if (name.trim() && name !== profile.name) onState(await api.renameProfile(profile.id, name.trim()));
@@ -66,11 +84,21 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
   }
 
   async function pickApplication() {
-    const picked = await open({ multiple: false, title: "Choose an application to block" });
+    const picked = await open({ multiple: false, title: allow ? "Choose an application to allow" : "Choose an application to block" });
     if (!picked || Array.isArray(picked)) return;
     const path = picked;
     const name = path.split(/[\\/]/).pop() ?? path;
-    onState(await api.addApplication(profile.id, path, name));
+    await run(() => api.addApplication(profile.id, path, name));
+  }
+
+  /** A running session refuses some edits (a blocklist can't shrink, a whitelist can't grow): say why instead of failing silently. */
+  async function run(change: () => Promise<AppState>) {
+    try {
+      onState(await change());
+      setAppError("");
+    } catch (e) {
+      setAppError(String(e));
+    }
   }
 
   return (
@@ -89,7 +117,7 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
       </div>
 
       <div className="profile-editor__columns">
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        {!allow && <div style={{ display: "flex", flexDirection: "column" }}>
           <div className="column-header">
             <span className="column-header__label">Blocked websites</span>
             <span className="column-header__hint">Hosts file, every browser</span>
@@ -125,13 +153,18 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
               </div>
             ))}
           </div>
-        </div>
+        </div>}
 
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div className="column-header">
-            <span className="column-header__label">Blocked apps</span>
-            <span className="column-header__hint">Closed on launch</span>
+            <span className="column-header__label">{allow ? "Allowed apps" : "Blocked apps"}</span>
+            <span className="column-header__hint">{allow ? "Everything else is closed" : "Closed on launch"}</span>
           </div>
+          {allow && (
+            <p style={{ fontSize: 12, color: "var(--color-neutral-700)", margin: "0 0 10px" }}>
+              Windows itself and NowFocus always stay open. Websites aren't filtered in a whitelist: allow a browser and every site works.
+            </p>
+          )}
           <div className="rule-list">
             {profile.applications.map((a) => (
               <div className="app-row" key={a.id}>
@@ -142,7 +175,7 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
                 </span>
                 <button
                   className="btn btn-icon"
-                  onClick={async () => onState(await api.removeApplication(profile.id, a.id))}
+                  onClick={() => run(() => api.removeApplication(profile.id, a.id))}
                   title="Remove"
                   style={{ width: 34, height: 34, color: "var(--color-accent-700)" }}
                 >
@@ -155,6 +188,7 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
             <PlusIcon />
             Add application…
           </button>
+          <div className="error-line">{appError}</div>
         </div>
       </div>
     </div>

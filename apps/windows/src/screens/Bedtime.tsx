@@ -1,4 +1,5 @@
 import { api } from "../lib/api";
+import { profileSummary } from "../lib/profile";
 import type { AppState, Bedtime as BedtimeSettings } from "../types";
 
 function minutesToTime(min: number): string {
@@ -62,7 +63,7 @@ export function Bedtime({ state, onState }: { state: AppState; onState: (s: AppS
           >
             <span className="profile-pick__dot" />
             <span className="profile-pick__name">{p.name}</span>
-            <span className="profile-pick__meta">{p.domains.length} sites · {p.applications.length} apps</span>
+            <span className="profile-pick__meta">{profileSummary(p)}</span>
           </button>
         ))}
 
