@@ -1871,17 +1871,11 @@ mod tests {
         state.set_limit(IG, "Instagram", 30).unwrap();
         state.set_limit(IG, "Instagram", 60).unwrap();
         let l = &state.snapshot().unwrap().limits[0];
-        assert_eq!(
-            (l.minutes, l.pending),
-            (30, Some(60))
-        );
+        assert_eq!((l.minutes, l.pending), (30, Some(60)));
         used(&state, 30 * 60_000);
         state.set_limit(IG, "Instagram", 0).unwrap(); // used up: removal waits
         let l = &state.snapshot().unwrap().limits[0];
-        assert_eq!(
-            (l.minutes, l.pending),
-            (30, Some(0))
-        );
+        assert_eq!((l.minutes, l.pending), (30, Some(0)));
         state.set_limit(IG, "Instagram", 15).unwrap(); // tightening applies at once
         assert_eq!(state.snapshot().unwrap().limits[0].minutes, 15);
         assert!(state.set_limit(IG, "Instagram", 7).is_err());

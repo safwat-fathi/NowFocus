@@ -8,8 +8,8 @@ use now_focus_sync::api::DeviceInfo;
 
 use crate::dto::{AppStateDto, ScheduleDto};
 use crate::state::AppState;
-use crate::TrayLabels;
 use crate::sync_glue::SyncController;
+use crate::TrayLabels;
 
 pub type SharedState = Mutex<AppState>;
 
@@ -49,7 +49,12 @@ pub fn set_language(state: State<SharedState>, language: String) -> Result<AppSt
 /// The tray menu and tooltip words, already translated by the UI (see `TrayLabels` in lib.rs).
 #[tauri::command]
 pub fn set_tray_labels(open: String, quit: String, idle: String, left: String) {
-    crate::set_tray_labels(TrayLabels { open, quit, idle, left });
+    crate::set_tray_labels(TrayLabels {
+        open,
+        quit,
+        idle,
+        left,
+    });
 }
 
 #[tauri::command]

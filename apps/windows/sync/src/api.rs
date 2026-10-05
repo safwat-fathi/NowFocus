@@ -44,7 +44,9 @@ impl ApiError {
         match self {
             ApiError::Network(_) => "net".into(),
             ApiError::AuthExpired => "sessionEnded".into(),
-            ApiError::Http { code: Some(c), .. } if c == "invalid_credentials" => "credentials".into(),
+            ApiError::Http { code: Some(c), .. } if c == "invalid_credentials" => {
+                "credentials".into()
+            }
             ApiError::Http { code: Some(c), .. } if c == "email_taken" => "emailTaken".into(),
             ApiError::Http { code: Some(c), .. } if c == "wrong_password" => "wrongPassword".into(),
             ApiError::Http { status: 429, .. } => "rate".into(),

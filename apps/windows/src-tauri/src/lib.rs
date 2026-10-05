@@ -291,9 +291,10 @@ pub(crate) fn refresh_tray() {
                 // Minute granularity: this runs on every command, so a per-second label would rewrite the tooltip constantly.
                 let labels = tray_labels();
                 let tip = match &dto.session {
-                    Some(s) => labels
-                        .left
-                        .replace("{n}", &((s.remaining_ms.max(0) + 59_999) / 60_000).to_string()),
+                    Some(s) => labels.left.replace(
+                        "{n}",
+                        &((s.remaining_ms.max(0) + 59_999) / 60_000).to_string(),
+                    ),
                     None => labels.idle,
                 };
                 (dto.session.is_some(), tip)
