@@ -126,6 +126,7 @@
         submitErr.hidden = false;
         return;
       }
+      window.gtag?.("event", "generate_lead", { method: "waitlist", page: location.pathname });
       dialog.querySelector("#waitlist-form-container").hidden = true;
       dialog.querySelector("#waitlist-success-container").hidden = false;
     });
@@ -159,6 +160,8 @@
     const trigger = e.target.closest("[data-waitlist-open], a[href='#waitlist']");
     if (trigger) {
       e.preventDefault();
+      const where = trigger.closest("header, nav, footer, section[id]");
+      window.gtag?.("event", "waitlist_open", { location: where ? where.id || where.tagName.toLowerCase() : "page", page: location.pathname });
       open();
     }
   });

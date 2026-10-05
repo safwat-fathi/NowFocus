@@ -14,6 +14,7 @@
 
   window.dataLayer = window.dataLayer || [];
   function gtag() { dataLayer.push(arguments); }
+  window.gtag = gtag; // waitlist.js fires generate_lead through this
   gtag("consent", "default", { ...state(get()), ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" });
   gtag("js", new Date());
   gtag("config", ID, { allow_google_signals: false, allow_ad_personalization_signals: false });
