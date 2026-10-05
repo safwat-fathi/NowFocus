@@ -481,6 +481,7 @@ With Chrome **not** allowed and Notes (or any app with sign-in, share and file p
 3. Open the allowed program: it stays open. Open another program (a browser, a game): it is closed and the shield reads **NowFocus closed <name>**.
 4. Check these are **not** closed: NowFocus itself and its shield, Explorer, the taskbar, Start, Alt-Tab, Task Manager, Notepad. Open a Discord/Slack-style app that auto-updates and confirm it is still allowed after an update (its folder name changes).
 5. Open the hosts file: no domains were added for the whitelist session.
+6. Start a session while a **non-allowed** program has an **unsaved document** open. Unlike a blocklist, a whitelist reaches every program already open. Confirm no work is lost (the program may show a "save?" prompt) and that closing, the save prompt and the shield do not loop. The prompt belongs to the same non-allowed program, so it may be closed in turn: record exactly what happens.
 
 **Expect:** only the allowed program and Windows itself stay usable; the shield is never closed by the whitelist.
 
