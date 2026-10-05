@@ -1,22 +1,39 @@
 import Foundation
 
-/// Ships with 1 of the mockup's 4 toggles. Greyscale, "close the feeds", and
-/// quiet-notifications/DND are all dropped: macOS has no public API for a
-/// regular (non-MDM, non-Screen-Time) app to toggle system-wide greyscale or
-/// Focus/DND, and feed-level blocking isn't visible to hosts-file blocking or
-/// foreground-app detection either — same reasoning Android's BedtimeSchedule
-/// used to drop its other 2. `lockAtSleep` survives because macOS *does* have
-/// a real, permission-free mechanism for it — see BedtimeScheduler.
+/// Ships with 2 of the mockup's 4 toggles. "Close the feeds" and
+/// quiet-notifications/DND are dropped: macOS has no public API for a regular
+/// (non-MDM, non-Screen-Time) app to toggle Focus/DND, and feed-level blocking
+/// isn't visible to hosts-file blocking or foreground-app detection either —
+/// same reasoning Android's BedtimeSchedule used to drop its other ones.
+/// `lockAtSleep` survives because macOS *does* have a real, permission-free
+/// mechanism for it — see BedtimeScheduler. `greyscale` has no public API
+/// either; BedtimeScheduler flips it through the private UniversalAccess
+/// framework (DMG build only) and does nothing if that isn't available.
 public struct BedtimeSettings: Codable, Equatable {
     public var enabled: Bool = false
     public var windDownMinute: Int = 22 * 60
     public var sleepMinute: Int = 23 * 60
     public var wakeMinute: Int = 7 * 60
     public var lockAtSleep: Bool = true
+    public var greyscale: Bool = false
     public var policyId: String?
 
     public init() {}
+
+    // Hand-written so settings saved before `greyscale` existed still decode (it reads as off).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? enabled
+        windDownMinute = try c.decodeIfPresent(Int.self, forKey: .windDownMinute) ?? windDownMinute
+        sleepMinute = try c.decodeIfPresent(Int.self, forKey: .sleepMinute) ?? sleepMinute
+        wakeMinute = try c.decodeIfPresent(Int.self, forKey: .wakeMinute) ?? wakeMinute
+        lockAtSleep = try c.decodeIfPresent(Bool.self, forKey: .lockAtSleep) ?? lockAtSleep
+        greyscale = try c.decodeIfPresent(Bool.self, forKey: .greyscale) ?? greyscale
+        policyId = try c.decodeIfPresent(String.self, forKey: .policyId)
+    }
 }
+
+public enum GreyscaleDecision: Equatable { case apply, restore, none }
 
 /// Pure scheduling math — no side effects, so it's plain-Swift testable.
 /// Mirrors Android's `BedtimeSchedule`. Windows frequently cross midnight
@@ -51,6 +68,16 @@ public enum BedtimeSchedule {
             }
         }
         return nil
+    }
+
+    /// Greyscale while Bedtime is on, the toggle is on and `now` is inside the
+    /// window. Restores only when `applied` says *we* turned it on, so a
+    /// greyscale the user set themselves is never switched off by us.
+    public static func decideGreyscale(_ settings: BedtimeSettings, now: Date, calendar: Calendar, applied: Bool) -> GreyscaleDecision {
+        let should = settings.enabled && settings.greyscale && currentWindow(settings, now: now, calendar: calendar) != nil
+        if should && !applied { return .apply }
+        if !should && applied { return .restore }
+        return .none
     }
 
     /// True only within a couple of minutes after the sleep moment inside

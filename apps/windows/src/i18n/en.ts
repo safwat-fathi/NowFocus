@@ -279,7 +279,7 @@ export const en = {
   "commit.yes": "Yes, commit",
 
   // ---- Bedtime
-  "bed.title": "Bedtime",
+  "bed.title": "Bedtime Wind-Down",
   "bed.onNightly": "On every night",
   "bed.lede": "Each night, your chosen profile is blocked from wind-down until wake — as a locked session you can't end early. Optionally lock the screen at sleep time. This PC only, and NowFocus must be running.",
   "bed.profile": "Profile to block",

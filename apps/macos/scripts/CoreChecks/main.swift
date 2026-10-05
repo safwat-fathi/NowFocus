@@ -382,6 +382,30 @@ do {
     check(bad.local.bedtime.sleepMinute == BedtimeSettings().sleepMinute && bad.local.bedtime.wakeMinute == BedtimeSettings().wakeMinute, "out-of-range minutes are ignored, not trusted")
 }
 
+// bedtime greyscale: syncs, decodes from older saves, and the apply/restore decision never undoes a filter we didn't set.
+do {
+    let withGrey = "{\"enabled\":true,\"windDownMinute\":1260,\"sleepMinute\":1320,\"wakeMinute\":400,\"greyscale\":true,\"policyId\":null}"
+    let first = SyncLogic.applyPulled(linked(), records: [rec("bedtime_settings", "default", withGrey)], cursor: 1, inUse: [], now: T)
+    check(first.local.bedtime.greyscale, "greyscale is read from the synced record")
+    check(!BedtimeWire.toLocal(J("{\"enabled\":true}")).greyscale, "a record without greyscale (older peer) reads as off")
+    check(JSONKit.bool(BedtimeWire.merge(first.local.bedtime, into: nil), "greyscale") == true, "greyscale is written back on push")
+    let old = try! JSONDecoder().decode(BedtimeSettings.self, from: Data("{\"enabled\":true,\"windDownMinute\":1320,\"sleepMinute\":1380,\"wakeMinute\":420,\"lockAtSleep\":true}".utf8))
+    check(old.enabled && old.windDownMinute == 1320 && !old.greyscale, "settings saved before greyscale existed still decode")
+
+    var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "UTC")!
+    var s = BedtimeSettings(); s.enabled = true; s.greyscale = true
+    let day = cal.date(from: DateComponents(year: 2026, month: 1, day: 10))!
+    let inside = cal.date(byAdding: .hour, value: 23, to: day)!
+    let outside = cal.date(byAdding: .hour, value: 12, to: day)!
+    check(BedtimeSchedule.decideGreyscale(s, now: inside, calendar: cal, applied: false) == .apply, "greyscale applies inside the window")
+    check(BedtimeSchedule.decideGreyscale(s, now: inside, calendar: cal, applied: true) == .none, "greyscale is a no-op once applied")
+    check(BedtimeSchedule.decideGreyscale(s, now: outside, calendar: cal, applied: true) == .restore, "greyscale is restored at wake")
+    var off = s; off.greyscale = false
+    check(BedtimeSchedule.decideGreyscale(off, now: inside, calendar: cal, applied: true) == .restore, "greyscale is restored when the toggle is turned off mid-window")
+    check(BedtimeSchedule.decideGreyscale(s, now: outside, calendar: cal, applied: false) == .none, "greyscale never restores a filter it didn't apply")
+}
+
+
 // linking: same account resumes, a different one starts clean; sign-out keeps nothing but tokens (state is the caller's).
 do {
     var st = SyncState(); st.userId = "u1"; st.cursor = 9

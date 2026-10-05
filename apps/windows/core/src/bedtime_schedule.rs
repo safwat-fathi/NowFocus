@@ -20,6 +20,7 @@ pub struct BedtimeSettings {
     pub sleep_minute: i64,
     pub wake_minute: i64,
     pub lock_at_sleep: bool,
+    pub greyscale: bool,
     pub policy_id: Option<String>,
 }
 
@@ -31,6 +32,7 @@ impl Default for BedtimeSettings {
             sleep_minute: 23 * 60,
             wake_minute: 7 * 60,
             lock_at_sleep: true,
+            greyscale: false,
             policy_id: None,
         }
     }
@@ -138,6 +140,7 @@ mod tests {
             sleep_minute: 23 * 60,
             wake_minute: 7 * 60,
             lock_at_sleep: true,
+            greyscale: false,
             policy_id: Some("p1".into()),
         }
     }

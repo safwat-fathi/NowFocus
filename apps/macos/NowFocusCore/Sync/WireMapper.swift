@@ -133,6 +133,7 @@ enum BedtimeWire {
         b.wakeMinute = minute(raw, "wakeMinute") ?? defaults.wakeMinute
         b.enabled = JSONKit.bool(raw, "enabled") ?? defaults.enabled
         b.lockAtSleep = JSONKit.bool(raw, "lockAtSleep") ?? defaults.lockAtSleep
+        b.greyscale = JSONKit.bool(raw, "greyscale") ?? defaults.greyscale
         b.policyId = JSONKit.string(raw, "policyId")?.lowercased()
         return b
     }
@@ -149,12 +150,13 @@ enum BedtimeWire {
         out["sleepMinute"] = local.sleepMinute
         out["wakeMinute"] = local.wakeMinute
         out["lockAtSleep"] = local.lockAtSleep
+        out["greyscale"] = local.greyscale
         out["policyId"] = local.policyId?.lowercased() ?? NSNull()
         return out
     }
 
     static func canonical(_ b: BedtimeSettings) -> String {
-        "\(b.enabled)|\(b.windDownMinute)|\(b.sleepMinute)|\(b.wakeMinute)|\(b.lockAtSleep)|\(b.policyId?.lowercased() ?? "")"
+        "\(b.enabled)|\(b.windDownMinute)|\(b.sleepMinute)|\(b.wakeMinute)|\(b.lockAtSleep)|\(b.greyscale)|\(b.policyId?.lowercased() ?? "")"
     }
 
     static func same(_ a: BedtimeSettings, _ b: BedtimeSettings) -> Bool { canonical(a) == canonical(b) }

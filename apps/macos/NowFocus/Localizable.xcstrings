@@ -766,6 +766,17 @@
         }
       }
     },
+    "Colour drains out, and so does the pull": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تختفي الألوان، ويخفّ معها الانجذاب للهاتف"
+          }
+        }
+      }
+    },
     "Commitment": {
       "extractionState": "manual",
       "localizations": {
@@ -997,6 +1008,17 @@
         }
       }
     },
+    "Do Not Disturb isn't offered here: macOS has no public API for a regular app to toggle it, same reasoning as the domain/app editor's dropped “feeds only” option.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«عدم الإزعاج» غير متاح هنا: لا يوفّر macOS واجهة عامة لتطبيق عادي لتبديله، للسبب نفسه الذي أُسقط به خيار «الخلاصات فقط» من محرّر النطاقات والتطبيقات."
+          }
+        }
+      }
+    },
     "Domains to lock": {
       "extractionState": "manual",
       "localizations": {
@@ -1015,6 +1037,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "المدة"
+          }
+        }
+      }
+    },
+    "During wind-down": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أثناء التهدئة"
           }
         }
       }
@@ -1206,13 +1239,13 @@
         }
       }
     },
-    "Greyscale and Do Not Disturb aren't offered here: macOS has no public API for a regular app to toggle either, same reasoning as the domain/app editor's dropped “feeds only” option.": {
+    "Greyscale screen": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "التدرّج الرمادي و«عدم الإزعاج» غير متاحين هنا: لا يوفّر macOS واجهة عامة لتطبيق عادي لتبديل أيٍّ منهما، للسبب نفسه الذي أُسقط به خيار «الخلاصات فقط» من محرّر النطاقات والتطبيقات."
+            "value": "شاشة بتدرّج رمادي"
           }
         }
       }

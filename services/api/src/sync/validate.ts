@@ -103,6 +103,7 @@ const TYPE_RULES: Record<WritableType, (data: Record<string, any>, id: string) =
   bedtime_settings(d) {
     if (d.enabled !== undefined && typeof d.enabled !== 'boolean') return 'enabled must be a boolean';
     if (d.lockAtSleep !== undefined && typeof d.lockAtSleep !== 'boolean') return 'lockAtSleep must be a boolean';
+    if (d.greyscale !== undefined && typeof d.greyscale !== 'boolean') return 'greyscale must be a boolean';
     if (![d.windDownMinute, d.sleepMinute, d.wakeMinute].every(minute)) return 'minutes must be integers 0-1439 (local minutes since midnight)';
     return null;
   },

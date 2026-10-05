@@ -134,6 +134,7 @@
     <string name="shield_caveat">Turning off Accessibility, revoking the VPN permission, or uninstalling the app still stops this - there\'s no way around that on a normal app. And while this is running, no other VPN app can be active at the same time (Android only allows one).</string>
 
     <!-- Bedtime Wind-Down -->
+    <string name="bedtime_hero">Your evening, gently dimmed.</string>
     <string name="bedtime_intro">Each night from wind-down until wake, your chosen profile is blocked as a locked session you can\'t end early. Tap a time to change it.</string>
     <string name="bedtime_on">On every night</string>
     <string name="bedtime_on_sub">Applies automatically, no need to start it</string>
@@ -148,6 +149,10 @@
     <string name="bedtime_allow_access">Allow in Notification Access settings</string>
     <string name="bedtime_lock">Lock phone at sleep time</string>
     <string name="bedtime_lock_sub">Locks once, at your sleep time</string>
+    <string name="bedtime_grey">Greyscale screen</string>
+    <string name="bedtime_grey_sub">Colour drains out, and so does the pull</string>
+    <string name="bedtime_grey_system">Android only lets its own Bedtime mode do this. Turn on Grayscale there and it follows your schedule.</string>
+    <string name="bedtime_grey_open">Open Digital Wellbeing</string>
     <string name="time_hour">Hour</string>
     <string name="time_minute">Minute</string>
     <string name="time_am">AM</string>

@@ -71,6 +71,7 @@ object NowFocusColors {
     val neutral900 = Color(0xFF2D2B2B)
 
     val accent100 = Color(0xFFFFF2EF)
+    val accent400 = Color(0xFFFF9783)
     val accent600 = Color(0xFFDD2B0F)
     val accent700 = Color(0xFFAE1800)
     val accent800 = Color(0xFF7C1405)
@@ -199,12 +200,12 @@ fun NowFocusTextField(
 }
 
 @Composable
-fun SectionRule(modifier: Modifier = Modifier, thick: Boolean = false) {
+fun SectionRule(modifier: Modifier = Modifier, thick: Boolean = false, color: Color = NowFocusColors.divider) {
     Box(
         modifier
             .fillMaxWidth()
             .height(if (thick) 2.dp else 1.dp)
-            .background(NowFocusColors.divider),
+            .background(color),
     )
 }
 
@@ -273,9 +274,9 @@ fun TagPill(text: String, modifier: Modifier = Modifier, accent: Boolean = true)
     }
 }
 
-/** Rectangular on/off track — the design has no pill switches. */
+/** Rectangular on/off track — the design has no pill switches. [dark] is the variant for the dark Bedtime surface. */
 @Composable
-fun ToggleRow(label: String, sub: String, on: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+fun ToggleRow(label: String, sub: String, on: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, dark: Boolean = false) {
     Row(
         modifier
             .fillMaxWidth()
@@ -285,8 +286,8 @@ fun ToggleRow(label: String, sub: String, on: Boolean, onToggle: () -> Unit, mod
     ) {
         Box(Modifier.weight(1f)) {
             Column {
-                Text(label, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = NowFocusColors.text))
-                Text(sub, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+                Text(label, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = if (dark) NowFocusColors.bg else NowFocusColors.text))
+                Text(sub, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = if (dark) NowFocusColors.neutral400 else NowFocusColors.neutral700))
             }
         }
         Box(
@@ -300,7 +301,7 @@ fun ToggleRow(label: String, sub: String, on: Boolean, onToggle: () -> Unit, mod
                     .padding(start = if (on) 23.dp else 3.dp, top = 3.dp)
                     .size(16.dp)
                     .clip(RoundedCornerShape(0.dp))
-                    .background(if (on) NowFocusColors.bg else NowFocusColors.neutral600),
+                    .background(if (on) NowFocusColors.bg else if (dark) NowFocusColors.neutral400 else NowFocusColors.neutral600),
             )
         }
     }

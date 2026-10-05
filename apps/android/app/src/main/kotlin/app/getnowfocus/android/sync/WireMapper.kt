@@ -124,7 +124,7 @@ object PolicyWire {
     internal fun domainKey(d: String): String = DomainValidation.normalize(d) ?: d.trim().lowercase()
 }
 
-/** Bedtime is a singleton (`bedtime_settings`, id `default`). `quietNotifications` is Android-only and travels as an extra field. */
+/** Bedtime is a singleton (`bedtime_settings`, id `default`). `quietNotifications` is Android-only and travels as an extra field. `greyscale` is a shared field; absent from older peers it reads as off. */
 object BedtimeWire {
     val DEFAULT = BedtimeSettings()
 
@@ -135,6 +135,7 @@ object BedtimeWire {
         enabled = raw.b("enabled", DEFAULT.enabled),
         quietNotifications = raw.b("quietNotifications", DEFAULT.quietNotifications),
         lockAtSleep = raw.b("lockAtSleep", DEFAULT.lockAtSleep),
+        greyscale = raw.b("greyscale", DEFAULT.greyscale),
         policyId = raw.s("policyId")?.lowercase(),
     )
 
@@ -146,6 +147,7 @@ object BedtimeWire {
         out.put("wakeMinute", local.wakeMinute)
         out.put("lockAtSleep", local.lockAtSleep)
         out.put("quietNotifications", local.quietNotifications)
+        out.put("greyscale", local.greyscale)
         out.put("policyId", local.policyId?.lowercase() ?: JSONObject.NULL)
         return out
     }

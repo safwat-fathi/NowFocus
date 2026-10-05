@@ -3,8 +3,9 @@ import NowFocusCore
 
 /// Schedules a nightly `.locked` focus session (see BedtimeScheduler) — not
 /// in macOS's original phase scope, but the shared model already anticipated
-/// it (`SessionType.bedtime_winddown`, `EnforcementMode.locked`). Ships 1 of
-/// the mockup's 4 toggles, same reasoning as Android's BedtimeSchedule.kt.
+/// it (`SessionType.bedtime_winddown`, `EnforcementMode.locked`). Ships 2 of
+/// the mockup's 4 toggles (greyscale, lock); DND and "close the feeds" are
+/// dropped, same reasoning as Android's BedtimeSchedule.kt.
 struct BedtimeView: View {
     @State private var settings = BedtimeSettingsStore.shared.settings
     @State private var policies: [BlockPolicy] = []
@@ -49,7 +50,16 @@ struct BedtimeView: View {
                 timeRow("Sleep", binding: timeBinding(\.sleepMinute))
                 timeRow("Wake", binding: timeBinding(\.wakeMinute))
 
-                sectionLabel("At sleep time")
+                sectionLabel("During wind-down")
+                Toggle(isOn: greyscaleBinding) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Greyscale screen")
+                            .font(NowFocusFonts.body(14))
+                        Text("Colour drains out, and so does the pull")
+                            .font(NowFocusFonts.body(12))
+                            .foregroundColor(NowFocusColors.neutral700)
+                    }
+                }
                 Toggle(isOn: lockAtSleepBinding) {
                     Text("Sleep the display (locks if Lock Screen requires a password immediately)")
                         .font(NowFocusFonts.body(14))
@@ -62,7 +72,7 @@ struct BedtimeView: View {
                         .padding(NowFocusSpace.s2)
                         .background(NowFocusColors.accent100)
                 }
-                Text("Greyscale and Do Not Disturb aren't offered here: macOS has no public API for a regular app to toggle either, same reasoning as the domain/app editor's dropped \u{201C}feeds only\u{201D} option.")
+                Text("Do Not Disturb isn't offered here: macOS has no public API for a regular app to toggle it, same reasoning as the domain/app editor's dropped \u{201C}feeds only\u{201D} option.")
                     .font(NowFocusFonts.body(12))
                     .foregroundColor(NowFocusColors.neutral700)
                     .fixedSize(horizontal: false, vertical: true)
@@ -113,6 +123,13 @@ struct BedtimeView: View {
     private var lockAtSleepBinding: Binding<Bool> {
         Binding(get: { settings.lockAtSleep }, set: { newValue in
             settings.lockAtSleep = newValue
+            save()
+        })
+    }
+
+    private var greyscaleBinding: Binding<Bool> {
+        Binding(get: { settings.greyscale }, set: { newValue in
+            settings.greyscale = newValue
             save()
         })
     }

@@ -15,15 +15,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -50,6 +53,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -1262,35 +1269,51 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
     val notificationPolicyOk = remember(settings) {
         context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted ?: false
     }
+    val onDark = NowFocusColors.bg
+    val muted = NowFocusColors.neutral400
+    val rule = NowFocusColors.neutral700
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
-        Spacer(Modifier.height(NowFocusSpace.s2))
-        GhostButton(stringResource(R.string.back), onClick = onBack)
-        Text(stringResource(R.string.bedtime_title), style = headingStyle(22.sp))
+    // Dark surface, like the design: the evening screen should not be the brightest thing in the room.
+    Column(Modifier.fillMaxSize().background(NowFocusColors.text).verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
+        Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(44.dp).clickable(onClick = onBack).semantics { contentDescription = context.getString(R.string.back) },
+                contentAlignment = Alignment.Center,
+            ) { PathIcon(listOf("m12 19-7-7 7-7", "M19 12H5"), 22.dp, onDark, mirrorInRtl = true) }
+            Text(stringResource(R.string.bedtime_title), style = headingStyle(20.sp, onDark), modifier = Modifier.weight(1f))
+            PathIcon(listOf("M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"), 20.dp, onDark)
+        }
+        SectionRule(thick = true, color = NowFocusColors.neutral600)
+        Spacer(Modifier.height(NowFocusSpace.s6))
+        Text(stringResource(R.string.bedtime_hero), style = headingStyle(32.sp, onDark).copy(lineHeight = 34.sp))
         Spacer(Modifier.height(NowFocusSpace.s2))
         Text(
             stringResource(R.string.bedtime_intro),
-            style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral800),
+            style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral300),
         )
         Spacer(Modifier.height(NowFocusSpace.s4))
 
-        ToggleRow(stringResource(R.string.bedtime_on), stringResource(R.string.bedtime_on_sub), settings.enabled, { onSave(settings.copy(enabled = !settings.enabled)) })
-        SectionRule()
+        ToggleRow(stringResource(R.string.bedtime_on), stringResource(R.string.bedtime_on_sub), settings.enabled, { onSave(settings.copy(enabled = !settings.enabled)) }, dark = true)
+        SectionRule(color = rule)
         Spacer(Modifier.height(NowFocusSpace.s3))
 
-        Row(Modifier.fillMaxWidth()) {
-            TimeBump(stringResource(R.string.bedtime_winddown), settings.windDownMinute, Modifier.weight(1f)) { onSave(settings.copy(windDownMinute = it)) }
-            TimeBump(stringResource(R.string.bedtime_sleep), settings.sleepMinute, Modifier.weight(1f)) { onSave(settings.copy(sleepMinute = it)) }
-            TimeBump(stringResource(R.string.bedtime_wake), settings.wakeMinute, Modifier.weight(1f)) { onSave(settings.copy(wakeMinute = it)) }
+        SectionRule(thick = true, color = onDark)
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            TimeBump(stringResource(R.string.bedtime_winddown), settings.windDownMinute, Modifier.weight(1f), dark = true) { onSave(settings.copy(windDownMinute = it)) }
+            VerticalRule(NowFocusColors.neutral600)
+            TimeBump(stringResource(R.string.bedtime_sleep), settings.sleepMinute, Modifier.weight(1f), dark = true, accent = true) { onSave(settings.copy(sleepMinute = it)) }
+            VerticalRule(NowFocusColors.neutral600)
+            TimeBump(stringResource(R.string.bedtime_wake), settings.wakeMinute, Modifier.weight(1f), dark = true) { onSave(settings.copy(wakeMinute = it)) }
         }
+        SectionRule(thick = true, color = onDark)
         Spacer(Modifier.height(NowFocusSpace.s6))
 
-        Text(stringResource(R.string.sched_block_profile), style = kickerStyle(NowFocusColors.neutral700))
-        SectionRule()
+        Text(stringResource(R.string.sched_block_profile), style = kickerStyle(muted))
+        SectionRule(color = rule)
         if (policies.isEmpty()) {
             Text(
                 stringResource(R.string.bedtime_no_profiles),
-                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = muted),
                 modifier = Modifier.padding(vertical = NowFocusSpace.s2),
             )
         } else {
@@ -1299,30 +1322,51 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
                     Modifier.fillMaxWidth().clickable { onSave(settings.copy(policyId = p.id)) }.padding(vertical = NowFocusSpace.s3),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(18.dp).background(if (p.id == settings.policyId) NowFocusColors.accent else Color.Transparent))
+                    Box(
+                        Modifier.size(18.dp).border(2.dp, if (p.id == settings.policyId) NowFocusColors.accent else NowFocusColors.neutral500)
+                            .background(if (p.id == settings.policyId) NowFocusColors.accent else Color.Transparent),
+                    )
                     Spacer(Modifier.width(NowFocusSpace.s3))
                     Column {
-                        Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
-                        Text(profileSummary(p), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
+                        Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = onDark))
+                        Text(profileSummary(p), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = muted))
                     }
                 }
-                SectionRule()
+                SectionRule(color = rule)
             }
             if (settings.enabled && settings.policyId == null) {
                 Text(
                     stringResource(R.string.bedtime_pick),
-                    style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.accent700),
+                    style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.accent400),
                     modifier = Modifier.padding(top = NowFocusSpace.s2),
                 )
             }
         }
         Spacer(Modifier.height(NowFocusSpace.s6))
 
-        Text(stringResource(R.string.bedtime_during), style = kickerStyle(NowFocusColors.neutral700))
-        SectionRule()
+        Text(stringResource(R.string.bedtime_during), style = kickerStyle(muted))
+        SectionRule(color = rule)
+        if (canWriteSecureSettings(context)) {
+            ToggleRow(
+                stringResource(R.string.bedtime_grey), stringResource(R.string.bedtime_grey_sub),
+                settings.greyscale, { onSave(settings.copy(greyscale = !settings.greyscale)) }, dark = true,
+            )
+        } else {
+            // Android won't let an ordinary app switch the screen to greyscale; its own Bedtime mode does it on a schedule.
+            Column(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3)) {
+                Text(stringResource(R.string.bedtime_grey), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = onDark))
+                Text(stringResource(R.string.bedtime_grey_system), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = muted))
+                GhostButton(stringResource(R.string.bedtime_grey_open)) {
+                    val pm = context.packageManager
+                    val intent = pm.getLaunchIntentForPackage("com.google.android.apps.wellbeing")
+                        ?: Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            }
+        }
         ToggleRow(
             stringResource(R.string.bedtime_quiet), stringResource(R.string.bedtime_quiet_sub),
-            settings.quietNotifications, { onSave(settings.copy(quietNotifications = !settings.quietNotifications)) },
+            settings.quietNotifications, { onSave(settings.copy(quietNotifications = !settings.quietNotifications)) }, dark = true,
         )
         if (!notificationPolicyOk) {
             GhostButton(stringResource(R.string.bedtime_allow_access)) {
@@ -1332,7 +1376,7 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
         if (Build.VERSION.SDK_INT >= 28) {
             ToggleRow(
                 stringResource(R.string.bedtime_lock), stringResource(R.string.bedtime_lock_sub),
-                settings.lockAtSleep, { onSave(settings.copy(lockAtSleep = !settings.lockAtSleep)) },
+                settings.lockAtSleep, { onSave(settings.copy(lockAtSleep = !settings.lockAtSleep)) }, dark = true,
             )
         }
         Spacer(Modifier.height(NowFocusSpace.s4))
@@ -1340,19 +1384,38 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
 }
 
 @Composable
-internal fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier, onChange: (Int) -> Unit) {
+private fun VerticalRule(color: Color) {
+    Box(Modifier.fillMaxHeight().width(1.dp).background(color))
+}
+
+/** Draws 24x24 SVG path data (the design's icons) as a 2-unit stroke. Back arrows mirror in RTL. */
+@Composable
+private fun PathIcon(paths: List<String>, size: androidx.compose.ui.unit.Dp, color: Color, mirrorInRtl: Boolean = false) {
+    val parsed = remember(paths) { paths.map { androidx.compose.ui.graphics.vector.PathParser().parsePathString(it).toPath() } }
+    val flip = mirrorInRtl && androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    androidx.compose.foundation.Canvas(Modifier.size(size).graphicsLayer { scaleX = if (flip) -1f else 1f }) {
+        val k = this.size.width / 24f
+        scale(k, k, pivot = androidx.compose.ui.geometry.Offset.Zero) {
+            parsed.forEach { drawPath(it, color, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f)) }
+        }
+    }
+}
+
+@Composable
+internal fun TimeBump(label: String, minutes: Int, modifier: Modifier = Modifier, dark: Boolean = false, accent: Boolean = false, onChange: (Int) -> Unit) {
     val is24Hour = DateFormat.is24HourFormat(LocalContext.current)
     var editing by remember { mutableStateOf(false) }
     val clock = formatClock(minutes, is24Hour, LocalContext.current.appLocale())
-    Column(modifier.clickable { editing = true }.padding(vertical = NowFocusSpace.s2)) {
-        Text(label, style = kickerStyle(NowFocusColors.neutral700))
+    // On the dark strip the tiles are padded in from each rule, like the design's grid cells.
+    Column(modifier.clickable { editing = true }.padding(vertical = if (dark) NowFocusSpace.s3 else NowFocusSpace.s2, horizontal = if (dark) NowFocusSpace.s2 else 0.dp)) {
+        Text(label, style = kickerStyle(if (dark) NowFocusColors.neutral400 else NowFocusColors.neutral700))
         // AM/PM rides small beside the digits so three tiles still fit one row on a narrow phone.
         Text(
             buildAnnotatedString {
                 append(clock.substringBeforeLast(' '))
                 if (!is24Hour) withStyle(SpanStyle(fontSize = 12.sp)) { append(" " + clock.substringAfterLast(' ')) }
             },
-            style = headingStyle(24.sp), maxLines = 1,
+            style = headingStyle(if (dark) 26.sp else 24.sp, if (!dark) NowFocusColors.text else if (accent) NowFocusColors.accent400 else NowFocusColors.bg), maxLines = 1,
         )
     }
     if (editing) {

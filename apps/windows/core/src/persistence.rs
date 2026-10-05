@@ -147,6 +147,7 @@ impl Database {
                 sleep_minute INTEGER NOT NULL,
                 wake_minute INTEGER NOT NULL,
                 lock_at_sleep INTEGER NOT NULL,
+                greyscale INTEGER NOT NULL DEFAULT 0,
                 policy_id TEXT
             );
             ",
@@ -158,6 +159,12 @@ impl Database {
             "focus_sessions",
             "origin",
             "TEXT NOT NULL DEFAULT 'user'",
+        )?;
+        add_column_if_missing(
+            &conn,
+            "bedtime_settings",
+            "greyscale",
+            "INTEGER NOT NULL DEFAULT 0",
         )?;
 
         Ok(Self { conn })
@@ -540,7 +547,7 @@ impl Database {
     /// user has never saved any.
     pub fn get_bedtime(&self) -> Result<BedtimeSettings> {
         let row = self.conn.query_row(
-            "SELECT enabled, wind_down_minute, sleep_minute, wake_minute, lock_at_sleep, policy_id
+            "SELECT enabled, wind_down_minute, sleep_minute, wake_minute, lock_at_sleep, greyscale, policy_id
              FROM bedtime_settings WHERE id = 1",
             [],
             |r| {
@@ -550,7 +557,8 @@ impl Database {
                     sleep_minute: r.get(2)?,
                     wake_minute: r.get(3)?,
                     lock_at_sleep: r.get::<_, i64>(4)? != 0,
-                    policy_id: r.get::<_, Option<String>>(5)?,
+                    greyscale: r.get::<_, i64>(5)? != 0,
+                    policy_id: r.get::<_, Option<String>>(6)?,
                 })
             },
         );
@@ -768,18 +776,19 @@ impl Database {
     pub fn set_bedtime(&self, s: &BedtimeSettings) -> Result<()> {
         self.conn.execute(
             "INSERT INTO bedtime_settings
-                (id, enabled, wind_down_minute, sleep_minute, wake_minute, lock_at_sleep, policy_id)
-             VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6)
+                (id, enabled, wind_down_minute, sleep_minute, wake_minute, lock_at_sleep, greyscale, policy_id)
+             VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT(id) DO UPDATE SET
                 enabled = excluded.enabled, wind_down_minute = excluded.wind_down_minute,
                 sleep_minute = excluded.sleep_minute, wake_minute = excluded.wake_minute,
-                lock_at_sleep = excluded.lock_at_sleep, policy_id = excluded.policy_id",
+                lock_at_sleep = excluded.lock_at_sleep, greyscale = excluded.greyscale, policy_id = excluded.policy_id",
             params![
                 s.enabled as i64,
                 s.wind_down_minute,
                 s.sleep_minute,
                 s.wake_minute,
                 s.lock_at_sleep as i64,
+                s.greyscale as i64,
                 s.policy_id,
             ],
         )?;
@@ -1069,6 +1078,7 @@ mod tests {
             sleep_minute: 22 * 60,
             wake_minute: 6 * 60,
             lock_at_sleep: false,
+            greyscale: true,
             policy_id: Some("p-night".to_string()),
         };
         db.set_bedtime(&s).unwrap();

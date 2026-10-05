@@ -52,6 +52,47 @@ enum BedtimeLockAvailability {
     }
 }
 
+/// System greyscale for the wind-down window. macOS has no public API for
+/// it, so this calls the private `UAGrayscaleSetEnabled` from
+/// UniversalAccess.framework, resolved at runtime: if a future macOS drops
+/// the symbol, greyscale quietly does nothing (the app still builds and
+/// runs). Fine for the DMG build; a Mac App Store build would have to drop it.
+///
+/// Not exercised by any automated check - it changes the whole display, so
+/// it needs a manual pass. The decision itself is `BedtimeSchedule.decideGreyscale`.
+enum BedtimeGreyscale {
+    private static let appliedKey = "bedtimeGreyscaleApplied"
+    private typealias IsEnabled = @convention(c) () -> Bool
+    private typealias SetEnabled = @convention(c) (Bool) -> Void
+
+    private static let handle = dlopen("/System/Library/PrivateFrameworks/UniversalAccess.framework/UniversalAccess", RTLD_NOW)
+
+    private static func symbol<T>(_ name: String, as type: T.Type) -> T? {
+        guard let handle, let sym = dlsym(handle, name) else { return nil }
+        return unsafeBitCast(sym, to: type)
+    }
+
+    static func reconcile(_ settings: BedtimeSettings, now: Date = Date(), calendar: Calendar = .current) {
+        let applied = UserDefaults.standard.bool(forKey: appliedKey)
+        guard let isEnabled = symbol("UAGrayscaleIsEnabled", as: IsEnabled.self),
+              let setEnabled = symbol("UAGrayscaleSetEnabled", as: SetEnabled.self) else {
+            if applied { UserDefaults.standard.set(false, forKey: appliedKey) }
+            return
+        }
+        switch BedtimeSchedule.decideGreyscale(settings, now: now, calendar: calendar, applied: applied) {
+        case .apply:
+            if isEnabled() { return } // the user's own greyscale - leave it, and never "restore" it
+            setEnabled(true)
+            UserDefaults.standard.set(true, forKey: appliedKey)
+        case .restore:
+            setEnabled(false)
+            UserDefaults.standard.set(false, forKey: appliedKey)
+        case .none:
+            break
+        }
+    }
+}
+
 /// Runs Bedtime Wind-Down as a scheduled `.locked` `FocusSession` — reusing
 /// `SessionController` and `AppDelegate`'s existing expiry timer entirely,
 /// rather than a parallel enforcement path. App-must-be-running (per
@@ -86,6 +127,8 @@ final class BedtimeScheduler {
 
     private func tick() {
         let settings = BedtimeSettingsStore.shared.settings
+        // Before the profile guard: greyscale doesn't need a profile, and must be handed back at wake even if Bedtime was just disabled.
+        BedtimeGreyscale.reconcile(settings)
         guard settings.enabled, let policyId = settings.policyId else { return }
 
         let now = Date()

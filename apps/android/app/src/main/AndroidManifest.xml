@@ -8,6 +8,9 @@
     <!-- Bedtime Wind-Down: quiet notifications (grant is a Settings redirect,
          not a runtime dialog) and re-arming its alarms after a reboot. -->
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Bedtime greyscale: flips the system colour-correction setting. Not user-grantable in Settings;
+         only a developer's `adb shell pm grant app.getnowfocus.android android.permission.WRITE_SECURE_SETTINGS` unlocks it. Without it the screen points users at Android's own Bedtime mode. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <!-- Only to record the optional STRICT-mode voice note; asked at the Record button, not at install. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
