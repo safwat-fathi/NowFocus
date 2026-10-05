@@ -47,3 +47,13 @@ It is a self-control tool, not a lock. Someone who owns the device can uninstall
 - https://nowfocus.online/blog/opal-alternative-android/
 - https://nowfocus.online/blog/forest-alternative/
 
+## Arabic pages (العربية)
+- https://nowfocus.online/ar/
+- https://nowfocus.online/ar/download/
+- https://nowfocus.online/ar/download/android/
+- https://nowfocus.online/ar/download/macos/
+- https://nowfocus.online/ar/download/windows/
+- https://nowfocus.online/ar/privacy/
+- https://nowfocus.online/ar/terms/
+- https://nowfocus.online/ar/blog/
+- https://nowfocus.online/ar/blog/why-nowfocus/
