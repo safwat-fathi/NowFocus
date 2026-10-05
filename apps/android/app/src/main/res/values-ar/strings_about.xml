@@ -8,5 +8,6 @@
     <string name="about_terms">الشروط</string>
     <string name="about_source">الشيفرة المصدرية</string>
     <string name="about_support">تواصل مع الدعم</string>
+    <string name="about_license">الشيفرة المصدرية متاحة بموجب رخصة FSL-1.1-ALv2.</string>
     <string name="about_row">الإصدار %1$s، الخصوصية، الشروط، الدعم</string>
 </resources>

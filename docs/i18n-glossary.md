@@ -52,9 +52,9 @@ False friends to avoid: `تمرير` (the site uses it for DNS forwarding and ho
 
 ## Never translate
 - The seed profile name **"Deep Work"**: sync dedupe compares it (Android `SyncLogic.isUntouchedSeed`, Windows `sync/src/logic.rs`).
-- Names that are stored and synced as data: "First focus" (Windows Onboarding looks it up by name), "New profile", "Work", "No <app>".
+- Names that are stored and synced as data: "First focus" (Windows Onboarding looks it up by name), "New profile", "New whitelist", "No <app>". The default *schedule* name "Work" is the one exception: it is only a starting suggestion the user can edit, so it is created in the app language.
 - `PartialBlocking` matcher literals ("Shorts", "Reels", "For you", view ids): they match other apps' UI text, which follows the system language.
-- Brand and legal lines ("NowFocus", copyright, the license line) and URLs.
+- Brand and copyright lines ("NowFocus", "© 2026 Safwat Fathi") and URLs. The license sentence is translated (the license name itself stays "FSL-1.1-ALv2").
 
 ## Copy rules (carry over from the site)
 - No "unbypassable", "tamper-proof", "uninstalling doesn't work". The fixed disclaimer is «أداة لضبط النفس، وليس قفلًا على جهازك».
@@ -66,3 +66,6 @@ The user types it exactly to end a session early. The Arabic one uses only plain
 
 - English: `I am choosing to end this focus session early.`
 - Arabic (proposed): `قررت الخروج من جلسة التركيز قبل موعدها.`
+
+## Where each app keeps the switch
+Settings holds the language control and About (version, links, license), on all three apps: the Settings tab on Android, the Settings entry in the Windows sidebar, and the Settings row in the macOS sidebar (which replaced General and About).

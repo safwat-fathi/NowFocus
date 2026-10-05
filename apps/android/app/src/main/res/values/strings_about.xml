@@ -8,7 +8,7 @@
     <string name="about_terms">Terms</string>
     <string name="about_source">Source code</string>
     <string name="about_support">Contact support</string>
-    <string name="about_license" translatable="false">Source available under the FSL-1.1-ALv2 license.</string>
+    <string name="about_license">Source available under the FSL-1.1-ALv2 license.</string>
     <string name="about_copyright" translatable="false">© 2026 Safwat Fathi</string>
     <string name="about_row">Version %1$s, privacy, terms, support</string>
 </resources>
