@@ -59,7 +59,7 @@ struct StatsView: View {
             HStack(alignment: .bottom, spacing: NowFocusSpace.s3) {
                 ForEach(0..<7, id: \.self) { index in
                     VStack(spacing: 4) {
-                        Text(weekBuckets[index] > 0 ? String(localized: "\(Int(weekBuckets[index]))m") : "")
+                        Text(weekBuckets[index] > 0 ? loc("\(Int(weekBuckets[index]))m") : "")
                             .font(NowFocusFonts.body(10))
                             .foregroundColor(NowFocusColors.neutral700)
                         Rectangle()
@@ -91,7 +91,7 @@ struct StatsView: View {
                 statCell("Sessions", "\(weekSessions.count)")
                 statCell("Completed", "\(Int(HistoryStats.completionRate(weekSessions) * 100))%")
                 statCell("Turned away", "\(turnedAway)")
-                statCell("Streak", String(localized: "\(streak) days"))
+                statCell("Streak", loc("\(streak) days"))
             }
             .overlay(alignment: .top) { NowFocusRule(thick: true) }
 
@@ -142,7 +142,7 @@ struct StatsView: View {
                 .foregroundColor(NowFocusColors.neutral700)
 
             if let urge = HistoryStats.peakUrge(urgeEvents, calendar: Calendar.current) {
-                Text("You tried to open a blocked app \(String(localized: "\(urge.count) times")) between \(hourLabel(urge.hour)) and \(hourLabel(urge.hour + 1)), usually \(urge.topApp). (last \(Self.urgeWindowDays) days)")
+                Text("You tried to open a blocked app \(loc("\(urge.count) times")) between \(hourLabel(urge.hour)) and \(hourLabel(urge.hour + 1)), usually \(urge.topApp). (last \(Self.urgeWindowDays) days)")
                     .font(NowFocusFonts.body(14))
                     .foregroundColor(NowFocusColors.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -185,7 +185,7 @@ struct StatsView: View {
 
     private func statCell(_ label: LocalizedStringResource, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(String(localized: label).uppercased())
+            Text(locr(label).uppercased())
                 .font(NowFocusFonts.body(11).weight(.semibold))
                 .nfTracking(0.8)
                 .foregroundColor(NowFocusColors.neutral700)
@@ -205,7 +205,7 @@ struct StatsView: View {
 
     private var hoursLabel: String {
         let totalMinutes = weekBuckets.reduce(0, +)
-        return String(localized: "\(Int(totalMinutes) / 60)h \(Int(totalMinutes) % 60)m")
+        return loc("\(Int(totalMinutes) / 60)h \(Int(totalMinutes) % 60)m")
     }
 
     private var weekRangeLabel: String {

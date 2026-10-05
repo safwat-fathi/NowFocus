@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import SwiftUI
 
 /// What the user picked in Settings. macOS reads `AppleLanguages` once, at launch, so a change takes a relaunch.
 enum AppLanguageChoice: String, CaseIterable {
@@ -31,9 +32,11 @@ enum AppLanguage {
 
     /// Arabic with Latin digits (`numbers=latn`), as on the website: sentences stay Arabic, but dates, counts and
     /// timers print 0-9. Apply with `.environment(\.locale, AppLanguage.locale)` at each root view.
-    static var locale: Locale {
-        isArabic ? Locale(identifier: "ar@numbers=latn") : Locale.current
-    }
+    static var locale: Locale { .nowFocusUI }
+
+    /// The window chrome follows the system, but the SwiftUI content must be told: otherwise Arabic text sits in a
+    /// left-to-right layout.
+    static var layoutDirection: LayoutDirection { isArabic ? .rightToLeft : .leftToRight }
 
     /// Opens a fresh copy of the app and quits this one. The caller must not do this while a session is running:
     /// `applicationShouldTerminate` would refuse, and quitting then would drop app blocking.

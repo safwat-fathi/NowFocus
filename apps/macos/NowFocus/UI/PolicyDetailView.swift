@@ -111,7 +111,7 @@ struct PolicyDetailView: View {
 
     private func section(_ title: LocalizedStringResource, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
-            Text(String(localized: title).uppercased())
+            Text(locr(title).uppercased())
                 .font(NowFocusFonts.body(11).weight(.semibold))
                 .nfTracking(1.0)
                 .lineLimit(1)
@@ -134,7 +134,7 @@ struct PolicyDetailView: View {
 
     private func pickApplication() {
         let panel = NSOpenPanel()
-        panel.title = String(localized: "Select an Application to Block")
+        panel.title = loc("Select an Application to Block")
         panel.allowedContentTypes = [.application]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowsMultipleSelection = false

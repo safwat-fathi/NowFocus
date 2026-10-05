@@ -57,7 +57,7 @@ struct SettingsView: View {
 
     private var language: some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
-            Text(String(localized: "Language").uppercased())
+            Text(loc("Language").uppercased())
                 .font(NowFocusFonts.body(11).weight(.semibold))
                 .nfTracking(1.0)
                 .foregroundColor(NowFocusColors.neutral700)

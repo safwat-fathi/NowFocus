@@ -25,7 +25,7 @@ enum BedtimeLockAvailability {
         do {
             try process.run()
         } catch {
-            return (false, String(localized: "Couldn't check your screen lock delay (\(error)). Set \u{201C}Require password after sleep\u{201D} to \u{201C}Immediately\u{201D} in System Settings \u{2192} Lock Screen."))
+            return (false, loc("Couldn't check your screen lock delay (\(error)). Set \u{201C}Require password after sleep\u{201D} to \u{201C}Immediately\u{201D} in System Settings \u{2192} Lock Screen."))
         }
         process.waitUntilExit()
 
@@ -35,12 +35,12 @@ enum BedtimeLockAvailability {
             return (true, nil)
         }
         guard let seconds = secondsValue(in: output) else {
-            return (false, String(localized: "Couldn't determine your screen lock delay. Set \u{201C}Require password after sleep\u{201D} to \u{201C}Immediately\u{201D} in System Settings \u{2192} Lock Screen."))
+            return (false, loc("Couldn't determine your screen lock delay. Set \u{201C}Require password after sleep\u{201D} to \u{201C}Immediately\u{201D} in System Settings \u{2192} Lock Screen."))
         }
         if seconds == 0 {
             return (true, nil)
         }
-        return (false, String(localized: "Your Mac currently waits \(seconds)s after sleep before requiring a password. Set \u{201C}Require password after sleep\u{201D} to \u{201C}Immediately\u{201D} in System Settings \u{2192} Lock Screen for this to actually lock right away."))
+        return (false, loc("Your Mac currently waits \(seconds)s after sleep before requiring a password. Set \u{201C}Require password after sleep\u{201D} to \u{201C}Immediately\u{201D} in System Settings \u{2192} Lock Screen for this to actually lock right away."))
     }
 
     /// Extracts the number immediately preceding "second" — not just the

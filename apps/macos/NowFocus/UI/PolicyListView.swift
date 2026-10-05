@@ -195,7 +195,7 @@ struct PolicyListView: View {
                     if let index = policies.firstIndex(where: { $0.id == policy.id }) {
                         policies[index] = stored
                     }
-                    presentCannotDelete(String(localized: "You can\u{2019}t remove blocks while a focus session is running on this profile."))
+                    presentCannotDelete(loc("You can\u{2019}t remove blocks while a focus session is running on this profile."))
                     return
                 }
 
@@ -213,11 +213,11 @@ struct PolicyListView: View {
 
     private func delete(_ policy: BlockPolicy) {
         let alert = NSAlert()
-        alert.messageText = String(localized: "Delete Profile")
-        alert.informativeText = String(localized: "Are you sure you want to delete the profile \"\(policy.name)\"? This action cannot be undone.")
+        alert.messageText = loc("Delete Profile")
+        alert.informativeText = loc("Are you sure you want to delete the profile \"\(policy.name)\"? This action cannot be undone.")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: String(localized: "Delete"))
-        alert.addButton(withTitle: String(localized: "Cancel"))
+        alert.addButton(withTitle: loc("Delete"))
+        alert.addButton(withTitle: loc("Cancel"))
         
         if alert.runModal() == .alertFirstButtonReturn {
             guard let index = policies.firstIndex(where: { $0.id == policy.id }) else { return }
@@ -264,20 +264,20 @@ struct PolicyListView: View {
             SessionController.endSession(session, cancelled: true)
             return true
         case .requiresUnlock:
-            presentCannotDelete(String(localized: "End this session from the menu bar first, then delete the profile."))
+            presentCannotDelete(loc("End this session from the menu bar first, then delete the profile."))
             return false
         case .locked:
-            presentCannotDelete(String(localized: "This is a Locked session \u{2014} it can\u{2019}t be ended early. Wait until it finishes, then delete the profile."))
+            presentCannotDelete(loc("This is a Locked session \u{2014} it can\u{2019}t be ended early. Wait until it finishes, then delete the profile."))
             return false
         }
     }
 
     private func presentCannotDelete(_ informativeText: String) {
         let alert = NSAlert()
-        alert.messageText = String(localized: "Can\u{2019}t delete a profile with an active session")
+        alert.messageText = loc("Can\u{2019}t delete a profile with an active session")
         alert.informativeText = informativeText
         alert.alertStyle = .warning
-        alert.addButton(withTitle: String(localized: "OK"))
+        alert.addButton(withTitle: loc("OK"))
         alert.runModal()
     }
 }

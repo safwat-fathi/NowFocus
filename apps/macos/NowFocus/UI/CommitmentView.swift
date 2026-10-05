@@ -162,7 +162,7 @@ struct CommitmentView: View {
     }
 
     private func sectionLabel(_ text: LocalizedStringResource) -> some View {
-        Text(String(localized: text).uppercased())
+        Text(locr(text).uppercased())
             .font(NowFocusFonts.body(11).weight(.semibold))
             .nfTracking(1.0)
             .foregroundColor(NowFocusColors.neutral700)
@@ -170,7 +170,7 @@ struct CommitmentView: View {
 
     private func addPendingDomain() {
         guard let domain = DomainValidation.normalize(newDomain) else {
-            domainError = String(localized: "That doesn't look like a website. Try something like example.com")
+            domainError = loc("That doesn't look like a website. Try something like example.com")
             return
         }
         guard !pendingDomains.contains(domain) else {
@@ -190,7 +190,7 @@ struct CommitmentView: View {
                     pendingDomains = []
                     refresh()
                 } else {
-                    actionError = message ?? String(localized: "Failed to start commitment.")
+                    actionError = message ?? loc("Failed to start commitment.")
                 }
             }
         }

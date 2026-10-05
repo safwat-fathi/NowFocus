@@ -146,9 +146,9 @@ struct PeopleEditorView: View {
     private func add() {
         let name = newName.trimmingCharacters(in: .whitespaces)
         let phone = newPhone.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { addError = String(localized: "Enter a name."); return }
-        guard PhoneLink.dialString(phone) != nil else { addError = String(localized: "Enter a phone number, so there's someone to call."); return }
-        guard PeopleRotation.canAdd(phone: phone, to: people) else { addError = String(localized: "That number is already on the list."); return }
+        guard !name.isEmpty else { addError = loc("Enter a name."); return }
+        guard PhoneLink.dialString(phone) != nil else { addError = loc("Enter a phone number, so there's someone to call."); return }
+        guard PeopleRotation.canAdd(phone: phone, to: people) else { addError = loc("That number is already on the list."); return }
         try? DatabaseManager.shared.saveConnection(UserConnection(name: name, phoneNumber: phone))
         newName = ""
         newPhone = ""

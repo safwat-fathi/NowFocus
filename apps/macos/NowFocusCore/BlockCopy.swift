@@ -9,26 +9,26 @@ public enum BlockReason {
 /// rule it was. Same sentences as Android's BlockCopy.kt; keep them in step.
 public enum BlockCopy {
     public static func title(appName: String?) -> String {
-        String(localized: "NowFocus closed \(appName ?? String(localized: "this app", bundle: .nowFocusCore))", bundle: .nowFocusCore)
+        String(localized: "NowFocus closed \(appName ?? String(localized: "this app", bundle: .nowFocusCore, locale: .nowFocusUI))", bundle: .nowFocusCore, locale: .nowFocusUI)
     }
 
     /// `until` is already formatted for the user. `limitMinutes` is only read for `.dailyLimit`.
     public static func reason(_ reason: BlockReason, until: String, appName: String?, limitMinutes: Int = 0) -> String {
         switch reason {
-        case .focusSession: return String(localized: "You're in a focus session until \(until).", bundle: .nowFocusCore)
-        case .bedtime: return String(localized: "It's bedtime wind-down until \(until).", bundle: .nowFocusCore)
-        case .commitmentShield: return String(localized: "Locked by your Commitment Shield until \(until).", bundle: .nowFocusCore)
-        case .dailyLimit: return String(localized: "You've used your \(limitMinutes) minutes of \(appName ?? String(localized: "this app", bundle: .nowFocusCore)) today. It's back at midnight.", bundle: .nowFocusCore)
+        case .focusSession: return String(localized: "You're in a focus session until \(until).", bundle: .nowFocusCore, locale: .nowFocusUI)
+        case .bedtime: return String(localized: "It's bedtime wind-down until \(until).", bundle: .nowFocusCore, locale: .nowFocusUI)
+        case .commitmentShield: return String(localized: "Locked by your Commitment Shield until \(until).", bundle: .nowFocusCore, locale: .nowFocusUI)
+        case .dailyLimit: return String(localized: "You've used your \(limitMinutes) minutes of \(appName ?? String(localized: "this app", bundle: .nowFocusCore, locale: .nowFocusUI)) today. It's back at midnight.", bundle: .nowFocusCore, locale: .nowFocusUI)
         }
     }
 
     /// The label beside the countdown.
     public static func timeLabel(_ reason: BlockReason) -> String {
         switch reason {
-        case .focusSession: return String(localized: "Left in session", bundle: .nowFocusCore)
-        case .bedtime: return String(localized: "Left in bedtime", bundle: .nowFocusCore)
-        case .commitmentShield: return String(localized: "Locked for", bundle: .nowFocusCore)
-        case .dailyLimit: return String(localized: "Back in", bundle: .nowFocusCore)
+        case .focusSession: return String(localized: "Left in session", bundle: .nowFocusCore, locale: .nowFocusUI)
+        case .bedtime: return String(localized: "Left in bedtime", bundle: .nowFocusCore, locale: .nowFocusUI)
+        case .commitmentShield: return String(localized: "Locked for", bundle: .nowFocusCore, locale: .nowFocusUI)
+        case .dailyLimit: return String(localized: "Back in", bundle: .nowFocusCore, locale: .nowFocusUI)
         }
     }
 }

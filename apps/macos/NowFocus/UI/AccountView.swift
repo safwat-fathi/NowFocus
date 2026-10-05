@@ -78,7 +78,7 @@ struct AccountView: View {
                 .font(NowFocusFonts.body(12))
                 .foregroundColor(sync.status.problem == nil ? NowFocusColors.neutral700 : NowFocusColors.accent700)
             if sync.status.rejected > 0 {
-                errorText(String(localized: "\(sync.status.rejected) changes couldn\u{2019}t be synced. They stay on this Mac; edit them to try again."))
+                errorText(loc("\(sync.status.rejected) changes couldn\u{2019}t be synced. They stay on this Mac; edit them to try again."))
             }
             Text("Profiles and bedtime settings sync. People, goals, voice notes and stats stay on this Mac.")
                 .font(NowFocusFonts.body(12))
@@ -107,9 +107,9 @@ struct AccountView: View {
 
     private var statusLine: String {
         if let problem = sync.status.problem { return problem }
-        if sync.status.syncing { return String(localized: "Syncing\u{2026}") }
-        guard let last = sync.status.lastSyncedAt else { return String(localized: "Not synced yet.") }
-        return String(localized: "Synced \(last.formatted(.relative(presentation: .named).locale(AppLanguage.locale))).")
+        if sync.status.syncing { return loc("Syncing\u{2026}") }
+        guard let last = sync.status.lastSyncedAt else { return loc("Not synced yet.") }
+        return loc("Synced \(last.formatted(.relative(presentation: .named).locale(AppLanguage.locale))).")
     }
 
     private func deviceRow(_ device: DeviceInfo) -> some View {
@@ -118,7 +118,7 @@ struct AccountView: View {
                 Text(device.name.isEmpty ? device.platform : device.name)
                     .font(NowFocusFonts.body(14).weight(.semibold))
                     .foregroundColor(NowFocusColors.ink)
-                Text(verbatim: "\(device.platform)\(device.lastSeenAt.map { " \u{00B7} " + String(localized: "seen \($0.formatted(.relative(presentation: .named).locale(AppLanguage.locale)))") } ?? "")")
+                Text(verbatim: "\(device.platform)\(device.lastSeenAt.map { " \u{00B7} " + loc("seen \($0.formatted(.relative(presentation: .named).locale(AppLanguage.locale)))") } ?? "")")
                     .font(NowFocusFonts.body(12))
                     .foregroundColor(NowFocusColors.neutral700)
             }

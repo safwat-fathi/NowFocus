@@ -36,9 +36,9 @@ public struct UserConnection: Codable, Identifiable {
         let days = Int(now.timeIntervalSince(lastTalkedAt) / dayInterval)
         switch days {
         case ..<3:  return nil
-        case ..<14: return String(localized: "\(days) days", bundle: .nowFocusCore)
-        case ..<60: return String(localized: "\(days / 7) weeks", bundle: .nowFocusCore)
-        default:    return String(localized: "\(days / 30) months", bundle: .nowFocusCore)
+        case ..<14: return String(localized: "\(days) days", bundle: .nowFocusCore, locale: .nowFocusUI)
+        case ..<60: return String(localized: "\(days / 7) weeks", bundle: .nowFocusCore, locale: .nowFocusUI)
+        default:    return String(localized: "\(days / 30) months", bundle: .nowFocusCore, locale: .nowFocusUI)
         }
     }
 
@@ -71,11 +71,11 @@ public enum PeopleRotation {
 /// The "Last talked" chips: (label, how many days ago that stands for). Same as Android.
 public enum LastTalked {
     public static let choices: [(label: String, daysAgo: Int?)] = [
-        (String(localized: "This week", bundle: .nowFocusCore), 3),
-        (String(localized: "About 2 weeks", bundle: .nowFocusCore), 14),
-        (String(localized: "About a month", bundle: .nowFocusCore), 30),
-        (String(localized: "Longer", bundle: .nowFocusCore), 90),
-        (String(localized: "Can't remember", bundle: .nowFocusCore), nil),
+        (String(localized: "This week", bundle: .nowFocusCore, locale: .nowFocusUI), 3),
+        (String(localized: "About 2 weeks", bundle: .nowFocusCore, locale: .nowFocusUI), 14),
+        (String(localized: "About a month", bundle: .nowFocusCore, locale: .nowFocusUI), 30),
+        (String(localized: "Longer", bundle: .nowFocusCore, locale: .nowFocusUI), 90),
+        (String(localized: "Can't remember", bundle: .nowFocusCore, locale: .nowFocusUI), nil),
     ]
 
     /// The chip whose day count is nearest, so a stored date still highlights a chip as it ages.

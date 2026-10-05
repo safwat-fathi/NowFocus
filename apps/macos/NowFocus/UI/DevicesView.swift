@@ -10,10 +10,10 @@ struct DevicesView: View {
 
         var label: String {
             switch self {
-            case .checking: return String(localized: "Checking")
-            case .on: return String(localized: "On")
-            case .off: return String(localized: "Off")
-            case .idle: return String(localized: "Idle")
+            case .checking: return loc("Checking")
+            case .on: return loc("On")
+            case .off: return loc("Off")
+            case .idle: return loc("Idle")
             }
         }
     }

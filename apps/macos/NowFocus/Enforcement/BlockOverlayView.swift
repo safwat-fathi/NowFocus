@@ -82,7 +82,7 @@ struct BlockOverlayView: View {
                         Text("—")
                     }
                 }
-                sideRow(String(localized: "Tries today")) { Text("\(content.triesToday)") }
+                sideRow(loc("Tries today")) { Text("\(content.triesToday)") }
             }
             .padding(.vertical, NowFocusSpace.s2)
 
@@ -136,7 +136,7 @@ struct BlockOverlayView: View {
                 .font(NowFocusFonts.body(11).weight(.semibold))
                 .nfTracking(1.1)
                 .foregroundColor(NowFocusColors.neutral700)
-            Text(since.map { String(localized: "You haven't talked to \(person.name) in about \($0).") } ?? String(localized: "Reach out to \(person.name) instead."))
+            Text(since.map { loc("You haven't talked to \(person.name) in about \($0).") } ?? loc("Reach out to \(person.name) instead."))
                 .font(NowFocusFonts.body(19).weight(.semibold))
                 .foregroundColor(NowFocusColors.ink)
                 .fixedSize(horizontal: false, vertical: true)

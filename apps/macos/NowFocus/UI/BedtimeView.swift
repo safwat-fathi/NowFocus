@@ -97,7 +97,7 @@ struct BedtimeView: View {
     }
 
     private func sectionLabel(_ text: LocalizedStringResource) -> some View {
-        Text(String(localized: text).uppercased())
+        Text(locr(text).uppercased())
             .font(NowFocusFonts.body(11).weight(.semibold))
             .nfTracking(1.0)
             .foregroundColor(NowFocusColors.neutral700)

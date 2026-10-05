@@ -204,7 +204,7 @@ struct MenuBarView: View {
 
     private var todayRow: some View {
         HStack(alignment: .top, spacing: 0) {
-            todayCell("Today", String(localized: "\(today.focusedMinutes / 60)h \(today.focusedMinutes % 60)m"))
+            todayCell("Today", loc("\(today.focusedMinutes / 60)h \(today.focusedMinutes % 60)m"))
             todayCell("Turned away", "\(today.turnedAway)")
             todayCell("Sessions", "\(today.sessions)")
         }
@@ -269,7 +269,7 @@ struct MenuBarView: View {
     }
 
     private func sectionLabel(_ text: LocalizedStringResource) -> some View {
-        Text(String(localized: text).uppercased())
+        Text(locr(text).uppercased())
             .font(NowFocusFonts.body(11).weight(.semibold))
             .nfTracking(1.1)
             .foregroundColor(NowFocusColors.neutral700)

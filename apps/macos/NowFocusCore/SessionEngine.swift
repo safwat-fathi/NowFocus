@@ -15,7 +15,7 @@ public class SessionEngine {
     /// Typed word for word and compared exactly, so the screen shows and checks this one string. The Arabic one
     /// uses only plain letters (no hamza or alef variants), so an exact match needs no normalization.
     public static var strictUnlockSentence: String {
-        String(localized: "I am choosing to end this focus session early.", bundle: .nowFocusCore)
+        String(localized: "I am choosing to end this focus session early.", bundle: .nowFocusCore, locale: .nowFocusUI)
     }
     public static let strictUnlockPauseSeconds = 30
 
