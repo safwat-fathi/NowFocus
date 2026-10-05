@@ -67,7 +67,7 @@ export const ar: Record<Key, Message> = {
   "title.maximize": "تكبير",
   "title.closeToTray": "إغلاق إلى شريط المهام",
   "nav.focus": "التركيز",
-  "nav.profiles": "الملفات",
+  "nav.profiles": "ملفات التركيز",
   "nav.devices": "الأجهزة",
   "nav.stats": "الإحصاءات",
   "nav.alwaysOn": "قيد التشغيل دائمًا",
@@ -222,7 +222,7 @@ export const ar: Record<Key, Message> = {
   },
 
   // ---- Profiles
-  "prof.title": "الملفات",
+  "prof.title": "ملفات التركيز",
   "prof.new": "ملف جديد",
   "prof.blockThese": "احجب هذه",
   "prof.allowOnly": "اسمح بهذه فقط",
