@@ -29,7 +29,7 @@ struct UnlockOverlayView: View {
 
             VStack(alignment: .leading, spacing: NowFocusSpace.s3) {
                 HStack {
-                    Text(pauseEnd == nil ? "End early?" : "One moment")
+                    Text(pauseEnd == nil ? LocalizedStringKey("End early?") : LocalizedStringKey("One moment"))
                         .font(NowFocusFonts.heading(18))
                         .foregroundColor(NowFocusColors.ink)
                     Spacer()
@@ -125,8 +125,8 @@ struct UnlockOverlayView: View {
     private func pauseStage(pauseSeconds: Int) -> some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
             Text(notePlayer == nil
-                 ? "Take a breath. If you still want out when this hits zero, it's yours."
-                 : "Take a breath, then hear what you told yourself. You can leave once you have.")
+                 ? LocalizedStringKey("Take a breath. If you still want out when this hits zero, it's yours.")
+                 : LocalizedStringKey("Take a breath, then hear what you told yourself. You can leave once you have."))
                 .font(NowFocusFonts.body(13))
                 .foregroundColor(NowFocusColors.neutral800)
 
@@ -175,7 +175,7 @@ struct UnlockOverlayView: View {
             HStack(spacing: NowFocusSpace.s2) {
                 Image(systemName: player.isPlaying ? "waveform" : "headphones")
                     .font(.system(size: 13))
-                Text(player.isPlaying ? "Playing…" : (player.listened ? "Play again" : "Play your note"))
+                Text(player.isPlaying ? LocalizedStringKey("Playing…") : (player.listened ? LocalizedStringKey("Play again") : LocalizedStringKey("Play your note")))
                     .font(NowFocusFonts.body(13))
             }
             .foregroundColor(NowFocusColors.accent)

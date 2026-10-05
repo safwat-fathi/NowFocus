@@ -1,0 +1,17 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSMicrophoneUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يمكن لـ NowFocus تسجيل ملاحظة مدتها 10 ثوانٍ لنفسك للجلسة الصارمة. تبقى على هذا الـ Mac، وتسمعها فقط إن حاولت إنهاء تلك الجلسة مبكرًا."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

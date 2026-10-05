@@ -8,14 +8,14 @@ struct NowFocusApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarView()
+            MenuBarView().environment(\.locale, AppLanguage.locale)
         } label: {
             MenuBarIcon()
         }
         .menuBarExtraStyle(.window)
 
         Window("NowFocus", id: MainWindowView.windowID) {
-            MainWindowView()
+            MainWindowView().environment(\.locale, AppLanguage.locale)
         }
         .defaultSize(width: 960, height: 640)
     }

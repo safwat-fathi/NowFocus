@@ -119,7 +119,7 @@ public class DaemonClient {
         guard let daemon = remoteDaemon(onError: { error in
             completion(false, "\(error)")
         }) else {
-            completion(false, "Daemon unreachable")
+            completion(false, String(localized: "Daemon unreachable"))
             return
         }
 
@@ -137,7 +137,7 @@ public class DaemonClient {
         guard let daemon = remoteDaemon(onError: { error in
             completion(false, "\(error)")
         }) else {
-            completion(false, "Daemon unreachable")
+            completion(false, String(localized: "Daemon unreachable"))
             return
         }
 

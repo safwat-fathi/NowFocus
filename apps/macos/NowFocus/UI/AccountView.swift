@@ -18,7 +18,7 @@ struct AccountView: View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s3) {
             Text("ACCOUNT")
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.0)
+                .nfTracking(1.0)
                 .foregroundColor(NowFocusColors.neutral700)
             NowFocusRule(thick: true)
 
@@ -78,7 +78,7 @@ struct AccountView: View {
                 .font(NowFocusFonts.body(12))
                 .foregroundColor(sync.status.problem == nil ? NowFocusColors.neutral700 : NowFocusColors.accent700)
             if sync.status.rejected > 0 {
-                errorText("\(sync.status.rejected) change\(sync.status.rejected == 1 ? "" : "s") couldn\u{2019}t be synced. They stay on this Mac; edit them to try again.")
+                errorText(String(localized: "\(sync.status.rejected) changes couldn\u{2019}t be synced. They stay on this Mac; edit them to try again."))
             }
             Text("Profiles and bedtime settings sync. People, goals, voice notes and stats stay on this Mac.")
                 .font(NowFocusFonts.body(12))
@@ -93,7 +93,7 @@ struct AccountView: View {
 
             Text("YOUR DEVICES")
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.0)
+                .nfTracking(1.0)
                 .foregroundColor(NowFocusColors.neutral700)
                 .padding(.top, NowFocusSpace.s3)
             NowFocusRule()
@@ -107,9 +107,9 @@ struct AccountView: View {
 
     private var statusLine: String {
         if let problem = sync.status.problem { return problem }
-        if sync.status.syncing { return "Syncing\u{2026}" }
-        guard let last = sync.status.lastSyncedAt else { return "Not synced yet." }
-        return "Synced \(last.formatted(.relative(presentation: .named)))."
+        if sync.status.syncing { return String(localized: "Syncing\u{2026}") }
+        guard let last = sync.status.lastSyncedAt else { return String(localized: "Not synced yet.") }
+        return String(localized: "Synced \(last.formatted(.relative(presentation: .named).locale(AppLanguage.locale))).")
     }
 
     private func deviceRow(_ device: DeviceInfo) -> some View {
@@ -118,7 +118,7 @@ struct AccountView: View {
                 Text(device.name.isEmpty ? device.platform : device.name)
                     .font(NowFocusFonts.body(14).weight(.semibold))
                     .foregroundColor(NowFocusColors.ink)
-                Text("\(device.platform)\(device.lastSeenAt.map { " \u{00B7} seen \($0.formatted(.relative(presentation: .named)))" } ?? "")")
+                Text(verbatim: "\(device.platform)\(device.lastSeenAt.map { " \u{00B7} " + String(localized: "seen \($0.formatted(.relative(presentation: .named).locale(AppLanguage.locale)))") } ?? "")")
                     .font(NowFocusFonts.body(12))
                     .foregroundColor(NowFocusColors.neutral700)
             }

@@ -13,7 +13,7 @@ struct GoalsEditorView: View {
             VStack(spacing: 0) {
                 ForEach(goals) { goal in
                     HStack(spacing: NowFocusSpace.s2) {
-                        NowFocusTagPill(text: goal.priority.label, accent: goal.priority == .high)
+                        NowFocusTagPill(text: LocalizedStringKey(goal.priority.label), accent: goal.priority == .high)
                             .frame(width: 42)
                         Text(goal.text)
                             .font(NowFocusFonts.body(14))
@@ -39,7 +39,7 @@ struct GoalsEditorView: View {
                     .onSubmit(add)
 
                 NowFocusSegmentedControl(
-                    options: GoalPriority.allCases.map { (label: $0.label, value: $0) },
+                    options: GoalPriority.allCases.map { (label: LocalizedStringKey($0.label), value: $0) },
                     selection: $newGoalPriority
                 )
                 .frame(width: 150)

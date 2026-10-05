@@ -130,7 +130,7 @@ struct NowFocusRule: View {
 
 /// Full-width solid CTA. Android's `PrimaryButton`.
 struct NowFocusPrimaryButton: View {
-    let title: String
+    let title: LocalizedStringKey
     var enabled: Bool = true
     let action: () -> Void
 
@@ -152,7 +152,7 @@ struct NowFocusPrimaryButton: View {
 
 /// Outlined button. Android's `SecondaryButton`.
 struct NowFocusSecondaryButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let action: () -> Void
 
     var body: some View {
@@ -171,7 +171,7 @@ struct NowFocusSecondaryButton: View {
 
 /// No background/border, accent-colored text. Android's `GhostButton`.
 struct NowFocusGhostButton: View {
-    let title: String
+    let title: LocalizedStringKey
     let action: () -> Void
 
     var body: some View {
@@ -191,13 +191,13 @@ struct NowFocusGhostButton: View {
 /// `false` is the neutral/healthy tone. Matches `.tag`/`.tag-accent`/
 /// `.tag-neutral` in styles.css.
 struct NowFocusTagPill: View {
-    let text: String
+    let text: LocalizedStringKey
     var accent: Bool = true
 
     var body: some View {
         Text(text)
             .font(NowFocusFonts.body(11))
-            .tracking(0.2)
+            .nfTracking(0.2)
             .foregroundColor(accent ? NowFocusColors.accent800 : NowFocusColors.neutral800)
             .padding(.horizontal, 10)
             .padding(.vertical, 3)
@@ -208,7 +208,7 @@ struct NowFocusTagPill: View {
 /// Rectangular multi-way selector — no system `.pickerStyle(.segmented)`
 /// pill, the design has none. Android's `SegmentedControl`.
 struct NowFocusSegmentedControl<T: Hashable>: View {
-    let options: [(label: String, value: T)]
+    let options: [(label: LocalizedStringKey, value: T)]
     @Binding var selection: T
 
     var body: some View {
@@ -236,4 +236,21 @@ struct NowFocusSegmentedControl<T: Hashable>: View {
         }
         .overlay(Rectangle().stroke(NowFocusColors.divider, lineWidth: 1))
     }
+}
+
+// MARK: - Arabic
+
+/// Letter-spacing pulls joined Arabic letters apart, so it is dropped when the app is in Arabic.
+private struct ArabicSafeTracking: ViewModifier {
+    @Environment(\.locale) private var locale
+    let value: CGFloat
+
+    func body(content: Content) -> some View {
+        content.tracking(locale.language.languageCode?.identifier == "ar" ? 0 : value)
+    }
+}
+
+extension View {
+    /// `.tracking(_:)` that is switched off for Arabic.
+    func nfTracking(_ value: CGFloat) -> some View { modifier(ArabicSafeTracking(value: value)) }
 }

@@ -23,7 +23,7 @@ final class UnlockWindowController: NSObject, NSWindowDelegate {
                 onConfirmEnd: { [weak self] listened in self?.end(session, listened: listened) },
                 onCancel: { [weak self] in self?.close() }
             )
-            let host = NSHostingController(rootView: view.frame(width: 360, height: 420))
+            let host = NSHostingController(rootView: view.frame(width: 360, height: 420).environment(\.locale, AppLanguage.locale))
             let w = NSWindow(contentViewController: host)
             w.title = "NowFocus"
             w.styleMask = [.titled, .closable]

@@ -83,7 +83,7 @@ struct BedtimeView: View {
         }
     }
 
-    private func timeRow(_ label: String, binding: Binding<Date>) -> some View {
+    private func timeRow(_ label: LocalizedStringKey, binding: Binding<Date>) -> some View {
         HStack {
             Text(label)
                 .font(NowFocusFonts.body(14))
@@ -96,10 +96,10 @@ struct BedtimeView: View {
         .overlay(alignment: .bottom) { NowFocusRule() }
     }
 
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text.uppercased())
+    private func sectionLabel(_ text: LocalizedStringResource) -> some View {
+        Text(String(localized: text).uppercased())
             .font(NowFocusFonts.body(11).weight(.semibold))
-            .tracking(1.0)
+            .nfTracking(1.0)
             .foregroundColor(NowFocusColors.neutral700)
     }
 

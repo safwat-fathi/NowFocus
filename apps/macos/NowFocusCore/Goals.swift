@@ -5,9 +5,9 @@ public enum GoalPriority: String, Codable, CaseIterable {
 
     public var label: String {
         switch self {
-        case .high:   return "High"
-        case .medium: return "Med"
-        case .low:    return "Low"
+        case .high:   return String(localized: "High", bundle: .nowFocusCore)
+        case .medium: return String(localized: "Med", bundle: .nowFocusCore)
+        case .low:    return String(localized: "Low", bundle: .nowFocusCore)
         }
     }
 }

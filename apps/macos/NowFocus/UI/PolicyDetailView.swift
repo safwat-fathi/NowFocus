@@ -109,11 +109,11 @@ struct PolicyDetailView: View {
         }
     }
 
-    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+    private func section(_ title: LocalizedStringResource, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
-            Text(title.uppercased())
+            Text(String(localized: title).uppercased())
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.0)
+                .nfTracking(1.0)
                 .lineLimit(1)
                 .foregroundColor(NowFocusColors.neutral700)
             content()
@@ -134,7 +134,7 @@ struct PolicyDetailView: View {
 
     private func pickApplication() {
         let panel = NSOpenPanel()
-        panel.title = "Select an Application to Block"
+        panel.title = String(localized: "Select an Application to Block")
         panel.allowedContentTypes = [.application]
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowsMultipleSelection = false

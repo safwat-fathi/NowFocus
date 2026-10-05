@@ -59,7 +59,7 @@ struct BlockOverlayView: View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s3) {
             Text(BlockCopy.title(appName: content.appName).uppercased())
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.1)
+                .nfTracking(1.1)
                 .foregroundColor(NowFocusColors.neutral700)
 
             Text("This can wait.")
@@ -67,7 +67,7 @@ struct BlockOverlayView: View {
                 .foregroundColor(NowFocusColors.ink)
 
             if let endAt = content.endAt {
-                Text(BlockCopy.reason(content.reason, until: endAt.formatted(date: .omitted, time: .shortened), appName: content.appName))
+                Text(BlockCopy.reason(content.reason, until: endAt.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(AppLanguage.locale)), appName: content.appName))
                     .font(NowFocusFonts.body(15))
                     .foregroundColor(NowFocusColors.neutral800)
             }
@@ -82,7 +82,7 @@ struct BlockOverlayView: View {
                         Text("—")
                     }
                 }
-                sideRow("Tries today") { Text("\(content.triesToday)") }
+                sideRow(String(localized: "Tries today")) { Text("\(content.triesToday)") }
             }
             .padding(.vertical, NowFocusSpace.s2)
 
@@ -92,7 +92,7 @@ struct BlockOverlayView: View {
                 VStack(alignment: .leading, spacing: NowFocusSpace.s1) {
                     Text("REMEMBER")
                         .font(NowFocusFonts.body(11).weight(.semibold))
-                        .tracking(1.1)
+                        .nfTracking(1.1)
                         .foregroundColor(NowFocusColors.neutral700)
                     Text(goal)
                         .font(NowFocusFonts.body(18).weight(.semibold))
@@ -118,7 +118,7 @@ struct BlockOverlayView: View {
         HStack {
             Text(label.uppercased())
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.1)
+                .nfTracking(1.1)
                 .foregroundColor(NowFocusColors.neutral700)
             Spacer()
             value()
@@ -134,9 +134,9 @@ struct BlockOverlayView: View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
             Text("OR REACH OUT INSTEAD")
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.1)
+                .nfTracking(1.1)
                 .foregroundColor(NowFocusColors.neutral700)
-            Text(since.map { "You haven't talked to \(person.name) in about \($0)." } ?? "Reach out to \(person.name) instead.")
+            Text(since.map { String(localized: "You haven't talked to \(person.name) in about \($0).") } ?? String(localized: "Reach out to \(person.name) instead."))
                 .font(NowFocusFonts.body(19).weight(.semibold))
                 .foregroundColor(NowFocusColors.ink)
                 .fixedSize(horizontal: false, vertical: true)

@@ -12,7 +12,11 @@ public enum SessionStopGate {
 public class SessionEngine {
     /// Matches the design's own unlock copy/timing exactly (PC prototype's
     /// `SENT` constant and 30s default `unlockWait`), not reinvented here.
-    public static let strictUnlockSentence = "I am choosing to end this focus session early."
+    /// Typed word for word and compared exactly, so the screen shows and checks this one string. The Arabic one
+    /// uses only plain letters (no hamza or alef variants), so an exact match needs no normalization.
+    public static var strictUnlockSentence: String {
+        String(localized: "I am choosing to end this focus session early.", bundle: .nowFocusCore)
+    }
     public static let strictUnlockPauseSeconds = 30
 
     public init() {}

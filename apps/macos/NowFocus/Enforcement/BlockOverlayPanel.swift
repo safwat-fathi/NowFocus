@@ -33,7 +33,7 @@ public class BlockOverlayPanel: NSPanel {
             onQuit: { [weak self] in self?.onClose?() },
             onNeedIt: { [weak self] in self?.onNeedIt?() }
         )
-        self.contentView = FirstMouseHostingView(rootView: view)
+        self.contentView = FirstMouseHostingView(rootView: view.environment(\.locale, AppLanguage.locale))
         self.setFrame(rect, display: true)
         self.makeKeyAndOrderFront(nil)
     }

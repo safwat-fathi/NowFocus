@@ -16,7 +16,7 @@ struct StatsView: View {
     private static let urgeWindowDays = 28
 
     private let calendar = HistoryStats.mondayFirstCalendar()
-    private let dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    private let dayLabels: [LocalizedStringKey] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
     var body: some View {
         ScrollView {
@@ -59,7 +59,7 @@ struct StatsView: View {
             HStack(alignment: .bottom, spacing: NowFocusSpace.s3) {
                 ForEach(0..<7, id: \.self) { index in
                     VStack(spacing: 4) {
-                        Text(weekBuckets[index] > 0 ? "\(Int(weekBuckets[index]))m" : "")
+                        Text(weekBuckets[index] > 0 ? String(localized: "\(Int(weekBuckets[index]))m") : "")
                             .font(NowFocusFonts.body(10))
                             .foregroundColor(NowFocusColors.neutral700)
                         Rectangle()
@@ -91,13 +91,13 @@ struct StatsView: View {
                 statCell("Sessions", "\(weekSessions.count)")
                 statCell("Completed", "\(Int(HistoryStats.completionRate(weekSessions) * 100))%")
                 statCell("Turned away", "\(turnedAway)")
-                statCell("Streak", "\(streak) day\(streak == 1 ? "" : "s")")
+                statCell("Streak", String(localized: "\(streak) days"))
             }
             .overlay(alignment: .top) { NowFocusRule(thick: true) }
 
             Text("MOST TURNED AWAY")
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.0)
+                .nfTracking(1.0)
                 .foregroundColor(NowFocusColors.neutral700)
 
             if topBlocked.isEmpty {
@@ -138,11 +138,11 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
             Text("YOUR URGES")
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.0)
+                .nfTracking(1.0)
                 .foregroundColor(NowFocusColors.neutral700)
 
             if let urge = HistoryStats.peakUrge(urgeEvents, calendar: Calendar.current) {
-                Text("You tried to open a blocked app \(urge.count == 1 ? "once" : "\(urge.count) times") between \(hourLabel(urge.hour)) and \(hourLabel(urge.hour + 1)), usually \(urge.topApp). (last \(Self.urgeWindowDays) days)")
+                Text("You tried to open a blocked app \(String(localized: "\(urge.count) times")) between \(hourLabel(urge.hour)) and \(hourLabel(urge.hour + 1)), usually \(urge.topApp). (last \(Self.urgeWindowDays) days)")
                     .font(NowFocusFonts.body(14))
                     .foregroundColor(NowFocusColors.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -178,15 +178,16 @@ struct StatsView: View {
     private func hourLabel(_ hour: Int) -> String {
         let date = Calendar.current.date(bySettingHour: hour % 24, minute: 0, second: 0, of: Date()) ?? Date()
         let formatter = DateFormatter()
+        formatter.locale = AppLanguage.locale
         formatter.dateFormat = "h a"
         return formatter.string(from: date)
     }
 
-    private func statCell(_ label: String, _ value: String) -> some View {
+    private func statCell(_ label: LocalizedStringResource, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label.uppercased())
+            Text(String(localized: label).uppercased())
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(0.8)
+                .nfTracking(0.8)
                 .foregroundColor(NowFocusColors.neutral700)
             Text(value)
                 .font(NowFocusFonts.heading(26))
@@ -204,12 +205,13 @@ struct StatsView: View {
 
     private var hoursLabel: String {
         let totalMinutes = weekBuckets.reduce(0, +)
-        return "\(Int(totalMinutes) / 60)h \(Int(totalMinutes) % 60)m"
+        return String(localized: "\(Int(totalMinutes) / 60)h \(Int(totalMinutes) % 60)m")
     }
 
     private var weekRangeLabel: String {
         guard let week = calendar.dateInterval(of: .weekOfYear, for: Date()) else { return "" }
         let formatter = DateFormatter()
+        formatter.locale = AppLanguage.locale
         formatter.dateFormat = "MMM d"
         let end = calendar.date(byAdding: .day, value: -1, to: week.end) ?? week.end
         return "\(formatter.string(from: week.start)) – \(formatter.string(from: end))"

@@ -10,10 +10,10 @@ struct DevicesView: View {
 
         var label: String {
             switch self {
-            case .checking: return "Checking"
-            case .on: return "On"
-            case .off: return "Off"
-            case .idle: return "Idle"
+            case .checking: return String(localized: "Checking")
+            case .on: return String(localized: "On")
+            case .off: return String(localized: "Off")
+            case .idle: return String(localized: "Idle")
             }
         }
     }
@@ -70,7 +70,7 @@ struct DevicesView: View {
         daemonLayerState == .off || hostsFilterState == .off || !appBlockingOk
     }
 
-    private func layerCell(_ label: String, state: LayerState) -> some View {
+    private func layerCell(_ label: LocalizedStringKey, state: LayerState) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(state.label.uppercased())
                 .font(NowFocusFonts.body(12).weight(.semibold))

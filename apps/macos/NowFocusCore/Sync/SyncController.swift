@@ -158,7 +158,7 @@ public final class SyncController: ObservableObject {
             } catch {
                 backoff = backoff == 0 ? 5 : min(backoff * 2, 300)
                 status.syncing = false
-                status.problem = error is NetworkError ? "Offline. Will retry." : friendly(error)
+                status.problem = error is NetworkError ? String(localized: "Offline. Will retry.", bundle: .nowFocusCore) : friendly(error)
                 let wait = backoff
                 Task { try? await Task.sleep(for: .seconds(wait)); continuation.yield() }
             }
@@ -197,21 +197,21 @@ public final class SyncController: ObservableObject {
     private func expired() async {
         api.forget()
         end()
-        status = SyncStatus(loaded: true, problem: "This device was signed out. Sign in again to keep syncing.")
+        status = SyncStatus(loaded: true, problem: String(localized: "This device was signed out. Sign in again to keep syncing.", bundle: .nowFocusCore))
     }
 
     func friendly(_ error: Error) -> String {
         switch error {
-        case is NetworkError: return "Can't reach NowFocus. Check your connection and try again."
-        case is AuthExpired: return "Your session ended. Sign in again."
-        case let e as KeychainError: return "Couldn't save your sign-in to the Keychain (error \(e.status))."
+        case is NetworkError: return String(localized: "Can't reach NowFocus. Check your connection and try again.", bundle: .nowFocusCore)
+        case is AuthExpired: return String(localized: "Your session ended. Sign in again.", bundle: .nowFocusCore)
+        case let e as KeychainError: return String(localized: "Couldn't save your sign-in to the Keychain (error \(e.status)).", bundle: .nowFocusCore)
         case let e as ApiError:
             switch (e.code, e.status) {
-            case ("invalid_credentials", _): return "Wrong email or password."
-            case ("email_taken", _): return "An account with this email already exists. Sign in instead."
-            case ("wrong_password", _): return "Wrong password."
-            case (_, 429): return "Too many attempts. Wait a minute and try again."
-            case (_, 500...599): return "NowFocus is having trouble right now. Try again shortly."
+            case ("invalid_credentials", _): return String(localized: "Wrong email or password.", bundle: .nowFocusCore)
+            case ("email_taken", _): return String(localized: "An account with this email already exists. Sign in instead.", bundle: .nowFocusCore)
+            case ("wrong_password", _): return String(localized: "Wrong password.", bundle: .nowFocusCore)
+            case (_, 429): return String(localized: "Too many attempts. Wait a minute and try again.", bundle: .nowFocusCore)
+            case (_, 500...599): return String(localized: "NowFocus is having trouble right now. Try again shortly.", bundle: .nowFocusCore)
             default: return e.message
             }
         default: return error.localizedDescription

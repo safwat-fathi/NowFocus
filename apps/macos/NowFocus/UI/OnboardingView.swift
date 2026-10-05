@@ -99,7 +99,7 @@ struct OnboardingView: View {
 
     // MARK: - Navigation
 
-    private var nextLabel: String {
+    private var nextLabel: LocalizedStringKey {
         step == totalSteps - 1 ? "Get Started →" : "Continue →"
     }
 
@@ -207,18 +207,18 @@ struct OnboardingView: View {
         }
     }
 
-    private func scheduleSection<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+    private func scheduleSection<Content: View>(label: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
             Text(label)
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.0)
+                .nfTracking(1.0)
                 .foregroundColor(NowFocusColors.neutral700)
             NowFocusRule()
             content()
         }
     }
 
-    private func timeRow(_ label: String, binding: Binding<Date>) -> some View {
+    private func timeRow(_ label: LocalizedStringKey, binding: Binding<Date>) -> some View {
         HStack {
             Text(label)
                 .font(NowFocusFonts.body(14))
@@ -257,7 +257,7 @@ struct OnboardingView: View {
 
     // MARK: - Helpers
 
-    private func stepHeader(title: String, body: String) -> some View {
+    private func stepHeader(title: LocalizedStringKey, body: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s3) {
             Text(title)
                 .font(NowFocusFonts.heading(30))

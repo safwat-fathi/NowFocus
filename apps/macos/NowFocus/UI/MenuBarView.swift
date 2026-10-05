@@ -26,7 +26,7 @@ struct MenuBarView: View {
         var sessions = 0
     }
 
-    private let durations: [(String, TimeInterval)] = [
+    private let durations: [(LocalizedStringKey, TimeInterval)] = [
         ("25m", 25 * 60),
         ("45m", 45 * 60),
         ("1h", 60 * 60),
@@ -36,7 +36,7 @@ struct MenuBarView: View {
         ("4h", 240 * 60)
     ]
 
-    private let modes: [(String, EnforcementMode)] = [
+    private let modes: [(LocalizedStringKey, EnforcementMode)] = [
         ("Normal", .normal),
         ("Strict", .strict),
         ("Locked", .locked)
@@ -103,7 +103,7 @@ struct MenuBarView: View {
     @ViewBuilder
     private func runningSession(_ session: FocusSession) -> some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
-            Text("\(policyName(for: session)) · \(session.enforcementMode.rawValue.capitalized)")
+            Text("\(policyName(for: session)) · \(session.enforcementMode.displayName)")
                 .font(NowFocusFonts.body(13).weight(.semibold))
                 .foregroundColor(NowFocusColors.ink)
 
@@ -161,7 +161,7 @@ struct MenuBarView: View {
     }
 
     /// Same copy as Android's Setup screen.
-    private var modeBlurb: String {
+    private var modeBlurb: LocalizedStringKey {
         switch selectedMode {
         case .normal: return "You can end any time. Good for light days."
         case .strict: return "To leave early you'll type a short sentence, then wait 30 seconds."
@@ -204,7 +204,7 @@ struct MenuBarView: View {
 
     private var todayRow: some View {
         HStack(alignment: .top, spacing: 0) {
-            todayCell("Today", "\(today.focusedMinutes / 60)h \(today.focusedMinutes % 60)m")
+            todayCell("Today", String(localized: "\(today.focusedMinutes / 60)h \(today.focusedMinutes % 60)m"))
             todayCell("Turned away", "\(today.turnedAway)")
             todayCell("Sessions", "\(today.sessions)")
         }
@@ -213,7 +213,7 @@ struct MenuBarView: View {
         .overlay(NowFocusRule(), alignment: .bottom)
     }
 
-    private func todayCell(_ label: String, _ value: String) -> some View {
+    private func todayCell(_ label: LocalizedStringResource, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             sectionLabel(label)
             Text(value)
@@ -268,10 +268,10 @@ struct MenuBarView: View {
         .overlay(alignment: .bottom) { NowFocusRule() }
     }
 
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text.uppercased())
+    private func sectionLabel(_ text: LocalizedStringResource) -> some View {
+        Text(String(localized: text).uppercased())
             .font(NowFocusFonts.body(11).weight(.semibold))
-            .tracking(1.1)
+            .nfTracking(1.1)
             .foregroundColor(NowFocusColors.neutral700)
     }
 
@@ -302,7 +302,7 @@ struct MenuBarView: View {
         .padding(.vertical, NowFocusSpace.s3)
     }
 
-    private var enforcementTagText: String {
+    private var enforcementTagText: LocalizedStringKey {
         switch healthStatus {
         case .unknown: return "Checking"
         case .active: return "Active"
@@ -312,8 +312,8 @@ struct MenuBarView: View {
     }
 
     private struct EnforcementFix {
-        let message: String
-        let action: (title: String, perform: () -> Void)?
+        let message: LocalizedStringKey
+        let action: (title: LocalizedStringKey, perform: () -> Void)?
     }
 
     /// One fix box, not two — folds the old separate `registrationWarning`
@@ -336,7 +336,7 @@ struct MenuBarView: View {
     private var footer: some View {
         VStack(spacing: 2) {
             MenuItemView(
-                title: "Preferences...",
+                title: "Settings…",
                 systemImage: "gearshape",
                 action: { openMainWindow() }
             )
@@ -352,7 +352,7 @@ struct MenuBarView: View {
     }
 
     private struct MenuItemView: View {
-        let title: String
+        let title: LocalizedStringKey
         let systemImage: String
         let action: () -> Void
         var disabled: Bool = false

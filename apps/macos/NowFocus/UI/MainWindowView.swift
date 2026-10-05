@@ -20,10 +20,23 @@ struct MainWindowView: View {
         case bedtime = "Bedtime Wind-Down"
         case people = "People who matter"
         case goals = "Your goals"
-        case general = "General"
-        case about = "About"
+        case settings = "Settings"
 
         var id: String { rawValue }
+
+        /// The row's label in the app's language; `rawValue` stays the id.
+        var title: LocalizedStringKey {
+            switch self {
+            case .profiles: return "Profiles"
+            case .devices: return "Devices"
+            case .stats: return "Stats"
+            case .commitment: return "Commitment Shield"
+            case .bedtime: return "Bedtime Wind-Down"
+            case .people: return "People who matter"
+            case .goals: return "Your goals"
+            case .settings: return "Settings"
+            }
+        }
     }
 
     @State private var selection: Section = .profiles
@@ -68,7 +81,7 @@ struct MainWindowView: View {
 
             Text("PROTECTIONS")
                 .font(NowFocusFonts.body(11).weight(.semibold))
-                .tracking(1.0)
+                .nfTracking(1.0)
                 .foregroundColor(NowFocusColors.neutral700)
                 .padding(.horizontal, NowFocusSpace.s4)
                 .padding(.top, NowFocusSpace.s6)
@@ -84,8 +97,7 @@ struct MainWindowView: View {
             Spacer(minLength: 0)
 
             NowFocusRule()
-            navRow(.general, systemImage: "gearshape")
-            navRow(.about, systemImage: "info.circle")
+            navRow(.settings, systemImage: "gearshape")
         }
         .frame(width: 220)
         .background(NowFocusColors.ground)
@@ -99,7 +111,7 @@ struct MainWindowView: View {
             HStack(spacing: NowFocusSpace.s2) {
                 Image(systemName: systemImage)
                     .frame(width: 18)
-                Text(section.rawValue)
+                Text(section.title)
                     .font(NowFocusFonts.body(14).weight(.semibold))
                 Spacer()
             }
@@ -128,32 +140,7 @@ struct MainWindowView: View {
         case .bedtime:    BedtimeView()
         case .people:     PeopleView()
         case .goals:      GoalsView()
-        case .general:    GeneralSettingsView(updaterController: updaterController)
-        case .about:      AboutView()
+        case .settings:   SettingsView(updaterController: updaterController)
         }
-    }
-}
-
-struct GeneralSettingsView: View {
-    let updaterController: SPUStandardUpdaterController
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: NowFocusSpace.s3) {
-            Text("General")
-                .font(NowFocusFonts.heading(22))
-                .foregroundColor(NowFocusColors.ink)
-
-            NowFocusRule(thick: true)
-
-            NowFocusSecondaryButton(title: "Check for Updates…") {
-                print("Updates not configured yet.")
-            }
-
-            Text("Update server not configured yet.")
-                .font(NowFocusFonts.body(12))
-                .foregroundColor(NowFocusColors.neutral700)
-        }
-        .padding(NowFocusSpace.s6)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
