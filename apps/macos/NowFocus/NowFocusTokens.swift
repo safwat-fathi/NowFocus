@@ -221,8 +221,11 @@ struct NowFocusSegmentedControl<T: Hashable>: View {
                     Text(option.label)
                         .font(NowFocusFonts.body(13).weight(.semibold))
                         .foregroundColor(isSelected ? NowFocusColors.ground : NowFocusColors.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .padding(.horizontal, NowFocusSpace.s2)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, NowFocusSpace.s2)
+                        .padding(.vertical, NowFocusSpace.s3)
                         .contentShape(Rectangle())
                         .background(isSelected ? NowFocusColors.accent : Color.clear)
                 }

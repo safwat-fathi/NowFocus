@@ -42,7 +42,7 @@ struct GoalsEditorView: View {
                     options: GoalPriority.allCases.map { (label: LocalizedStringKey($0.label), value: $0) },
                     selection: $newGoalPriority
                 )
-                .frame(width: 150)
+                .frame(width: 240)
 
                 NowFocusSecondaryButton(title: "Add", action: add)
             }

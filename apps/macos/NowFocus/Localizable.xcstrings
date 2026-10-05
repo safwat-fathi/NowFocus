@@ -376,7 +376,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ساعة ونصف"
+            "value": "1.5 س"
           }
         }
       }
@@ -387,7 +387,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ساعة"
+            "value": "1 س"
           }
         }
       }
@@ -409,7 +409,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "ساعتان"
+            "value": "2 س"
           }
         }
       }
@@ -420,7 +420,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "3 ساعات"
+            "value": "3 س"
           }
         }
       }
@@ -442,7 +442,7 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "4 ساعات"
+            "value": "4 س"
           }
         }
       }
