@@ -235,6 +235,7 @@ If a user edits a policy (profile) while a focus session is actively running on 
 1. **Additions take effect immediately:** Adding a new domain or application to the active policy is pushed immediately to the native enforcement layer.
 2. **Removals are rejected:** Removing or disabling an existing domain or application rule from the active policy is rejected. The edit must not be persisted, and the UI should inform the user that blocks cannot be removed while the session is running.
 3. **No mode branching:** This strict anti-circumvention guard applies to all enforcement modes (Normal, Strict, Locked).
+4. **Allowlist profiles flip the direction:** the rules are what stays open, so adding or enabling an app is rejected while a session runs, and removing one is accepted (it only narrows the session), except the last allowed app of a platform, because a device with no allowed app enforces nothing. A profile's mode is chosen at creation and never changes.
 
 The timer authority should be the persisted `endAt` timestamp, not a process-local countdown.
 

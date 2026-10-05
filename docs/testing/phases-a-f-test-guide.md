@@ -440,11 +440,74 @@ Also expect counting to carry on after the shade/lock steps and during fullscree
 
 ---
 
+# H. Whitelist mode: allow only these apps (Android and Windows)
+
+Whitelist mode is built and unit-tested on all three sides (Android, Windows, API), but **nothing below has run on a real phone or PC**. Apps only: a whitelist has no website list, so allow a browser and every site works. The profile's mode is chosen when you create it and never changes.
+
+## Android
+
+### H1. A whitelist closes everything else, and strands nothing
+1. Rules > New profile > **Allow only these**. Allow one app (say Notes). The editor should have no websites section and say "ALLOWED APPLICATIONS".
+2. Start a Normal 10-minute session on it (no VPN consent should be asked).
+3. Open the allowed app: it stays open. Open an app that is not allowed: you are sent Home and the block screen says **NowFocus closed <app>** and "Only the apps you allowed are open until …".
+4. Check these are **not** closed or bounced: the home screen and Recents, the notification shade, the keyboard, the phone app and an incoming call, your messages app, Settings, a permission dialog.
+
+**Expect:** exactly the allowed app, plus those, stay usable. No Home loop, no flicker.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+### H2. Helper windows inside an allowed app (the known soft spot)
+With Chrome **not** allowed and Notes (or any app with sign-in, share and file picking) allowed, from inside the allowed app try: Sign in with Google, Share, attach a file from the file picker, open a link, take a photo through the camera.
+
+**Expect and record what actually happens:** the sign-in sheet, share sheet and file picker should work (they have no launcher icon). A link opened in a Custom Tab runs in Chrome and **will be closed** unless Chrome is allowed; the camera app **will be closed** unless Camera is allowed. If anything else gets closed, write the app name here: it is a package to exempt.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+### H3. Pass, cheat day, and mid-session edits
+1. In a Normal whitelist session open a closed app and tap the pass button: it opens for five minutes. Locked: no pass.
+2. Profile editor during a session: removing an allowed app works, **adding one is refused** with a message, and removing the last one is refused.
+3. Plan a cheat day and confirm a whitelist session started on it closes nothing.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+## Windows (first run on a real PC counts for W0 too)
+
+### H-W1. A whitelist closes everything else
+1. Profiles > **+** > **Allow only these**. Allow one program (pick its .exe). The editor should show only "Allowed apps".
+2. Start a Normal session on it.
+3. Open the allowed program: it stays open. Open another program (a browser, a game): it is closed and the shield reads **NowFocus closed <name>**.
+4. Check these are **not** closed: NowFocus itself and its shield, Explorer, the taskbar, Start, Alt-Tab, Task Manager, Notepad. Open a Discord/Slack-style app that auto-updates and confirm it is still allowed after an update (its folder name changes).
+5. Open the hosts file: no domains were added for the whitelist session.
+
+**Expect:** only the allowed program and Windows itself stay usable; the shield is never closed by the whitelist.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+## Across devices
+
+### H-X1. A whitelist built on one device
+1. On Android create an allowlist profile with an app, sign in on both devices and let them sync. On Windows the profile appears with **No apps allowed yet**; the Start button is disabled with a note.
+2. Add a program on Windows. Start a session on Android and let Windows join it.
+3. Start a session on a profile whose list has **no app for the other device** and confirm that device does not join and closes nothing.
+4. If you still have Android 0.6 on a spare phone: let it join a whitelist session. It must block nothing.
+
+**Expect:** a device with nothing on a whitelist for its own platform never starts or joins it, and never closes everything.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+---
+
 # Things I know are rough (you don't need to report these as bugs)
 
 - **Windows has never run on a PC.** Seven files still carry "UNVERIFIED" banners; W0 is the first real test.
 - **Windows passes and sessions' pass counts reset if NowFocus restarts.** Pass only covers apps, not sites.
 - **Windows enforcement is weaker than Android's:** Task Manager ends app blocking; hosts-file blocking has no URL paths, ignores DNS-over-HTTPS in some browsers, and an administrator can stop the service.
+- **Whitelist mode (Windows):** everything under the Windows folder is always allowed, so Notepad, cmd and PowerShell are never closed, and Store (UWP) apps show up as one host process, so they can't be allowed or closed individually. **Whitelist mode (Android):** Camera and Chrome (Custom Tabs) are closed unless you allow them. Sites are not filtered in a whitelist, only apps.
 - **Windows has no autostart**, so schedules, Bedtime and sync only work while the app is running.
 - **Windows partial blocking (Shorts, Reels) is saved but not enforced.** Android's partial blocking is still experimental and unverified.
 - **Android background sync is every ~15 minutes and inexact.** Samsung's battery manager may delay it; the session joins sooner if you open the app.
