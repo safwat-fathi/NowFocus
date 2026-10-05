@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
+import type { T } from "../i18n";
 import type { AppState, DeviceInfo, PolicyMode, Schedule } from "../types";
 
 // One wrapper per #[tauri::command] in src-tauri/src/commands.rs. Every
@@ -46,6 +47,9 @@ export const api = {
   syncDevices: () => invoke<DeviceInfo[]>("sync_devices"),
   syncRevokeDevice: (id: string) => invoke<void>("sync_revoke_device", { id }),
   syncSetJoinRemote: (on: boolean) => invoke<AppState>("sync_set_join_remote", { on }),
+  setLanguage: (language: string) => invoke<AppState>("set_language", { language }),
+  setTrayLabels: (open: string, quit: string, idle: string, left: string) =>
+    invoke<void>("set_tray_labels", { open, quit, idle, left }),
   usePass: () => invoke<AppState>("use_pass"),
   scheduleCheatDay: (dayStart: string) => invoke<AppState>("schedule_cheat_day", { dayStart }),
   cancelCheatDay: () => invoke<AppState>("cancel_cheat_day"),
@@ -69,7 +73,7 @@ export const api = {
 
 /** Normal sessions end with no typing or waiting, so ask once first. Resolves to the fresh state, or
  * null when the user chose to keep going. */
-export async function endNormalAfterAsking(): Promise<AppState | null> {
-  const ok = await ask("End this session now?", { title: "End early?", kind: "warning", okLabel: "End session", cancelLabel: "Keep going" });
+export async function endNormalAfterAsking(t: T): Promise<AppState | null> {
+  const ok = await ask(t("end.body"), { title: t("end.title"), kind: "warning", okLabel: t("end.ok"), cancelLabel: t("end.keep") });
   return ok ? api.endSessionNormal() : null;
 }

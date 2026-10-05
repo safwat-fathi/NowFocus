@@ -36,6 +36,46 @@ static TRAY_APP: OnceLock<AppHandle> = OnceLock::new();
 /// `set_icon` call when neither session state nor taskbar theme changed.
 static LAST_TRAY_STATE: Mutex<Option<(bool, bool)>> = Mutex::new(None);
 
+/// The tray's words in the app's language. The UI owns every translation and sends them, so Rust holds none:
+/// `left` is a template with `{n}` for the minutes. Until the UI has sent them the tray speaks English.
+#[derive(Clone)]
+pub(crate) struct TrayLabels {
+    pub open: String,
+    pub quit: String,
+    pub idle: String,
+    pub left: String,
+}
+
+impl Default for TrayLabels {
+    fn default() -> Self {
+        Self {
+            open: "Open NowFocus".into(),
+            quit: "Quit NowFocus".into(),
+            idle: "NowFocus".into(),
+            left: "NowFocus · {n}m left".into(),
+        }
+    }
+}
+
+static TRAY_LABELS: Mutex<Option<TrayLabels>> = Mutex::new(None);
+
+/// The two menu items, kept so a language change can retitle them.
+static TRAY_ITEMS: OnceLock<(MenuItem<tauri::Wry>, MenuItem<tauri::Wry>)> = OnceLock::new();
+
+fn tray_labels() -> TrayLabels {
+    TRAY_LABELS.lock().unwrap().clone().unwrap_or_default()
+}
+
+/// Applies new tray words: the menu now, the tooltip on the refresh below (it only rewrites when the text changed).
+pub(crate) fn set_tray_labels(labels: TrayLabels) {
+    if let Some((open, quit)) = TRAY_ITEMS.get() {
+        let _ = open.set_text(&labels.open);
+        let _ = quit.set_text(&labels.quit);
+    }
+    *TRAY_LABELS.lock().unwrap() = Some(labels);
+    refresh_tray();
+}
+
 /// Last tooltip applied, so it is only rewritten when the minute label changes.
 static LAST_TRAY_TOOLTIP: Mutex<Option<String>> = Mutex::new(None);
 
@@ -147,6 +187,8 @@ pub fn run() {
             commands::sync_devices,
             commands::sync_revoke_device,
             commands::sync_set_join_remote,
+            commands::set_language,
+            commands::set_tray_labels,
         ])
         .run(tauri::generate_context!())
         .expect("error while running the NowFocus app");
@@ -158,9 +200,11 @@ pub fn run() {
 /// Quit. Quit is the only path that actually exits the process; closing the
 /// window itself hides to tray (see `setup_close_to_tray`).
 fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
-    let open_item = MenuItem::with_id(app, "open", "Open NowFocus", true, None::<&str>)?;
-    let quit_item = MenuItem::with_id(app, "quit", "Quit NowFocus", true, None::<&str>)?;
+    let labels = tray_labels();
+    let open_item = MenuItem::with_id(app, "open", &labels.open, true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", &labels.quit, true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
+    let _ = TRAY_ITEMS.set((open_item.clone(), quit_item.clone()));
 
     TrayIconBuilder::with_id("main")
         .icon(TRAY_LIGHT_IDLE)
@@ -245,12 +289,12 @@ pub(crate) fn refresh_tray() {
         match guard.snapshot() {
             Ok(dto) => {
                 // Minute granularity: this runs on every command, so a per-second label would rewrite the tooltip constantly.
+                let labels = tray_labels();
                 let tip = match &dto.session {
-                    Some(s) => format!(
-                        "NowFocus · {}m left",
-                        (s.remaining_ms.max(0) + 59_999) / 60_000
-                    ),
-                    None => "NowFocus".to_string(),
+                    Some(s) => labels
+                        .left
+                        .replace("{n}", &((s.remaining_ms.max(0) + 59_999) / 60_000).to_string()),
+                    None => labels.idle,
                 };
                 (dto.session.is_some(), tip)
             }

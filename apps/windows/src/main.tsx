@@ -2,12 +2,16 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import ShieldOverlayApp from "./ShieldOverlayApp";
+import { applyDocument, resolveLang, storedPref } from "./i18n";
 import "./styles/theme.css";
 import "./styles/app.css";
 
 // The per-monitor Shield overlay windows (src-tauri/src/overlay.rs) load
 // this same bundle at "index.html#/shield-overlay" instead of a second
 // entry point, so there's one build to keep in sync, not two.
+// lang/dir from the last reported language, before React renders, so Arabic never flashes left-to-right.
+applyDocument(resolveLang(storedPref()));
+
 const isShieldOverlay = window.location.hash === "#/shield-overlay";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

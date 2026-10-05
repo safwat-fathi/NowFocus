@@ -53,8 +53,8 @@ pub struct LimitDto {
     pub minutes: u32,
     pub used_minutes: i64,
     pub used_up: bool,
-    /// "removed at midnight" / "60 min from midnight" while a change waits.
-    pub pending: Option<String>,
+    /// While a change waits for midnight: 0 = the limit is being removed, otherwise the new minutes.
+    pub pending: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,8 +123,11 @@ pub struct TargetCountDto {
 pub struct StatsDto {
     /// 0..=100 for this week, or None with no sessions.
     pub focus_score: Option<i64>,
-    /// Counts-only text for "Copy this week".
-    pub week_summary: String,
+    /// Counts the UI builds the "Copy this week" text from, in the app's language. Counts only.
+    pub week_minutes_total: i64,
+    pub week_sessions: i64,
+    pub week_completed: i64,
+    pub week_turned_away: i64,
     pub today_minutes: i64,
     pub sessions_completed: i64,
     pub sessions_started: i64,
@@ -182,8 +185,6 @@ pub struct ScheduleDto {
     pub policy_id: String,
     pub mode: String,
     pub enabled: bool,
-    #[serde(default)]
-    pub days_label: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -203,7 +204,7 @@ pub struct SyncStatusDto {
     pub email: Option<String>,
     pub syncing: bool,
     pub last_synced_at: Option<String>,
-    /// Human-readable, e.g. "Offline. Will retry." None when all is well.
+    /// A code the UI translates ("offline", "signedOut", "net", ...) or a server message. None when all is well.
     pub problem: Option<String>,
     /// Changes the server refused (they stay on this PC; editing them again retries).
     pub rejected: usize,
@@ -214,6 +215,8 @@ pub struct SyncStatusDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppStateDto {
+    /// The language picked in Settings: "system", "en" or "ar". Device-local, never synced.
+    pub language: String,
     pub profiles: Vec<ProfileDto>,
     pub session: Option<SessionDto>,
     pub unlock: Option<UnlockStateDto>,

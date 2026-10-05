@@ -1,33 +1,34 @@
 import { api } from "../lib/api";
+import { tOr, useT } from "../i18n";
 import type { AppState } from "../types";
 import { Account } from "./Account";
 
 export function Devices({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
+  const t = useT();
   return (
     <div className="screen">
       <div className="screen-header">
-        <span className="screen-title">Devices</span>
+        <span className="screen-title">{t("dev.title")}</span>
       </div>
       <p className="screen-lede">
-        This PC, and the account that links it to your other devices. Signed out, NowFocus never contacts a server and
-        nothing leaves this PC.
+        {t("dev.lede")}
       </p>
 
       <div className="device-cards">
         <div className="device-card">
           <div className="device-card__head">
             <span className="device-card__dot" style={{ background: state.health.websiteBlocking === "active" ? "var(--color-text)" : "var(--color-accent)" }} />
-            <span className="device-card__name">This PC</span>
+            <span className="device-card__name">{t("common.thisPc")}</span>
             <span className={"tag " + (state.health.websiteBlocking === "active" ? "tag-neutral" : "tag-accent")}>
-              {state.health.websiteBlocking === "active" ? "Active" : "Needs setup"}
+              {state.health.websiteBlocking === "active" ? t("dev.active") : t("dev.needsSetup")}
             </span>
           </div>
-          <div className="device-card__meta">This device</div>
+          <div className="device-card__meta">{t("dev.thisDevice")}</div>
           <div className="device-card__layers">
             {state.health.layers.map((l) => (
               <div className="device-card__layer" key={l.name}>
-                <span>{l.name}</span>
-                <span style={{ fontWeight: 600, color: l.healthy ? "var(--color-text)" : "var(--color-accent-700)" }}>{l.state}</span>
+                <span>{tOr(t, `layer.${l.name}`, l.name)}</span>
+                <span style={{ fontWeight: 600, color: l.healthy ? "var(--color-text)" : "var(--color-accent-700)" }}>{tOr(t, `layerState.${l.state}`, l.state)}</span>
               </div>
             ))}
           </div>
@@ -35,8 +36,8 @@ export function Devices({ state, onState }: { state: AppState; onState: (s: AppS
             <div className="device-card__fix">
               <div className="device-card__fix-note">
                 {import.meta.env.DEV
-                  ? "Running in development mode — there's no privileged service on this host, so nothing is really enforced."
-                  : "The NowFocus background service isn't running, so website blocking is off. Reinstall or repair NowFocus to restore it."}
+                  ? t("dev.devMode")
+                  : t("dev.noService")}
               </div>
             </div>
           )}

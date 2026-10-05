@@ -71,7 +71,7 @@ impl Enforcer for WindowsServiceEnforcer {
             Ok(Response::Ack) => Ok(()),
             Ok(Response::Error { message }) => Err(message),
             Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
-            Err(e) => Err(format!("couldn't reach NowFocusService: {e}")),
+            Err(e) => Err(format!("service|{e}")),
         }
     }
 
@@ -80,7 +80,7 @@ impl Enforcer for WindowsServiceEnforcer {
             Ok(Response::Ack) => Ok(()),
             Ok(Response::Error { message }) => Err(message),
             Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
-            Err(e) => Err(format!("couldn't reach NowFocusService: {e}")),
+            Err(e) => Err(format!("service|{e}")),
         }
     }
 
@@ -91,7 +91,7 @@ impl Enforcer for WindowsServiceEnforcer {
             Ok(Response::Ack) => Ok(()),
             Ok(Response::Error { message }) => Err(message),
             Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
-            Err(e) => Err(format!("couldn't reach NowFocusService: {e}")),
+            Err(e) => Err(format!("service|{e}")),
         }
     }
 
@@ -102,7 +102,7 @@ impl Enforcer for WindowsServiceEnforcer {
             Ok(Response::Ack) => Ok(()),
             Ok(Response::Error { message }) => Err(message),
             Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
-            Err(e) => Err(format!("couldn't reach NowFocusService: {e}")),
+            Err(e) => Err(format!("service|{e}")),
         }
     }
 
@@ -123,18 +123,18 @@ impl Enforcer for WindowsServiceEnforcer {
             app_blocking: "unknown".to_string(), // Phase 4: Win32 foreground hook, not this service.
             layers: vec![
                 DeviceLayerDto {
-                    name: "NowFocus Service".to_string(),
-                    state: if running { "Running" } else { "Not responding" }.to_string(),
+                    name: "service".to_string(),
+                    state: if running { "running" } else { "notResponding" }.to_string(),
                     healthy: running,
                 },
                 DeviceLayerDto {
-                    name: "DNS filter".to_string(),
-                    state: if running { "On" } else { "Off" }.to_string(),
+                    name: "dns".to_string(),
+                    state: if running { "on" } else { "off" }.to_string(),
                     healthy: running,
                 },
                 DeviceLayerDto {
-                    name: "Browser extensions".to_string(),
-                    state: "Not installed".to_string(),
+                    name: "extensions".to_string(),
+                    state: "notInstalled".to_string(),
                     healthy: false,
                 },
             ],

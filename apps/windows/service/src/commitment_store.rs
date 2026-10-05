@@ -163,7 +163,7 @@ pub fn clear_if_in_grace() -> Result<(), String> {
             guard.persist();
             network_enforcer::clear_commitment()
         }
-        Some(_) => Err("Your commitment is locked in until it ends.".to_string()),
+        Some(_) => Err("commitmentLocked".to_string()),
         None => Ok(()),
     }
 }

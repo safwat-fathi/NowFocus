@@ -38,28 +38,17 @@ impl fmt::Display for ApiError {
 }
 
 impl ApiError {
-    /// Human wording for the Devices screen.
+    /// What the Devices screen is told: a short code the UI translates (`err.*` in src/i18n), or the server's own
+    /// message when it sent one we have no code for.
     pub fn friendly(&self) -> String {
         match self {
-            ApiError::Network(_) => {
-                "Can't reach NowFocus. Check your connection and try again.".into()
-            }
-            ApiError::AuthExpired => "Your session ended. Sign in again.".into(),
-            ApiError::Http { code: Some(c), .. } if c == "invalid_credentials" => {
-                "Wrong email or password.".into()
-            }
-            ApiError::Http { code: Some(c), .. } if c == "email_taken" => {
-                "An account with this email already exists. Sign in instead.".into()
-            }
-            ApiError::Http { code: Some(c), .. } if c == "wrong_password" => {
-                "Wrong password.".into()
-            }
-            ApiError::Http { status: 429, .. } => {
-                "Too many attempts. Wait a minute and try again.".into()
-            }
-            ApiError::Http { status, .. } if *status >= 500 => {
-                "NowFocus is having trouble right now. Try again shortly.".into()
-            }
+            ApiError::Network(_) => "net".into(),
+            ApiError::AuthExpired => "sessionEnded".into(),
+            ApiError::Http { code: Some(c), .. } if c == "invalid_credentials" => "credentials".into(),
+            ApiError::Http { code: Some(c), .. } if c == "email_taken" => "emailTaken".into(),
+            ApiError::Http { code: Some(c), .. } if c == "wrong_password" => "wrongPassword".into(),
+            ApiError::Http { status: 429, .. } => "rate".into(),
+            ApiError::Http { status, .. } if *status >= 500 => "server".into(),
             ApiError::Http { message, .. } => message.clone(),
         }
     }

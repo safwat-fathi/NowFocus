@@ -3,9 +3,10 @@ import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import { UnlockDialog } from "./components/UnlockDialog";
 import { api } from "./lib/api";
+import { I18nProvider, storedPref, useI18n, type LangPref } from "./i18n";
 import type { AppState, ScreenId } from "./types";
 
-import { About } from "./screens/About";
+import { Settings } from "./screens/Settings";
 import { CheatDay } from "./screens/CheatDay";
 import { Limits } from "./screens/Limits";
 import { Onboarding } from "./screens/Onboarding";
@@ -19,6 +20,16 @@ import { Stats } from "./screens/Stats";
 import { Commitment } from "./screens/Commitment";
 import { Bedtime } from "./screens/Bedtime";
 import { Tray } from "./screens/Tray";
+
+/** Tells the backend what the tray icon's menu and tooltip say, in the current language (it holds no translations). */
+function TrayLabelsSync() {
+  const { t, lang } = useI18n();
+  useEffect(() => {
+    api.setTrayLabels(t("tray.menuOpen"), t("tray.menuQuit"), t("tray.tooltipIdle"), t("tray.tooltipLeft")).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t only changes with lang
+  }, [lang]);
+  return null;
+}
 
 const ONBOARDING_SEEN_KEY = "nowfocus.onboardingSeen";
 
@@ -47,8 +58,10 @@ export default function App() {
     setScreen(s);
   }, []);
 
+  // The backend's language wins once it has answered; until then the last one it reported, so the first paint is right.
+  const pref = (state?.language as LangPref | undefined) ?? storedPref();
   if (!state) {
-    return <div className="app-shell" />;
+    return <I18nProvider pref={pref}><div className="app-shell" /></I18nProvider>;
   }
 
   // An open unlock flow wins over everything (it is the way out of the shield);
@@ -61,6 +74,8 @@ export default function App() {
   const titleSuffix = state.session ? ` · ${state.session.profileName} · ${state.session.remainingLabel}` : "";
 
   return (
+    <I18nProvider pref={pref}>
+    <TrayLabelsSync />
     <div className="app-shell">
       {showChrome && <TitleBar suffix={titleSuffix} />}
       <div className="app-body">
@@ -83,12 +98,13 @@ export default function App() {
           {view === "schedules" && <Schedules state={state} onState={refresh} />}
           {view === "limits" && <Limits state={state} onState={refresh} />}
           {view === "cheatday" && <CheatDay state={state} onState={refresh} />}
-          {view === "about" && <About />}
+          {view === "settings" && <Settings state={state} onState={refresh} />}
           {view === "tray" && <Tray state={state} onState={refresh} onOpen={() => navigate(state.session ? "active" : "focus")} />}
           {view === "shield" && <Shield state={state} onState={refresh} />}
         </div>
       </div>
       {state.unlock && <UnlockDialog state={state} onState={refresh} />}
     </div>
+    </I18nProvider>
   );
 }

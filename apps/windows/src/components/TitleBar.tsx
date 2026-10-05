@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useT } from "../i18n";
 import { CloseIcon, MaximizeIcon, MinimizeIcon } from "./Icons";
 
 const win = getCurrentWindow();
@@ -6,6 +7,7 @@ const win = getCurrentWindow();
 /** Custom-drawn window chrome — the design has no native OS close button,
  * only minimize/maximize and an explicit "close to tray" action. */
 export function TitleBar({ suffix }: { suffix: string }) {
+  const t = useT();
   return (
     <div className="title-bar">
       <div className="title-bar__drag" data-tauri-drag-region onDoubleClick={() => win.toggleMaximize()}>
@@ -13,13 +15,13 @@ export function TitleBar({ suffix }: { suffix: string }) {
         NowFocus
         <span className="title-bar__suffix">{suffix}</span>
       </div>
-      <button className="title-bar__btn" onClick={() => win.minimize()} title="Minimize">
+      <button className="title-bar__btn" onClick={() => win.minimize()} title={t("title.minimize")}>
         <MinimizeIcon />
       </button>
-      <button className="title-bar__btn" onClick={() => win.toggleMaximize()} title="Maximize">
+      <button className="title-bar__btn" onClick={() => win.toggleMaximize()} title={t("title.maximize")}>
         <MaximizeIcon />
       </button>
-      <button className="title-bar__btn title-bar__btn--close" onClick={() => win.hide()} title="Close to tray">
+      <button className="title-bar__btn title-bar__btn--close" onClick={() => win.hide()} title={t("title.closeToTray")}>
         <CloseIcon />
       </button>
     </div>

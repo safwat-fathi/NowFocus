@@ -8,6 +8,7 @@ use now_focus_sync::api::DeviceInfo;
 
 use crate::dto::{AppStateDto, ScheduleDto};
 use crate::state::AppState;
+use crate::TrayLabels;
 use crate::sync_glue::SyncController;
 
 pub type SharedState = Mutex<AppState>;
@@ -33,6 +34,22 @@ fn changed(state: &State<SharedState>) -> Result<AppStateDto, String> {
 #[tauri::command]
 pub fn get_state(state: State<SharedState>) -> Result<AppStateDto, String> {
     snapshot(&state)
+}
+
+/// The language picked in Settings ("system", "en" or "ar"). Every window follows it through the state it polls.
+#[tauri::command]
+pub fn set_language(state: State<SharedState>, language: String) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .set_language(&language)?;
+    snapshot(&state)
+}
+
+/// The tray menu and tooltip words, already translated by the UI (see `TrayLabels` in lib.rs).
+#[tauri::command]
+pub fn set_tray_labels(open: String, quit: String, idle: String, left: String) {
+    crate::set_tray_labels(TrayLabels { open, quit, idle, left });
 }
 
 #[tauri::command]

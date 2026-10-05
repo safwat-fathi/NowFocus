@@ -1,5 +1,6 @@
 import { api } from "../lib/api";
 import { profileSummary } from "../lib/profile";
+import { useT } from "../i18n";
 import type { AppState, Bedtime as BedtimeSettings } from "../types";
 
 function minutesToTime(min: number): string {
@@ -19,6 +20,7 @@ function timeToMinutes(value: string): number {
  * reduction — no clean unprivileged Windows API for DND/greyscale). This PC
  * only, and NowFocus must be running. */
 export function Bedtime({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
+  const t = useT();
   const b = state.bedtime;
 
   async function save(patch: Partial<BedtimeSettings>) {
@@ -38,21 +40,20 @@ export function Bedtime({ state, onState }: { state: AppState; onState: (s: AppS
   return (
     <div className="screen">
       <div className="screen-header">
-        <span className="screen-title">Bedtime</span>
+        <span className="screen-title">{t("bed.title")}</span>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
           <input type="checkbox" checked={b.enabled} onChange={(e) => save({ enabled: e.target.checked })} />
-          {b.enabled ? "On every night" : "Off"}
+          {b.enabled ? t("bed.onNightly") : t("common.off")}
         </label>
       </div>
       <p className="screen-lede">
-        Each night, your chosen profile is blocked from wind-down until wake — as a locked session you can't end
-        early. Optionally lock the screen at sleep time. This PC only, and NowFocus must be running.
+        {t("bed.lede")}
       </p>
 
       <div style={{ maxWidth: 520, opacity: b.enabled ? 1 : 0.55, pointerEvents: b.enabled ? "auto" : "none" }}>
-        <div className="field-label" style={{ marginTop: 20 }}>Profile to block</div>
+        <div className="field-label" style={{ marginTop: 20 }}>{t("bed.profile")}</div>
         {state.profiles.length === 0 && (
-          <p style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>Create a profile first — see Profiles.</p>
+          <p style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>{t("focus.createFirst")}</p>
         )}
         {state.profiles.map((p) => (
           <button
@@ -63,33 +64,33 @@ export function Bedtime({ state, onState }: { state: AppState; onState: (s: AppS
           >
             <span className="profile-pick__dot" />
             <span className="profile-pick__name">{p.name}</span>
-            <span className="profile-pick__meta">{profileSummary(p)}</span>
+            <span className="profile-pick__meta">{profileSummary(p, t)}</span>
           </button>
         ))}
 
         <div style={{ display: "flex", gap: 16, marginTop: 20, flexWrap: "wrap" }}>
           <div className="field" style={{ margin: 0 }}>
-            <label>Wind-down</label>
+            <label>{t("bed.windDown")}</label>
             <input className="input" type="time" value={minutesToTime(b.windDownMinute)} onChange={(e) => save({ windDownMinute: timeToMinutes(e.target.value) })} />
           </div>
           <div className="field" style={{ margin: 0 }}>
-            <label>Sleep</label>
+            <label>{t("bed.sleep")}</label>
             <input className="input" type="time" value={minutesToTime(b.sleepMinute)} onChange={(e) => save({ sleepMinute: timeToMinutes(e.target.value) })} />
           </div>
           <div className="field" style={{ margin: 0 }}>
-            <label>Wake</label>
+            <label>{t("bed.wake")}</label>
             <input className="input" type="time" value={minutesToTime(b.wakeMinute)} onChange={(e) => save({ wakeMinute: timeToMinutes(e.target.value) })} />
           </div>
         </div>
 
         <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 22, fontSize: 14 }}>
           <input type="checkbox" checked={b.lockAtSleep} onChange={(e) => save({ lockAtSleep: e.target.checked })} />
-          Lock the screen at sleep time
+          {t("bed.lock")}
         </label>
 
         {!b.policyId && b.enabled && (
           <p style={{ fontSize: 13, color: "var(--color-accent-700)", marginTop: 16 }}>
-            Choose a profile above, or nothing will be blocked at bedtime.
+            {t("bed.choose")}
           </p>
         )}
       </div>

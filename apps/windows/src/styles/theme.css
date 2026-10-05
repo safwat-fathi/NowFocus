@@ -160,3 +160,23 @@ a { color: var(--color-accent); text-underline-offset: 3px; }
 }
 .tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); }
 .tag-neutral { background: var(--color-neutral-100); color: var(--color-neutral-800); }
+
+/* ---- Arabic (right-to-left) ----------------------------------------------------------------------------
+   IBM Plex Sans Arabic (SIL OFL 1.1, see assets/fonts/LICENSE-IBM-Plex.txt), the same files as the website.
+   They hold Arabic only, so Latin runs (NowFocus, site names, digits) stay Archivo. Weights are 400/600/700:
+   the 800 the headings ask for resolves to 700. */
+@font-face { font-family: "Plex Arabic"; font-weight: 400; font-display: swap; src: url("../assets/fonts/plex-arabic-400.woff2") format("woff2"); }
+@font-face { font-family: "Plex Arabic"; font-weight: 600; font-display: swap; src: url("../assets/fonts/plex-arabic-600.woff2") format("woff2"); }
+@font-face { font-family: "Plex Arabic"; font-weight: 700; font-display: swap; src: url("../assets/fonts/plex-arabic-700.woff2") format("woff2"); }
+:root:lang(ar) {
+  --font-heading: "Archivo", "Plex Arabic", system-ui, sans-serif;
+  --font-body: "Archivo", "Plex Arabic", system-ui, sans-serif;
+  --font-heading-weight: 700;
+}
+/* Letter-spacing pulls joined letters apart, and uppercase means nothing in Arabic. */
+:lang(ar) * { letter-spacing: 0 !important; text-transform: none !important; }
+:lang(ar) body { line-height: 1.7; }
+/* Tight display line-heights clip Arabic marks; the timers are digits and keep theirs. */
+:lang(ar) :is(h1, h2, h3, .screen-title, .focus-hero-title, .shield-title, .done-panel__title, .onboard__title, .new-session__title, .unlock-dialog__title) { line-height: 1.3 !important; }
+/* An arrow that means "continue" points the other way. */
+:root[dir="rtl"] .icon-flip { transform: scaleX(-1); }

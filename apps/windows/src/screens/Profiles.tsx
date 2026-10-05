@@ -3,9 +3,11 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "../lib/api";
 import type { AppState, PolicyMode, Profile } from "../types";
 import { profileSummary } from "../lib/profile";
+import { errorText, useI18n } from "../i18n";
 import { GlobeIcon, PlusIcon, RemoveIcon } from "../components/Icons";
 
 export function Profiles({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
+  const { t } = useI18n();
   const [editId, setEditId] = useState(state.profiles[0]?.id ?? "");
   const profile = state.profiles.find((p) => p.id === editId) ?? state.profiles[0];
 
@@ -24,43 +26,44 @@ export function Profiles({ state, onState }: { state: AppState; onState: (s: App
     <div className="profiles-grid">
       <div className="profile-list">
         <div className="profile-list__header">
-          <span className="screen-title" style={{ fontSize: 26 }}>Profiles</span>
-          <button className="btn btn-icon" onClick={() => setChoosing(!choosing)} title="New profile" style={{ width: 36, height: 36 }}>
+          <span className="screen-title" style={{ fontSize: 26 }}>{t("prof.title")}</span>
+          <button className="btn btn-icon" onClick={() => setChoosing(!choosing)} title={t("prof.new")} style={{ width: 36, height: 36 }}>
             <PlusIcon size={18} />
           </button>
         </div>
         {choosing && (
           <div style={{ padding: "0 20px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
             <button className="btn btn-secondary" onClick={() => addProfile("blocklist")} style={{ minHeight: 40, justifyContent: "flex-start" }}>
-              Block these
+              {t("prof.blockThese")}
             </button>
             <button className="btn btn-secondary" onClick={() => addProfile("allowlist")} style={{ minHeight: 40, justifyContent: "flex-start" }}>
-              Allow only these
+              {t("prof.allowOnly")}
             </button>
             <p style={{ fontSize: 12, color: "var(--color-neutral-700)", margin: 0 }}>
-              Block closes what you list. Allow only closes everything except the apps you list.
+              {t("prof.modeNote")}
             </p>
           </div>
         )}
         {state.profiles.map((p) => (
           <button key={p.id} className="profile-list-item" data-active={p.id === profile?.id} onClick={() => setEditId(p.id)}>
             <span className="profile-list-item__name">{p.name}</span>
-            <span className="profile-list-item__meta">{profileSummary(p)}</span>
+            <span className="profile-list-item__meta">{profileSummary(p, t)}</span>
           </button>
         ))}
         <p style={{ fontSize: 12, color: "var(--color-neutral-700)", padding: "16px 20px", margin: "auto 0 0" }}>
-          Profiles apply to this PC only until another device is linked.
+          {t("prof.thisPcOnly")}
         </p>
       </div>
 
       {profile ? <ProfileEditor profile={profile} onState={onState} /> : (
-        <div style={{ padding: 32 }}>Create a profile to get started.</div>
+        <div style={{ padding: 32 }}>{t("prof.createFirst")}</div>
       )}
     </div>
   );
 }
 
 function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: AppState) => void }) {
+  const { t } = useI18n();
   const [name, setName] = useState(profile.name);
   const [newDomain, setNewDomain] = useState("");
   const [domainError, setDomainError] = useState("");
@@ -79,12 +82,12 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
       setNewDomain("");
       setDomainError("");
     } catch (e) {
-      setDomainError(String(e));
+      setDomainError(errorText(e, t));
     }
   }
 
   async function pickApplication() {
-    const picked = await open({ multiple: false, title: allow ? "Choose an application to allow" : "Choose an application to block" });
+    const picked = await open({ multiple: false, title: allow ? t("prof.chooseAllow") : t("prof.chooseBlock") });
     if (!picked || Array.isArray(picked)) return;
     const path = picked;
     const name = path.split(/[\\/]/).pop() ?? path;
@@ -97,7 +100,7 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
       onState(await change());
       setAppError("");
     } catch (e) {
-      setAppError(String(e));
+      setAppError(errorText(e, t));
     }
   }
 
@@ -105,7 +108,7 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
     <div className="profile-editor">
       <div className="profile-editor__name-row">
         <div className="field" style={{ flex: 1, margin: 0 }}>
-          <label>Profile name</label>
+          <label>{t("prof.name")}</label>
           <input
             className="input"
             value={name}
@@ -119,8 +122,8 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
       <div className="profile-editor__columns">
         {!allow && <div style={{ display: "flex", flexDirection: "column" }}>
           <div className="column-header">
-            <span className="column-header__label">Blocked websites</span>
-            <span className="column-header__hint">Hosts file, every browser</span>
+            <span className="column-header__label">{t("prof.blockedSites")}</span>
+            <span className="column-header__hint">{t("prof.hostsHint")}</span>
           </div>
           <div className="add-row">
             <input
@@ -128,11 +131,11 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
               value={newDomain}
               onChange={(e) => { setNewDomain(e.target.value); setDomainError(""); }}
               onKeyDown={(e) => e.key === "Enter" && addDomain()}
-              placeholder="Add a site, e.g. youtube.com"
+              placeholder={t("prof.addSiteHint")}
               style={{ minHeight: 42, fontSize: 14, flex: 1 }}
             />
             <button className="btn btn-primary" onClick={addDomain} disabled={!newDomain.trim()} style={{ minHeight: 42, padding: "0 16px" }}>
-              Add
+              {t("common.add")}
             </button>
           </div>
           <div className="error-line">{domainError}</div>
@@ -141,11 +144,11 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
               <div className="rule-row" key={d.id}>
                 <GlobeIcon />
                 <span className="rule-row__label">{d.domain}</span>
-                <span className="rule-row__hint">+ subdomains</span>
+                <span className="rule-row__hint">{t("prof.subdomains")}</span>
                 <button
                   className="btn btn-icon"
                   onClick={async () => onState(await api.removeDomain(profile.id, d.id))}
-                  title="Remove"
+                  title={t("common.remove")}
                   style={{ width: 34, height: 34, color: "var(--color-accent-700)" }}
                 >
                   <RemoveIcon />
@@ -157,12 +160,12 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
 
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div className="column-header">
-            <span className="column-header__label">{allow ? "Allowed apps" : "Blocked apps"}</span>
-            <span className="column-header__hint">{allow ? "Everything else is closed" : "Closed on launch"}</span>
+            <span className="column-header__label">{allow ? t("prof.allowedApps") : t("prof.blockedApps")}</span>
+            <span className="column-header__hint">{allow ? t("prof.allowedHint") : t("prof.closedHint")}</span>
           </div>
           {allow && (
             <p style={{ fontSize: 12, color: "var(--color-neutral-700)", margin: "0 0 10px" }}>
-              Windows itself and NowFocus always stay open. Websites aren't filtered in a whitelist: allow a browser and every site works.
+              {t("prof.allowNote")}
             </p>
           )}
           <div className="rule-list">
@@ -176,7 +179,7 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
                 <button
                   className="btn btn-icon"
                   onClick={() => run(() => api.removeApplication(profile.id, a.id))}
-                  title="Remove"
+                  title={t("common.remove")}
                   style={{ width: 34, height: 34, color: "var(--color-accent-700)" }}
                 >
                   <RemoveIcon />
@@ -186,7 +189,7 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
           </div>
           <button className="btn btn-secondary" onClick={pickApplication} style={{ minHeight: 40, justifyContent: "flex-start", marginTop: 10, gap: 8, alignSelf: "flex-start" }}>
             <PlusIcon />
-            Add application…
+            {t("prof.addApp")}
           </button>
           <div className="error-line">{appError}</div>
         </div>

@@ -2,14 +2,15 @@ import { useState } from "react";
 import { api } from "../lib/api";
 import type { AppState } from "../types";
 import { ArrowRightIcon } from "../components/Icons";
+import { errorText, useT } from "../i18n";
 
 const FIRST_PROFILE = "First focus";
 
 const LAYERS = [
-  { title: "NowFocus Service", sub: "Runs as a Windows service, restarts itself, survives closing the app." },
-  { title: "DNS filter", sub: "Blocks sites for every browser and app on this PC." },
-  { title: "Browser extensions", sub: "Chrome, Edge and Firefox. Needed for feed-only blocking." },
-];
+  { title: "onb.layer1", sub: "onb.layer1Sub" },
+  { title: "onb.layer2", sub: "onb.layer2Sub" },
+  { title: "onb.layer3", sub: "onb.layer3Sub" },
+] as const;
 
 /** Simplified from the design: no phone-pairing step (no pairing backend
  * exists yet — see the plan's cross-device-honesty note), and the layer
@@ -27,6 +28,7 @@ export function Onboarding({
   onStarted: () => void;
   onDone: () => void;
 }) {
+  const t = useT();
   const [site, setSite] = useState("");
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
@@ -44,15 +46,15 @@ export function Onboarding({
         next = await api.createProfile(FIRST_PROFILE);
         profile = next.profiles.find((p) => p.name === FIRST_PROFILE);
       }
-      if (!profile) throw new Error("Couldn't create a profile");
+      if (!profile) throw new Error(t("onb.noProfile"));
       // A retry after a failed start (say the service wasn't running) finds the site already added.
       await api.addDomain(profile.id, site.trim()).catch((e) => {
-        if (!String(e).includes("already on the list")) throw e;
+        if (!String(e).startsWith("listed|")) throw e;
       });
       onState(await api.startSession(profile.id, 10, "normal"));
       onStarted();
     } catch (e) {
-      setError(String(e));
+      setError(errorText(e, t));
     } finally {
       setStarting(false);
     }
@@ -61,40 +63,39 @@ export function Onboarding({
   return (
     <div className="onboard">
       <div className="onboard__pane onboard__pane--left">
-        <div className="onboard__kicker">Welcome to NowFocus on this PC</div>
-        <h1 className="onboard__title">One session. Every screen you own.</h1>
+        <div className="onboard__kicker">{t("onb.kicker")}</div>
+        <h1 className="onboard__title">{t("onb.title")}</h1>
         <p className="onboard__body">
-          Start a focus session and NowFocus blocks the sites and apps you choose. Blocking runs as a Windows
-          service, so it holds even when this app is closed.
+          {t("onb.body")}
         </p>
       </div>
       <div className="onboard__pane">
         <div className="onboard__kicker" style={{ color: "var(--color-neutral-700)" }}>
-          Protection on this PC
+          {t("onb.protection")}
         </div>
-        <h2 style={{ fontSize: 30, letterSpacing: "-0.02em", margin: "14px 0 18px" }}>Three layers, so it actually holds.</h2>
+        <h2 style={{ fontSize: 30, letterSpacing: "-0.02em", margin: "14px 0 18px" }}>{t("onb.layersTitle")}</h2>
         <div style={{ borderTop: "2px solid var(--color-divider)" }}>
           {LAYERS.map((l, i) => (
             <div className="layer-row" key={l.title}>
               <span className="layer-row__num">{String(i + 1).padStart(2, "0")}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="layer-row__title">{l.title}</div>
-                <div className="layer-row__sub">{l.sub}</div>
+                <div className="layer-row__title">{t(l.title)}</div>
+                <div className="layer-row__sub">{t(l.sub)}</div>
               </div>
             </div>
           ))}
         </div>
         <p style={{ fontSize: 13, color: "var(--color-neutral-700)", margin: "14px 0 0" }}>
-          Windows will ask for admin approval once. Your browsing never leaves this PC.
+          {t("onb.admin")}
         </p>
         <div className="onboard__kicker" style={{ color: "var(--color-neutral-700)", marginTop: 18 }}>
-          Your first session
+          {t("onb.first")}
         </div>
         <input
           className="input"
           value={site}
           onChange={(e) => setSite(e.target.value)}
-          placeholder="A site that steals your time, e.g. youtube.com"
+          placeholder={t("onb.site")}
           style={{ marginTop: 8, minHeight: 48, fontSize: 16 }}
         />
         {error && <div className="error-line">{error}</div>}
@@ -104,11 +105,11 @@ export function Onboarding({
           disabled={!site.trim() || starting}
           style={{ marginTop: "auto", minHeight: 56, justifyContent: "space-between", fontSize: 16 }}
         >
-          Start 10 minutes
+          {t("onb.start")}
           <ArrowRightIcon />
         </button>
         <button className="btn btn-secondary" onClick={onDone} style={{ marginTop: 8, minHeight: 44, justifyContent: "flex-start", fontSize: 14 }}>
-          Not now
+          {t("onb.notNow")}
         </button>
       </div>
     </div>

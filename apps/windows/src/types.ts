@@ -85,8 +85,11 @@ export interface TargetCount {
 export interface Stats {
   /** 0-100 for this week, null with no sessions. */
   focusScore: number | null;
-  /** Counts-only text for "Copy this week". */
-  weekSummary: string;
+  /** Counts for the "Copy this week" text (the sentence itself is built in the app's language). */
+  weekMinutesTotal: number;
+  weekSessions: number;
+  weekCompleted: number;
+  weekTurnedAway: number;
   todayMinutes: number;
   sessionsCompleted: number;
   sessionsStarted: number;
@@ -116,8 +119,8 @@ export interface Limit {
   minutes: number;
   usedMinutes: number;
   usedUp: boolean;
-  /** "removed at midnight" / "60 min from midnight" while a change waits. */
-  pending: string | null;
+  /** While a change waits for midnight: 0 = the limit is being removed, otherwise the new minutes. */
+  pending: number | null;
 }
 
 export interface Schedule {
@@ -131,7 +134,6 @@ export interface Schedule {
   policyId: string;
   mode: SessionMode;
   enabled: boolean;
-  daysLabel: string;
 }
 
 export interface CheatDay {
@@ -179,6 +181,8 @@ export interface DeviceInfo {
 }
 
 export interface AppState {
+  /** The language picked in Settings: "system", "en" or "ar". Device-local. */
+  language: string;
   profiles: Profile[];
   session: Session | null;
   unlock: UnlockState | null;
@@ -207,5 +211,5 @@ export type ScreenId =
   | "schedules"
   | "cheatday"
   | "limits"
-  | "about"
+  | "settings"
   | "tray";

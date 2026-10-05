@@ -182,14 +182,13 @@ impl SyncController {
                 self.api.forget();
                 self.publish(|s| {
                     s.syncing = false;
-                    s.problem =
-                        Some("This PC was signed out. Sign in again to keep syncing.".to_string());
+                    s.problem = Some("signedOut".to_string());
                 });
             }
             Err(SyncError::Api(e)) => self.publish(|s| {
                 s.syncing = false;
                 s.problem = Some(match e {
-                    ApiError::Network(_) => "Offline. Will retry.".to_string(),
+                    ApiError::Network(_) => "offline".to_string(),
                     other => other.friendly(),
                 });
             }),

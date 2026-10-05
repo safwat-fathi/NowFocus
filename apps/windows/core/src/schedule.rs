@@ -91,28 +91,6 @@ pub fn next_start<Tz: TimeZone>(
         .min()
 }
 
-/// "Mon-Fri", "Every day", "Sat, Sun", "Mon, Wed, Fri".
-pub fn days_label(days: &[u8]) -> String {
-    const NAMES: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    let mut d: Vec<u8> = days.iter().copied().filter(|n| *n < 7).collect();
-    d.sort_unstable();
-    d.dedup();
-    if d.len() == 7 {
-        "Every day".to_string()
-    } else if d.len() > 2 && d.windows(2).all(|w| w[1] - w[0] == 1) {
-        format!(
-            "{}-{}",
-            NAMES[d[0] as usize],
-            NAMES[*d.last().unwrap() as usize]
-        )
-    } else {
-        d.iter()
-            .map(|n| NAMES[*n as usize])
-            .collect::<Vec<_>>()
-            .join(", ")
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,13 +175,5 @@ mod tests {
                 .schedule_id,
             "l"
         );
-    }
-
-    #[test]
-    fn day_labels() {
-        assert_eq!(days_label(&[0, 1, 2, 3, 4]), "Mon-Fri");
-        assert_eq!(days_label(&[0, 1, 2, 3, 4, 5, 6]), "Every day");
-        assert_eq!(days_label(&[5, 6]), "Sat, Sun");
-        assert_eq!(days_label(&[0, 2, 4]), "Mon, Wed, Fri");
     }
 }

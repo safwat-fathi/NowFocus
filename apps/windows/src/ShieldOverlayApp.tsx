@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api } from "./lib/api";
 import type { AppState } from "./types";
 import { Shield } from "./screens/Shield";
+import { I18nProvider, storedPref, type LangPref } from "./i18n";
 
 /** Rendered instead of the full <App/> in each per-monitor overlay window
  * (see src-tauri/src/overlay.rs) — one Shield screen, no sidebar or title
@@ -31,15 +32,18 @@ export default function ShieldOverlayApp() {
     }
   }, [state]);
 
+  const pref = (state?.language as LangPref | undefined) ?? storedPref();
   if (!state || !state.shield) {
     return <div className="app-shell main main--dark" />;
   }
 
   return (
-    <div className="app-shell">
-      <div className="main main--dark" style={{ flex: 1 }}>
-        <Shield state={state} onState={setState} />
+    <I18nProvider pref={pref}>
+      <div className="app-shell">
+        <div className="main main--dark" style={{ flex: 1 }}>
+          <Shield state={state} onState={setState} />
+        </div>
       </div>
-    </div>
+    </I18nProvider>
   );
 }

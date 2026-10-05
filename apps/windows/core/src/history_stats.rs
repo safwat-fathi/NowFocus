@@ -134,33 +134,6 @@ pub fn focus_score<Tz: TimeZone>(sessions: &[FocusSession], tz: &Tz) -> Option<i
     Some((score * 100.0).round() as i64)
 }
 
-/// The text "Copy this week" puts on the clipboard. Counts only: no app names, sites or times of day.
-pub fn week_summary_text(
-    sessions: &[FocusSession],
-    turned_away: usize,
-    streak_days: i64,
-    score: Option<i64>,
-) -> String {
-    let minutes = total_focused_minutes(sessions);
-    let n = sessions_count(sessions);
-    let mut text = format!(
-        "My NowFocus week: {}h {}m focused across {} {} ({} completed).",
-        minutes / 60,
-        minutes % 60,
-        n,
-        if n == 1 { "session" } else { "sessions" },
-        completed_count(sessions)
-    );
-    if let Some(s) = score {
-        text.push_str(&format!(" Focus score {s}."));
-    }
-    if streak_days > 0 {
-        text.push_str(&format!(" {streak_days}-day streak."));
-    }
-    text.push_str(&format!(" Turned away {turned_away} times."));
-    text
-}
-
 /// The most-turned-away targets, most frequent first (ties broken by name for
 /// stable output). Empty-target events are skipped.
 pub fn top_targets(events: &[BlockEvent], limit: usize) -> Vec<(String, usize)> {
@@ -326,21 +299,5 @@ mod tests {
             focus_score(&[cancelled_after(monday, 60, 30)], &Utc),
             Some(7)
         );
-    }
-
-    #[test]
-    fn the_weekly_summary_has_counts_only() {
-        let monday = Utc.with_ymd_and_hms(2026, 1, 5, 9, 0, 0).unwrap();
-        let rows = vec![
-            session(monday, 90, FocusSessionStatus::Completed),
-            cancelled_after(monday + Duration::days(1), 60, 30),
-        ];
-        let text = week_summary_text(&rows, 1, 2, focus_score(&rows, &Utc));
-        assert!(
-            text.starts_with("My NowFocus week: 2h 0m focused across 2 sessions (1 completed)."),
-            "{text}"
-        );
-        assert!(text.contains("2-day streak."), "{text}");
-        assert!(text.contains("Turned away 1 times."), "{text}");
     }
 }

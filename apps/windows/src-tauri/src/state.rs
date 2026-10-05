@@ -34,6 +34,14 @@ const UNLOCK_WAIT: ChronoDuration = ChronoDuration::seconds(30);
 const LIMIT_MAX_GAP_SECS: i64 = 45;
 
 const UNLOCK_SENTENCE: &str = "I am choosing to end this focus session early.";
+/// The Arabic one, typed instead when the app is in Arabic. Plain letters only, so an exact match needs no
+/// normalization. Keep in step with `unlock.sentence` in src/i18n/ar.ts.
+const UNLOCK_SENTENCE_AR: &str = "قررت الخروج من جلسة التركيز قبل موعدها.";
+
+fn unlock_matches(typed: &str) -> bool {
+    let typed = typed.trim();
+    typed == UNLOCK_SENTENCE || typed == UNLOCK_SENTENCE_AR
+}
 
 /// Feed keys the design defines, with their labels/sub-copy — matches the
 /// `FEEDS` table in the fetched NowFocus PC.dc.html script. Not enforced
@@ -255,6 +263,7 @@ impl AppState {
             .collect();
 
         Ok(AppStateDto {
+            language: self.language(),
             profiles: profile_dtos,
             session: session_dto,
             unlock: unlock_dto,
@@ -324,16 +333,12 @@ impl AppState {
 
         let streak_days = history_stats::current_streak_days(&streak_sessions, today, &Local);
         let focus_score = history_stats::focus_score(&week_sessions, &Local);
-        let week_summary = history_stats::week_summary_text(
-            &week_sessions,
-            week_events.len(),
-            streak_days,
-            focus_score,
-        );
-
         Ok(StatsDto {
             focus_score,
-            week_summary,
+            week_minutes_total: history_stats::total_focused_minutes(&week_sessions),
+            week_sessions: history_stats::sessions_count(&week_sessions) as i64,
+            week_completed: history_stats::completed_count(&week_sessions) as i64,
+            week_turned_away: week_events.len() as i64,
             today_minutes: history_stats::total_focused_minutes(&today_sessions),
             sessions_completed: history_stats::completed_count(&today_sessions) as i64,
             sessions_started: today_sessions.len() as i64,
@@ -373,15 +378,13 @@ impl AppState {
     pub fn add_domain(&mut self, profile_id: &str, raw: &str) -> Result<(), String> {
         let mut profile = self.require_profile(profile_id)?;
         if profile.policy.mode == PolicyMode::Allowlist {
-            return Err("Websites aren\u{2019}t filtered in whitelist mode. Allow a browser and every site works.".to_string());
+            return Err("whitelistNoSites".to_string());
         }
         let Some(domain) = domain_validation::normalize(raw) else {
-            return Err(
-                "That doesn't look like a website. Try something like example.com".to_string(),
-            );
+            return Err("badDomain".to_string());
         };
         if profile.policy.domains.iter().any(|d| d.domain == domain) {
-            return Err(format!("{domain} is already on the list"));
+            return Err(format!("listed|{domain}"));
         }
         profile.policy.domains.push(DomainRule::new(domain));
         self.save_edited(profile.clone())?;
@@ -407,7 +410,7 @@ impl AppState {
         let mut profile = self.require_profile(profile_id)?;
         // The rules are what stays open, so allowing one more app is the edit that weakens a running session.
         if profile.policy.mode == PolicyMode::Allowlist && self.session_active_on(profile_id)? {
-            return Err("You can\u{2019}t allow more apps while a focus session is running on this profile.".to_string());
+            return Err("cantAllowMore".to_string());
         }
         if profile
             .policy
@@ -415,7 +418,7 @@ impl AppState {
             .iter()
             .any(|a| a.native_identifier == native_identifier)
         {
-            return Err(format!("{display_name} is already on the list"));
+            return Err(format!("listed|{display_name}"));
         }
         profile
             .policy
@@ -432,7 +435,7 @@ impl AppState {
         profile.policy.applications.retain(|a| a.id != rule_id);
         // Narrowing a running allowlist is fine, but its last app going would leave nothing to enforce.
         if !allowlist::enforces_here(&profile.policy) && self.session_active_on(profile_id)? {
-            return Err("You can\u{2019}t remove the last allowed app while a focus session is running on this profile.".to_string());
+            return Err("cantRemoveLast".to_string());
         }
         self.save_edited(profile)
     }
@@ -473,10 +476,7 @@ impl AppState {
     /// removals/disabling of blocks are refused while the session is running.
     fn reject_if_active(&mut self, profile_id: &str) -> Result<(), String> {
         if self.session_active_on(profile_id)? {
-            return Err(
-                "You can\u{2019}t remove blocks while a focus session is running on this profile."
-                    .to_string(),
-            );
+            return Err("cantRemove".to_string());
         }
         Ok(())
     }
@@ -514,11 +514,11 @@ impl AppState {
             .recover()?
             .is_some_and(|s| session_engine::is_active(&s, Utc::now()))
         {
-            return Err("A session is already running".to_string());
+            return Err("running".to_string());
         }
         let profile = self.require_profile(profile_id)?;
         if !allowlist::enforces_here(&profile.policy) {
-            return Err("Add at least one app to allow before you start.".to_string());
+            return Err("allowOne".to_string());
         }
         let mode = parse_mode(mode)?;
         let now = Utc::now();
@@ -557,14 +557,11 @@ impl AppState {
     /// instants `snapshot().cheat_options` offered, as RFC3339.
     pub fn schedule_cheat_day(&mut self, day_start: &str) -> Result<(), String> {
         let day = DateTime::parse_from_rfc3339(day_start)
-            .map_err(|_| "That isn't a day".to_string())?
+            .map_err(|_| "notDay".to_string())?
             .with_timezone(&Utc);
         let now = Utc::now();
         if !cheat_day::can_schedule(now, day, self.cheat().as_ref(), &Local) {
-            return Err(
-                "A cheat day has to be at least a day ahead, and a week from any other."
-                    .to_string(),
-            );
+            return Err("cheatRule".to_string());
         }
         self.db
             .set_cheat_day(Some(&cheat_day::for_day(day, now, &Local)))
@@ -606,10 +603,10 @@ impl AppState {
     pub fn save_schedule(&mut self, s: ScheduleDto) -> Result<(), String> {
         let mode = parse_mode(&s.mode)?;
         if s.name.trim().is_empty() || s.days.is_empty() {
-            return Err("A schedule needs a name and at least one day.".to_string());
+            return Err("scheduleNeeds".to_string());
         }
         self.require_profile(&s.policy_id)
-            .map_err(|_| "Pick a profile that exists.".to_string())?;
+            .map_err(|_| "scheduleProfile".to_string())?;
         let id = if s.id.is_empty() {
             uuid::Uuid::new_v4().to_string()
         } else {
@@ -688,14 +685,14 @@ impl AppState {
         let session = self
             .recover()?
             .filter(|s| session_engine::is_active(s, now))
-            .ok_or("No session is running")?;
+            .ok_or("noSession")?;
         let native = self
             .shield_native
             .clone()
             .ok_or("There's nothing to open")?;
         let used = self.passes_used_for(&session.id);
         if passes::passes_left(session.enforcement_mode, session.session_type, used) == 0 {
-            return Err("No passes left in this session".to_string());
+            return Err("noPasses".to_string());
         }
         self.passes.retain(|(_, until)| *until > now);
         self.passes.push((
@@ -713,9 +710,9 @@ impl AppState {
     /// "don't trust the caller already validated it" rule domain validation
     /// follows at the enforcement boundary).
     pub fn end_session_normal(&mut self) -> Result<(), String> {
-        let session = self.recover()?.ok_or("No session is running")?;
+        let session = self.recover()?.ok_or("noSession")?;
         if session.enforcement_mode != EnforcementMode::Normal {
-            return Err("This session isn't in Normal mode".to_string());
+            return Err("notNormal".to_string());
         }
         self.finish_session(session, "SESSION_CANCELLED")
     }
@@ -738,7 +735,7 @@ impl AppState {
     // ---- Unlock flow (Strict/Locked "end early") ------------------------
 
     pub fn begin_unlock(&mut self) -> Result<(), String> {
-        let session = self.recover()?.ok_or("No session is running")?;
+        let session = self.recover()?.ok_or("noSession")?;
         if session.enforcement_mode == EnforcementMode::Normal {
             return self.end_session_normal();
         }
@@ -766,8 +763,8 @@ impl AppState {
     /// mockup's `unlockDisabled` gating on the "Start Ns pause" button.
     pub fn start_unlock_wait(&mut self) -> Result<(), String> {
         let flow = self.unlock.as_mut().ok_or("Not in the unlock flow")?;
-        if flow.typed.trim() != UNLOCK_SENTENCE {
-            return Err("Keep going, match it exactly".to_string());
+        if !unlock_matches(&flow.typed) {
+            return Err("keepMatching".to_string());
         }
         flow.wait_started_at = Some(Utc::now());
         Ok(())
@@ -777,14 +774,14 @@ impl AppState {
     /// just a disabled frontend button, is what enforces that a locked
     /// session can't be ended early at all (checked via `enforcement_mode`).
     pub fn confirm_unlock(&mut self) -> Result<(), String> {
-        let session = self.recover()?.ok_or("No session is running")?;
+        let session = self.recover()?.ok_or("noSession")?;
         if session.enforcement_mode == EnforcementMode::Locked {
-            return Err("This session is locked until it ends".to_string());
+            return Err("lockedUntilEnd".to_string());
         }
         let flow = self.unlock.as_ref().ok_or("Not in the unlock flow")?;
         let started = flow.wait_started_at.ok_or("The pause hasn't started yet")?;
         if Utc::now() - started < UNLOCK_WAIT {
-            return Err("The pause isn't over yet".to_string());
+            return Err("pauseNotOver".to_string());
         }
         self.finish_session(session, "SESSION_CANCELLED")
     }
@@ -796,7 +793,7 @@ impl AppState {
         target_kind: String,
         target_name: String,
     ) -> Result<(), String> {
-        let session = self.recover()?.ok_or("No session is running")?;
+        let session = self.recover()?.ok_or("noSession")?;
         self.shield = Some(ShieldDto {
             target_kind: target_kind.clone(),
             target_name: target_name.clone(),
@@ -951,7 +948,7 @@ impl AppState {
     /// raising waits for midnight.
     pub fn set_limit(&mut self, key: &str, label: &str, minutes: u32) -> Result<(), String> {
         if minutes != 0 && !daily_limit::MINUTE_CHOICES.contains(&minutes) {
-            return Err("Pick one of the offered limits.".to_string());
+            return Err("pickLimit".to_string());
         }
         let now = Utc::now();
         let existing = self
@@ -989,8 +986,7 @@ impl AppState {
                 let minutes = l.minutes_at(now);
                 let used = self.db.limit_used_ms(&l.key, &day).unwrap_or(0);
                 let pending = match (l.pending_minutes, l.pending_from) {
-                    (Some(0), Some(from)) if from > now => Some("removed at midnight".to_string()),
-                    (Some(m), Some(from)) if from > now => Some(format!("{m} min from midnight")),
+                    (Some(m), Some(from)) if from > now => Some(m),
                     _ => None,
                 };
                 LimitDto {
@@ -1021,7 +1017,7 @@ impl AppState {
             .filter_map(|d| domain_validation::normalize(d))
             .collect();
         if clean.is_empty() {
-            return Err("Add at least one valid website first.".to_string());
+            return Err("needSite".to_string());
         }
         self.enforcer.apply_commitment(&clean)?;
         self.commitment = self.enforcer.commitment_status();
@@ -1138,6 +1134,7 @@ impl AppState {
 const KV_SYNC_STATE: &str = "sync_state";
 const KV_BEDTIME_UPDATED: &str = "bedtime_updated_at";
 const KV_JOIN_REMOTE: &str = "join_remote";
+const KV_LANGUAGE: &str = "language";
 
 /// What the sync crate needs from the app (see `sync_glue`). Kept together so the boundary is easy to see:
 /// everything here either reads local data or applies something another device decided.
@@ -1158,6 +1155,25 @@ impl AppState {
     pub fn set_join_remote(&mut self, on: bool) -> Result<(), String> {
         self.db
             .kv_set(KV_JOIN_REMOTE, if on { "on" } else { "off" })
+            .map_err(|e| e.to_string())
+    }
+
+    /// "system" (follow Windows), "en" or "ar". This device only: it is not part of the synced data.
+    pub fn language(&self) -> String {
+        self.db
+            .kv_get(KV_LANGUAGE)
+            .ok()
+            .flatten()
+            .filter(|v| matches!(v.as_str(), "en" | "ar"))
+            .unwrap_or_else(|| "system".to_string())
+    }
+
+    pub fn set_language(&mut self, language: &str) -> Result<(), String> {
+        if !matches!(language, "system" | "en" | "ar") {
+            return Err(format!("Unknown language: {language}"));
+        }
+        self.db
+            .kv_set(KV_LANGUAGE, language)
             .map_err(|e| e.to_string())
     }
 
@@ -1434,7 +1450,7 @@ fn session_to_dto(session: &FocusSession, profile_name: &str, allowlist: bool) -
 }
 
 fn unlock_to_dto(flow: &UnlockFlow, session: &FocusSession) -> UnlockStateDto {
-    let matches = flow.typed.trim() == UNLOCK_SENTENCE;
+    let matches = unlock_matches(&flow.typed);
     let (phase, wait_remaining_ms) = match flow.wait_started_at {
         Some(started) => {
             let remaining = (UNLOCK_WAIT - (Utc::now() - started)).max(ChronoDuration::zero());
@@ -1499,7 +1515,6 @@ fn schedule_to_dto(s: &Schedule) -> ScheduleDto {
         policy_id: s.policy_id.clone(),
         mode: mode_str(s.mode).to_string(),
         enabled: s.enabled,
-        days_label: schedule::days_label(&s.days),
     }
 }
 
@@ -1683,7 +1698,7 @@ mod tests {
             "remove_domain should be rejected during an active session"
         );
         assert!(
-            result.unwrap_err().contains("remove blocks"),
+            result.unwrap_err().contains("cantRemove"),
             "error message should mention removing blocks"
         );
     }
@@ -1857,15 +1872,15 @@ mod tests {
         state.set_limit(IG, "Instagram", 60).unwrap();
         let l = &state.snapshot().unwrap().limits[0];
         assert_eq!(
-            (l.minutes, l.pending.as_deref()),
-            (30, Some("60 min from midnight"))
+            (l.minutes, l.pending),
+            (30, Some(60))
         );
         used(&state, 30 * 60_000);
         state.set_limit(IG, "Instagram", 0).unwrap(); // used up: removal waits
         let l = &state.snapshot().unwrap().limits[0];
         assert_eq!(
-            (l.minutes, l.pending.as_deref()),
-            (30, Some("removed at midnight"))
+            (l.minutes, l.pending),
+            (30, Some(0))
         );
         state.set_limit(IG, "Instagram", 15).unwrap(); // tightening applies at once
         assert_eq!(state.snapshot().unwrap().limits[0].minutes, 15);
@@ -1953,7 +1968,7 @@ mod tests {
         state.passes.clear();
         assert!(state.check_foreground_app(r"C:\Apps\Chat.exe").is_some());
         assert_eq!(state.snapshot().unwrap().shield.unwrap().passes_left, 0);
-        assert!(state.use_pass().unwrap_err().contains("No passes left"));
+        assert!(state.use_pass().unwrap_err().contains("noPasses"));
     }
 
     #[test]
@@ -1995,7 +2010,6 @@ mod tests {
             policy_id: policy_id.into(),
             mode: mode.into(),
             enabled: true,
-            days_label: String::new(),
         }
     }
 
@@ -2179,7 +2193,7 @@ mod tests {
         assert!(state
             .start_session(&id, 60, "normal")
             .unwrap_err()
-            .contains("at least one app"));
+            .contains("allowOne"));
 
         // The same list reaching a running session some other way (a sync pull, a schedule) must still close nothing.
         let now = Utc::now();
@@ -2209,7 +2223,7 @@ mod tests {
         assert!(state
             .add_domain(&id, "example.com")
             .unwrap_err()
-            .contains("whitelist"));
+            .contains("whitelistNoSites"));
     }
 
     #[test]
@@ -2221,7 +2235,7 @@ mod tests {
         assert!(state
             .add_application(&id, r"C:\Apps\C.exe".into(), "C".into())
             .unwrap_err()
-            .contains("allow more apps"));
+            .contains("cantAllowMore"));
 
         let rules = |s: &mut AppState| {
             s.snapshot()
@@ -2239,7 +2253,7 @@ mod tests {
         assert!(state
             .remove_application(&id, &last)
             .unwrap_err()
-            .contains("last allowed app"));
+            .contains("cantRemoveLast"));
     }
 
     #[test]
@@ -2276,7 +2290,7 @@ mod tests {
         assert!(state
             .remove_application(&blocks, &rule)
             .unwrap_err()
-            .contains("remove blocks"));
+            .contains("cantRemove"));
     }
 
     #[test]
@@ -2318,5 +2332,28 @@ mod tests {
             .add_application(&empty, r"C:\Apps\Code.exe".into(), "Code".into())
             .unwrap();
         assert!(state.sync_join(&remote(&empty)).unwrap());
+    }
+    #[test]
+    fn the_language_is_remembered_and_checked() {
+        let (mut state, _, _) = setup();
+        assert_eq!(state.language(), "system");
+        state.set_language("ar").unwrap();
+        assert_eq!(state.language(), "ar");
+        assert_eq!(state.snapshot().unwrap().language, "ar");
+        assert!(state.set_language("fr").is_err());
+    }
+
+    #[test]
+    fn either_unlock_sentence_unlocks() {
+        assert!(unlock_matches(UNLOCK_SENTENCE));
+        assert!(unlock_matches(&format!("  {UNLOCK_SENTENCE_AR}  ")));
+        assert!(!unlock_matches("I am choosing"));
+    }
+
+    #[test]
+    fn the_unlock_sentences_match_what_the_ui_shows() {
+        // The UI displays the sentence from its dictionary and the backend compares it: they must be the same text.
+        assert!(include_str!("../../src/i18n/en.ts").contains(UNLOCK_SENTENCE));
+        assert!(include_str!("../../src/i18n/ar.ts").contains(UNLOCK_SENTENCE_AR));
     }
 }

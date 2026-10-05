@@ -115,7 +115,7 @@ export function RemoveIcon({ size = 15 }: Props) {
 
 export function ArrowRightIcon({ size = 20 }: Props) {
   return (
-    <svg {...base(size)} strokeLinecap="square">
+    <svg {...base(size)} strokeLinecap="square" className="svg-icon icon-flip">
       <path d="M5 12h14" />
       <path d="m12 5 7 7-7 7" />
     </svg>
