@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="devices_title">الأجهزة</string>
-    <string name="devices_signed_in">تم تسجيل الدخول باسم %1$s. تتزامن ملفات التركيز وإعدادات وقت النوم مع أجهزتك الأخرى.</string>
+    <string name="devices_signed_in">تم تسجيل الدخول باسم %1$s. تتزامن أنماط التركيز وإعدادات وقت النوم مع أجهزتك الأخرى.</string>
     <string name="devices_account">الحساب والأجهزة</string>
-    <string name="devices_alone">هذا الهاتف يعمل بمفرده. سجّل الدخول، اختياريًا، لمزامنة ملفات التركيز وإعدادات وقت النوم بين أجهزتك.</string>
+    <string name="devices_alone">هذا الهاتف يعمل بمفرده. سجّل الدخول، اختياريًا، لمزامنة أنماط التركيز وإعدادات وقت النوم بين أجهزتك.</string>
     <string name="devices_sign_in">تسجيل الدخول أو إنشاء حساب</string>
     <string name="devices_active">نشط</string>
     <string name="devices_degraded">متراجع</string>

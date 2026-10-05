@@ -4,7 +4,7 @@
     <string name="lock_prompt_title">فتح الحساب</string>
     <string name="lock_body">مقفل. استخدم بصمتك لعرض حسابك وأجهزتك وتسجيل الخروج. جلسات التركيز والحجب لا تتأثر.</string>
     <string name="lock_unlock">فك القفل بالبصمة</string>
-    <string name="account_intro">اختياري. سجّل الدخول لمزامنة ملفات التركيز وإعدادات وقت النوم بين أجهزتك. الأشخاص والأهداف والملاحظات الصوتية والإحصاءات تبقى على هذا الهاتف، ويواصل NowFocus الحجب من النسخة الموجودة على هاتفك حتى دون اتصال.</string>
+    <string name="account_intro">اختياري. سجّل الدخول لمزامنة أنماط التركيز وإعدادات وقت النوم بين أجهزتك. الأشخاص والأهداف والملاحظات الصوتية والإحصاءات تبقى على هذا الهاتف، ويواصل NowFocus الحجب من النسخة الموجودة على هاتفك حتى دون اتصال.</string>
     <string name="account_email">البريد الإلكتروني</string>
     <string name="account_password">كلمة المرور (8 أحرف على الأقل)</string>
     <string name="account_sign_in">تسجيل الدخول</string>
@@ -28,7 +28,7 @@
     <string name="account_lock_sub">هذه الشاشة فقط. جلسات التركيز والحجب لا تُقفل أبدًا.</string>
     <string name="account_devices_kicker">الأجهزة على هذا الحساب</string>
     <string name="account_this_phone">هذا الهاتف</string>
-    <string name="account_signout_note">تسجيل الخروج يُبقي ملفات التركيز ووقت النوم ودرع الالتزام على هذا الهاتف. يستمر الحجب كما هو.</string>
+    <string name="account_signout_note">تسجيل الخروج يُبقي أنماط التركيز ووقت النوم ودرع الالتزام على هذا الهاتف. يستمر الحجب كما هو.</string>
     <string name="account_sign_out">تسجيل الخروج</string>
     <string name="account_delete">حذف الحساب…</string>
     <string name="account_delete_title">حذف الحساب؟</string>

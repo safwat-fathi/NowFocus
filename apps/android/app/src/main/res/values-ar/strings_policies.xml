@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="rules_title">القواعد</string>
-    <string name="policies_kicker">ملفات التركيز</string>
+    <string name="policies_kicker">أنماط التركيز</string>
     <string name="policies_new">+ ملف جديد</string>
     <string name="policies_remove_q">إزالة %1$s؟</string>
     <string name="policies_remove_body">سيُحذف هذا الملف.</string>
