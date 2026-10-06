@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -25,7 +27,29 @@ android {
         buildConfig = true
     }
 
+    // Upload key for Play. Read from keystore.properties (gitignored) or the NOWFOCUS_* env vars; absent = the release
+    // build is unsigned, so a missing key fails loudly at upload time rather than silently shipping a debug signature.
+    val keystoreProps = Properties().apply {
+        rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    }
+    fun signingValue(key: String, env: String) = keystoreProps.getProperty(key) ?: System.getenv(env)
+    val uploadStore = signingValue("storeFile", "NOWFOCUS_KEYSTORE")
+    signingConfigs {
+        if (uploadStore != null) create("release") {
+            storeFile = file(uploadStore)
+            storePassword = signingValue("storePassword", "NOWFOCUS_KEYSTORE_PASSWORD")
+            keyAlias = signingValue("keyAlias", "NOWFOCUS_KEY_ALIAS") ?: "upload"
+            keyPassword = signingValue("keyPassword", "NOWFOCUS_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            signingConfigs.findByName("release")?.let { signingConfig = it }
+        }
         // Release-like build for measuring: optimized, non-debuggable, signed with the debug key so
         // it installs over the debug build and `adb shell` can still profile it (see src/perf).
         // ponytail: not for distribution; a real release build type comes with real signing.

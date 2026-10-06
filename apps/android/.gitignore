@@ -1,0 +1,5 @@
+
+# Play upload key
+keystore.properties
+*.jks
+*.keystore
