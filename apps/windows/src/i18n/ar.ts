@@ -415,6 +415,17 @@ export const ar: Record<Key, Message> = {
   "about.license": "الشيفرة المصدرية متاحة بموجب رخصة FSL-1.1-ALv2.",
   "about.copyright": "© 2026 Safwat Fathi",
 
+  // ---- updates (Settings + banner)
+  "upd.title": "التحديثات",
+  "upd.check": "التحقق من التحديثات",
+  "upd.checking": "جارٍ التحقق…",
+  "upd.upToDate": "أنت تستخدم أحدث إصدار.",
+  "upd.failed": "تعذّر التحقق من التحديثات. حاول لاحقًا.",
+  "upd.available": "الإصدار {v} متاح.",
+  "upd.install": "حدّث الآن",
+  "upd.installing": "جارٍ التحديث… سيعاد تشغيل NowFocus.",
+  "upd.busy": "أنهِ جلستك قبل التحديث.",
+
   // ---- refusals from the backend
   "err.whitelistNoSites": "المواقع لا تُصفّى في وضع السماح. اسمح بمتصفح فتعمل كل المواقع.",
   "err.badDomain": "لا يبدو هذا موقعًا. جرّب شيئًا مثل example.com",

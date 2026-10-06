@@ -10,10 +10,10 @@ Branch `feat/phases-a-f`. This guide is for you to run on your own devices and w
 |---|---|---|
 | Android logic (passes, cheat day, schedules, limits, streak, score, session sync rules) | 269 unit tests pass, including live sync tests against a local API | Every screen and flow on a real phone, except installing it |
 | Android service behaviour (Accessibility, VPN, notifications, alarms) | nothing | all of it |
-| Windows logic (cheat day, passes, schedules, streak, sync rules) | 100+ Rust tests; two Windows sync engines converged through the real API (profiles, bedtime, a session started on one and joined and ended on the other) | The app has **never run on a real Windows PC**. Install, the service, the hosts file, the overlay, the tray, the credential store: all untested |
+| Windows logic (cheat day, passes, schedules, streak, sync rules) | 100+ Rust tests; two Windows sync engines converged through the real API (profiles, bedtime, a session started on one and joined and ended on the other) | The app was installed and tested by the owner on a real **Windows 11** PC (reported 2026-10-06; per-test results are not recorded in the table below). Not tested on Windows 10 |
 | Server | 64 end-to-end tests pass locally, including the new 24-hour session cap | **Not deployed.** `api.nowfocus.online` does not have the cap yet |
 
-If something fails, assume it is real. Several parts (Windows especially) have never run before.
+If something fails, assume it is real. Several parts have never run on a device before.
 
 ## Before you start
 

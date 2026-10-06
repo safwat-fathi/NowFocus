@@ -3,6 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../lib/api";
 import { useI18n, type LangPref } from "../i18n";
+import type { Updater } from "../lib/update";
 import type { AppState } from "../types";
 
 const LANGUAGES: [LangPref, "set.system" | "set.english" | "set.arabic"][] = [
@@ -19,8 +20,8 @@ const LINKS = [
   ["about.support", "mailto:safwat.rashwan@gmail.com"],
 ] as const;
 
-/** App-wide settings: the language, and About (version, links, license). */
-export function Settings({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
+/** App-wide settings: the language, updates, and About (version, links, license). */
+export function Settings({ state, onState, updater }: { state: AppState; onState: (s: AppState) => void; updater: Updater }) {
   const { t } = useI18n();
   const [version, setVersion] = useState("");
   useEffect(() => {
@@ -49,6 +50,26 @@ export function Settings({ state, onState }: { state: AppState; onState: (s: App
             </button>
           ))}
         </div>
+
+        <div className="field-label" style={{ marginTop: 32 }}>{t("upd.title")}</div>
+        {updater.update ? (
+          <>
+            <p>{t("upd.available", { v: updater.update.version })}</p>
+            <button className="btn btn-primary" disabled={!!state.session || updater.status === "installing"} onClick={updater.install}>
+              {t(updater.status === "installing" ? "upd.installing" : "upd.install")}
+            </button>
+            {/* An update stops the blocking service, so it must not be a way out of a running session. */}
+            {state.session && <p>{t("upd.busy")}</p>}
+          </>
+        ) : (
+          <>
+            <button className="btn btn-secondary" disabled={updater.status === "checking"} onClick={updater.check}>
+              {t(updater.status === "checking" ? "upd.checking" : "upd.check")}
+            </button>
+            {updater.status === "upToDate" && <p>{t("upd.upToDate")}</p>}
+            {updater.status === "failed" && <p>{t("upd.failed")}</p>}
+          </>
+        )}
 
         <div className="field-label" style={{ marginTop: 32 }}>{t("about.title")}</div>
         <p className="screen-lede" style={{ margin: "0 0 12px" }}>{t("about.lede")}</p>

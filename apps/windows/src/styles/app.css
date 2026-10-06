@@ -329,3 +329,9 @@ input, textarea { user-select: text; }
 
 .stack-gap-8 { display: flex; flex-direction: column; gap: 8px; }
 .svg-icon { display: block; }
+
+.update-banner {
+  border: 0; cursor: pointer; padding: 6px 12px; font: inherit; font-size: 13px;
+  background: var(--color-accent-100); color: var(--color-text);
+}
+.update-banner:hover { background: color-mix(in srgb, var(--color-accent) 18%, var(--color-accent-100)); }

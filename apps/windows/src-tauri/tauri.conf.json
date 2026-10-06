@@ -34,6 +34,14 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "REPLACE_WITH_PUBLIC_KEY",
+      "endpoints": ["https://api.nowfocus.online/v1/updates/windows/{{current_version}}"],
+      "windows": { "installMode": "passive" }
+    }
   }
 }

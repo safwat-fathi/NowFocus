@@ -369,6 +369,17 @@ export const en = {
   "about.license": "Source available under the FSL-1.1-ALv2 license.",
   "about.copyright": "© 2026 Safwat Fathi",
 
+  // ---- updates (Settings + banner)
+  "upd.title": "Updates",
+  "upd.check": "Check for updates",
+  "upd.checking": "Checking…",
+  "upd.upToDate": "You're on the latest version.",
+  "upd.failed": "Couldn't check for updates. Try again later.",
+  "upd.available": "Version {v} is available.",
+  "upd.install": "Update now",
+  "upd.installing": "Updating… NowFocus will restart.",
+  "upd.busy": "End your session before updating.",
+
   // ---- refusals from the backend, sent as `code` or `code|arg` (see errorText in index.tsx)
   "err.whitelistNoSites": "Websites aren’t filtered in whitelist mode. Allow a browser and every site works.",
   "err.badDomain": "That doesn't look like a website. Try something like example.com",

@@ -3,6 +3,7 @@ import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import { UnlockDialog } from "./components/UnlockDialog";
 import { api } from "./lib/api";
+import { useUpdater } from "./lib/update";
 import { I18nProvider, storedPref, useI18n, type LangPref } from "./i18n";
 import type { AppState, ScreenId } from "./types";
 
@@ -31,6 +32,16 @@ function TrayLabelsSync() {
   return null;
 }
 
+/** A slim strip above the app when a newer release is out; installing happens in Settings. */
+function UpdateBanner({ version, onOpen }: { version: string; onOpen: () => void }) {
+  const { t } = useI18n();
+  return (
+    <button className="update-banner" onClick={onOpen}>
+      {t("upd.available", { v: version })} {t("upd.install")}
+    </button>
+  );
+}
+
 const ONBOARDING_SEEN_KEY = "nowfocus.onboardingSeen";
 
 export default function App() {
@@ -40,6 +51,7 @@ export default function App() {
   );
 
   const refresh = useCallback((next: AppState) => setState(next), []);
+  const updater = useUpdater();
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +90,7 @@ export default function App() {
     <TrayLabelsSync />
     <div className="app-shell">
       {showChrome && <TitleBar suffix={titleSuffix} />}
+      {showChrome && updater.update && view !== "settings" && <UpdateBanner version={updater.update.version} onOpen={() => navigate("settings")} />}
       <div className="app-body">
         {showSidebar && <Sidebar state={state} screen={screen} onNavigate={navigate} />}
         <div
@@ -98,7 +111,7 @@ export default function App() {
           {view === "schedules" && <Schedules state={state} onState={refresh} />}
           {view === "limits" && <Limits state={state} onState={refresh} />}
           {view === "cheatday" && <CheatDay state={state} onState={refresh} />}
-          {view === "settings" && <Settings state={state} onState={refresh} />}
+          {view === "settings" && <Settings state={state} onState={refresh} updater={updater} />}
           {view === "tray" && <Tray state={state} onState={refresh} onOpen={() => navigate(state.session ? "active" : "focus")} />}
           {view === "shield" && <Shield state={state} onState={refresh} />}
         </div>
