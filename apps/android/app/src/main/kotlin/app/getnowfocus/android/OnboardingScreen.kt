@@ -255,9 +255,7 @@ private fun OnboardingPermissions(resumeKey: Int) {
             val consentIntent = VpnService.prepare(context)
             if (consentIntent != null) vpnConsent.launch(consentIntent) else vpnResumeKey++
         }
-        PermissionRow(stringResource(R.string.devices_dnd), stringResource(R.string.onb_perm_dnd), notifOk) {
-            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-        }
+        PermissionRow(stringResource(R.string.devices_dnd), stringResource(R.string.onb_perm_dnd), notifOk) { Enforcement.openDndAccess(context) }
     }
 }
 

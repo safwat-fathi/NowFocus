@@ -1,9 +1,11 @@
 package app.getnowfocus.android
 
+import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.provider.Settings
@@ -151,6 +153,23 @@ object Enforcement {
     }
 
     fun isVpnPermitted(context: Context) = VpnService.prepare(context) == null
+
+    /**
+     * Opens NowFocus's own Do Not Disturb access screen so the user lands on its switch. The SDK only
+     * exposes the full app list (which doesn't scroll to us), but the Settings app also handles this
+     * per-app action. If an OEM Settings lacks it, fall back to the list with Settings' highlight key
+     * (the list keys each row by package name), which scrolls to and highlights our row.
+     */
+    fun openDndAccess(context: Context) {
+        val detail = Intent("android.settings.NOTIFICATION_POLICY_ACCESS_DETAIL_SETTINGS", Uri.fromParts("package", context.packageName, null))
+        try {
+            context.startActivity(detail)
+        } catch (e: ActivityNotFoundException) {
+            context.startActivity(
+                Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).putExtra(":settings:fragment_args_key", context.packageName)
+            )
+        }
+    }
 
     /**
      * Provider hostname when Private DNS is in strict mode, else null. Strict mode only talks to DoT servers

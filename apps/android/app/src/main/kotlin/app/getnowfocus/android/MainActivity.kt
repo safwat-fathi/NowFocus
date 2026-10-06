@@ -1369,9 +1369,7 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
             settings.quietNotifications, { onSave(settings.copy(quietNotifications = !settings.quietNotifications)) }, dark = true,
         )
         if (!notificationPolicyOk) {
-            GhostButton(stringResource(R.string.bedtime_allow_access)) {
-                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-            }
+            GhostButton(stringResource(R.string.bedtime_allow_access)) { Enforcement.openDndAccess(context) }
         }
         if (Build.VERSION.SDK_INT >= 28) {
             ToggleRow(

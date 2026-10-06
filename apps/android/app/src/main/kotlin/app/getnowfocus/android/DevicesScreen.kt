@@ -90,7 +90,7 @@ fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit
             }
             if (!notifOk) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                GhostButton(stringResource(R.string.devices_enable_dnd)) { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)) }
+                GhostButton(stringResource(R.string.devices_enable_dnd)) { Enforcement.openDndAccess(context) }
             }
             SectionRule()
         }
