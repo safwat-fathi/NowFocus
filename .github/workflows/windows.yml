@@ -77,7 +77,7 @@ jobs:
       # No updater signing key here (PRs don't get secrets), so skip the updater artifacts.
       - run: pnpm exec tauri build --debug
         env:
-          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false}}'
+          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false},"plugins":{"updater":null}}'
 
   # A release installer for hands-on testing, built on demand (Actions > Windows > Run workflow). Unsigned, so
   # Windows SmartScreen warns on first run: More info > Run anyway. The installer registers the NowFocus
@@ -121,7 +121,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec tauri build
         env:
-          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false}}'
+          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false},"plugins":{"updater":null}}'
 
       - uses: actions/upload-artifact@v4
         with:
