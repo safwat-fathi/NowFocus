@@ -32,6 +32,7 @@
     <string name="home_tonight">الليلة %1$s</string>
     <string name="health_web_ok">حجب المواقع: جاهز</string>
     <string name="health_web_ask">حجب المواقع: يُطلب إذن VPN عند البدء</string>
+    <string name="health_web_private_dns">حجب المواقع: متوقف. إعداد Private DNS مضبوط على اسم مضيف. اجعله تلقائيًا أو متوقفًا (الإعدادات ← الشبكة والإنترنت ← Private DNS).</string>
     <string name="health_apps_ok">حجب التطبيقات: جاهز</string>
     <string name="health_apps_off">حجب التطبيقات: متوقف</string>
     <string name="health_enable">التفعيل في إعدادات إمكانية الوصول</string>

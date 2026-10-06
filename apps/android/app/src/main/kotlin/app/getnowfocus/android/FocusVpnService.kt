@@ -2,6 +2,8 @@ package app.getnowfocus.android
 
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
 import android.net.VpnService
 import android.os.Build
 import android.os.Handler
@@ -34,9 +36,12 @@ import kotlin.concurrent.thread
  * Fails open: any error, a dead upstream, or an expired session means queries
  * are forwarded (or the tunnel closes) — never a black-holed network.
  *
- * ponytail: DNS-level only. Apps using DoH/hard-coded resolvers, or Private DNS
- * set to "strict", bypass it (arch doc §12.3). Upgrade path: route all traffic
- * and filter by SNI, if that bypass ever matters.
+ * ponytail: DNS-level only. Apps using DoH/hard-coded resolvers bypass it (arch
+ * doc §12.3). Private DNS set to a hostname ("strict") can't be filtered either:
+ * it only uses DoT servers reachable through the tunnel, which has none, and never
+ * falls back to plain DNS, so every lookup would fail. The tunnel stays down while
+ * it's on (Enforcement.strictPrivateDns). Upgrade path: route all traffic and
+ * filter by SNI, if that bypass ever matters.
  */
 class FocusVpnService : VpnService() {
 
@@ -60,12 +65,14 @@ class FocusVpnService : VpnService() {
     @Volatile private var rules: ActiveRules = ActiveRules()
     private var loop: TunLoop? = null
     private var collecting: Job? = null
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             shutdown()
             return START_NOT_STICKY
         }
+        watchPrivateDns()
         if (collecting == null) {
             collecting = scope.launch {
                 Enforcement.activeRulesFlow(SessionRepository(this@FocusVpnService)).collect { apply(it) }
@@ -91,7 +98,33 @@ class FocusVpnService : VpnService() {
         if (loop == null) establish()
     }
 
+    /**
+     * Private DNS can be switched while a session runs: close the tunnel when strict turns on (else every
+     * lookup fails), bring it back when it turns off. Also fires once on registration, before the rules
+     * flow has emitted, so it only re-establishes when [rules] are live - never apply() on empty rules,
+     * that would shut the service down.
+     */
+    private fun watchPrivateDns() {
+        if (netCallback != null) return
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+                handler.post {
+                    if (Enforcement.strictPrivateDns(this@FocusVpnService) != null) closeTunnel()
+                    else if (loop == null && rules.nextExpiryAfter(System.currentTimeMillis()) != null) establish()
+                }
+            }
+        }
+        netCallback = callback
+        cm.registerDefaultNetworkCallback(callback)
+    }
+
     private fun establish() {
+        val strict = Enforcement.strictPrivateDns(this)
+        if (strict != null) {
+            Log.w(TAG, "Private DNS is strict ($strict): its DoT servers are unreachable through the tunnel, so staying down")
+            return
+        }
         val builder = Builder()
             .setSession("NowFocus")
             .addAddress(VPN_ADDRESS, 32)
@@ -106,10 +139,14 @@ class FocusVpnService : VpnService() {
         loop = TunLoop(fd).also { thread(name = "FocusVpn") { it.run() } }
     }
 
-    private fun shutdown() {
-        handler.removeCallbacks(expire)
+    private fun closeTunnel() {
         loop?.running = false
         loop = null
+    }
+
+    private fun shutdown() {
+        handler.removeCallbacks(expire)
+        closeTunnel()
         rules = ActiveRules()
         stopSelf()
     }
@@ -121,6 +158,7 @@ class FocusVpnService : VpnService() {
 
     override fun onDestroy() {
         shutdown()
+        netCallback?.let { cb -> getSystemService(ConnectivityManager::class.java)?.let { runCatching { it.unregisterNetworkCallback(cb) } } }
         scope.cancel()
         forwarder.shutdownNow()
         super.onDestroy()

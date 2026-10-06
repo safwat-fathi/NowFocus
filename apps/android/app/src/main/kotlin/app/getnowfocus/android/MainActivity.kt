@@ -1432,6 +1432,7 @@ private fun TimePickerDialog(title: String, minutes: Int, is24Hour: Boolean, onC
     val result = parseClock(hour.toIntOrNull() ?: -1, minute.toIntOrNull() ?: -1, pm, is24Hour)
     val digits = KeyboardOptions(keyboardType = KeyboardType.Number)
     AlertDialog(
+    val strictDns = Enforcement.strictPrivateDns(context) != null
         onDismissRequest = onDismiss,
         title = { Text(title, style = headingStyle(20.sp)) },
         text = {
@@ -1455,8 +1456,12 @@ private fun HealthRow() {
     val appsOk = Enforcement.isAccessibilityEnabled(context)
 
     Text(
-        stringResource(if (vpnOk) R.string.health_web_ok else R.string.health_web_ask),
-        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = if (vpnOk) NowFocusColors.text else NowFocusColors.accent700),
+        stringResource(when {
+            strictDns -> R.string.health_web_private_dns
+            vpnOk -> R.string.health_web_ok
+            else -> R.string.health_web_ask
+        }),
+        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = if (vpnOk && !strictDns) NowFocusColors.text else NowFocusColors.accent700),
     )
     Text(
         stringResource(if (appsOk) R.string.health_apps_ok else R.string.health_apps_off),

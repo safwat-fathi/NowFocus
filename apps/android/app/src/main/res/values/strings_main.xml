@@ -31,6 +31,7 @@
     <string name="home_tonight">Tonight %1$s</string>
     <string name="health_web_ok">Website blocking: ready</string>
     <string name="health_web_ask">Website blocking: VPN permission asked on start</string>
+    <string name="health_web_private_dns">Website blocking: off. Private DNS is set to a hostname. Set it to Automatic or Off (Settings → Network &amp; internet → Private DNS).</string>
     <string name="health_apps_ok">App blocking: ready</string>
     <string name="health_apps_off">App blocking: off</string>
     <string name="health_enable">Enable in Accessibility Settings</string>

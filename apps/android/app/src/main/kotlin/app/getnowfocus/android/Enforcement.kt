@@ -3,7 +3,9 @@ package app.getnowfocus.android
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.net.VpnService
+import android.os.Build
 import android.provider.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -149,6 +151,18 @@ object Enforcement {
     }
 
     fun isVpnPermitted(context: Context) = VpnService.prepare(context) == null
+
+    /**
+     * Provider hostname when Private DNS is in strict mode, else null. Strict mode only talks to DoT servers
+     * the VPN can route to; ours routes just its fake resolver, so every lookup would fail with no plain-DNS
+     * fallback. activeNetwork is the underlying one: we're excluded from our own VPN (see upstreamDns()).
+     */
+    fun strictPrivateDns(context: Context): String? {
+        if (Build.VERSION.SDK_INT < 28) return null
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return null
+        val network = cm.activeNetwork ?: return null
+        return cm.getLinkProperties(network)?.privateDnsServerName
+    }
 
     fun isAccessibilityEnabled(context: Context): Boolean {
         val enabled = Settings.Secure.getString(
