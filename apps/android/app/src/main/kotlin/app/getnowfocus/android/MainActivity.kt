@@ -1346,24 +1346,6 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
 
         Text(stringResource(R.string.bedtime_during), style = kickerStyle(muted))
         SectionRule(color = rule)
-        if (canWriteSecureSettings(context)) {
-            ToggleRow(
-                stringResource(R.string.bedtime_grey), stringResource(R.string.bedtime_grey_sub),
-                settings.greyscale, { onSave(settings.copy(greyscale = !settings.greyscale)) }, dark = true,
-            )
-        } else {
-            // Android won't let an ordinary app switch the screen to greyscale; its own Bedtime mode does it on a schedule.
-            Column(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3)) {
-                Text(stringResource(R.string.bedtime_grey), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = onDark))
-                Text(stringResource(R.string.bedtime_grey_system), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = muted))
-                GhostButton(stringResource(R.string.bedtime_grey_open)) {
-                    val pm = context.packageManager
-                    val intent = pm.getLaunchIntentForPackage("com.google.android.apps.wellbeing")
-                        ?: Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                }
-            }
-        }
         ToggleRow(
             stringResource(R.string.bedtime_quiet), stringResource(R.string.bedtime_quiet_sub),
             settings.quietNotifications, { onSave(settings.copy(quietNotifications = !settings.quietNotifications)) }, dark = true,
@@ -1430,7 +1412,6 @@ private fun TimePickerDialog(title: String, minutes: Int, is24Hour: Boolean, onC
     val result = parseClock(hour.toIntOrNull() ?: -1, minute.toIntOrNull() ?: -1, pm, is24Hour)
     val digits = KeyboardOptions(keyboardType = KeyboardType.Number)
     AlertDialog(
-    val strictDns = Enforcement.strictPrivateDns(context) != null
         onDismissRequest = onDismiss,
         title = { Text(title, style = headingStyle(20.sp)) },
         text = {
@@ -1451,6 +1432,7 @@ private fun TimePickerDialog(title: String, minutes: Int, is24Hour: Boolean, onC
 private fun HealthRow() {
     val context = LocalContext.current
     val vpnOk = Enforcement.isVpnPermitted(context)
+    val strictDns = Enforcement.strictPrivateDns(context) != null
     val appsOk = Enforcement.isAccessibilityEnabled(context)
 
     Text(

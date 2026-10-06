@@ -21,7 +21,6 @@ Everything marked **proposed** has no precedent on the site and needs a native r
 | Normal / Strict / Locked | عادي / صارم / مقفل |
 | Commitment Shield | درع الالتزام |
 | bedtime wind-down | تهدئة وقت النوم |
-| greyscale (screen) | تدرّج رمادي |
 | daily limit | الحد اليومي (plural: الحدود اليومية) |
 | streak | السلسلة |
 | streak grace day | يوم سماح |

@@ -73,7 +73,6 @@ class SessionRepository(context: Context) {
         val BEDTIME_ENABLED = booleanPreferencesKey("bedtimeEnabled")
         val BEDTIME_QUIET = booleanPreferencesKey("bedtimeQuietNotifications")
         val BEDTIME_LOCK = booleanPreferencesKey("bedtimeLockAtSleep")
-        val BEDTIME_GREYSCALE = booleanPreferencesKey("bedtimeGreyscale")
         val BEDTIME_POLICY_ID = stringPreferencesKey("bedtimePolicyId")
         val ONBOARDING_DONE = booleanPreferencesKey("onboardingDone")
         val ACCOUNT_LOCK = booleanPreferencesKey("accountLock")
@@ -258,7 +257,6 @@ class SessionRepository(context: Context) {
             enabled = p[Keys.BEDTIME_ENABLED] ?: defaults.enabled,
             quietNotifications = p[Keys.BEDTIME_QUIET] ?: defaults.quietNotifications,
             lockAtSleep = p[Keys.BEDTIME_LOCK] ?: defaults.lockAtSleep,
-            greyscale = p[Keys.BEDTIME_GREYSCALE] ?: defaults.greyscale,
             policyId = p[Keys.BEDTIME_POLICY_ID],
         )
     }
@@ -270,7 +268,6 @@ class SessionRepository(context: Context) {
         p[Keys.BEDTIME_ENABLED] = settings.enabled
         p[Keys.BEDTIME_QUIET] = settings.quietNotifications
         p[Keys.BEDTIME_LOCK] = settings.lockAtSleep
-        p[Keys.BEDTIME_GREYSCALE] = settings.greyscale
         if (settings.policyId != null) p[Keys.BEDTIME_POLICY_ID] = settings.policyId else p.remove(Keys.BEDTIME_POLICY_ID)
     }
 

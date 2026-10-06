@@ -299,7 +299,6 @@ pub mod bedtime {
             sleep_minute: n("sleepMinute", d.sleep_minute),
             wake_minute: n("wakeMinute", d.wake_minute),
             lock_at_sleep: b(raw, "lockAtSleep", d.lock_at_sleep),
-            greyscale: b(raw, "greyscale", d.greyscale),
             policy_id: s(raw, "policyId").map(str::to_lowercase),
         }
     }
@@ -311,7 +310,6 @@ pub mod bedtime {
         out["sleepMinute"] = json!(local.sleep_minute);
         out["wakeMinute"] = json!(local.wake_minute);
         out["lockAtSleep"] = json!(local.lock_at_sleep);
-        out["greyscale"] = json!(local.greyscale);
         out["policyId"] = local
             .policy_id
             .as_ref()

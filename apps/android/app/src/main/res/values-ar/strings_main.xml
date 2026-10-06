@@ -152,10 +152,6 @@
     <string name="bedtime_allow_access">السماح من إعدادات الوصول إلى الإشعارات</string>
     <string name="bedtime_lock">قفل الهاتف عند وقت النوم</string>
     <string name="bedtime_lock_sub">يُقفل مرة واحدة، عند وقت نومك</string>
-    <string name="bedtime_grey">شاشة بتدرّج رمادي</string>
-    <string name="bedtime_grey_sub">تختفي الألوان، ويخفّ معها الانجذاب للهاتف</string>
-    <string name="bedtime_grey_system">لا يسمح أندرويد بذلك إلا لوضع وقت النوم الخاص به. فعّل التدرّج الرمادي هناك ليتبع جدولك.</string>
-    <string name="bedtime_grey_open">فتح الرفاه الرقمي</string>
     <string name="time_hour">الساعة</string>
     <string name="time_minute">الدقيقة</string>
     <string name="time_am">ص</string>

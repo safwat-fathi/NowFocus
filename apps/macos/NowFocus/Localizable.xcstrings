@@ -766,17 +766,6 @@
         }
       }
     },
-    "Colour drains out, and so does the pull": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تختفي الألوان، ويخفّ معها الانجذاب للهاتف"
-          }
-        }
-      }
-    },
     "Commitment": {
       "extractionState": "manual",
       "localizations": {
@@ -1235,17 +1224,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "مهلة التراجع"
-          }
-        }
-      }
-    },
-    "Greyscale screen": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "شاشة بتدرّج رمادي"
           }
         }
       }

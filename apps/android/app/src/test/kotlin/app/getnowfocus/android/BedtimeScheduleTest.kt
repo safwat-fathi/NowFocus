@@ -164,33 +164,6 @@ class BedtimeScheduleTest {
         )
     }
 
-    // decideGreyscale: same shape as decideQuietFilter, keyed on whether *we* applied it.
-
-    private val greySettings = enabledSettings.copy(greyscale = true)
-
-    @Test
-    fun `decideGreyscale applies inside the window`() {
-        assertEquals(GreyscaleDecision.APPLY, BedtimeSchedule.decideGreyscale(greySettings, insideWindow, zone, applied = false))
-    }
-
-    @Test
-    fun `decideGreyscale is a no-op once applied`() {
-        assertEquals(GreyscaleDecision.NONE, BedtimeSchedule.decideGreyscale(greySettings, insideWindow, zone, applied = true))
-    }
-
-    @Test
-    fun `decideGreyscale restores at wake and when the toggle or Bedtime is turned off`() {
-        assertEquals(GreyscaleDecision.RESTORE, BedtimeSchedule.decideGreyscale(greySettings, outsideWindow, zone, applied = true))
-        assertEquals(GreyscaleDecision.RESTORE, BedtimeSchedule.decideGreyscale(greySettings.copy(greyscale = false), insideWindow, zone, applied = true))
-        assertEquals(GreyscaleDecision.RESTORE, BedtimeSchedule.decideGreyscale(greySettings.copy(enabled = false), insideWindow, zone, applied = true))
-    }
-
-    @Test
-    fun `decideGreyscale never touches a filter it didn't apply`() {
-        assertEquals(GreyscaleDecision.NONE, BedtimeSchedule.decideGreyscale(greySettings, outsideWindow, zone, applied = false))
-        assertEquals(GreyscaleDecision.NONE, BedtimeSchedule.decideGreyscale(enabledSettings, insideWindow, zone, applied = false))
-    }
-
     // currentWindow drives when the nightly LOCKED bedtime session starts
     // (reconcileBedtimeSession) — same cross-midnight cases as isQuietTimeNow.
 

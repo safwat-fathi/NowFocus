@@ -9,8 +9,8 @@
 use chrono::{Duration, NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 
-/// Ships lock-at-sleep only, like macOS's 1-of-4 reduction. DND/greyscale have
-/// no clean unprivileged Windows API. `policy_id` selects the block profile the
+/// Ships lock-at-sleep only, like macOS's 1-of-4 reduction. DND has no
+/// clean unprivileged Windows API. `policy_id` selects the block profile the
 /// nightly locked session enforces.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BedtimeSettings {
@@ -20,7 +20,6 @@ pub struct BedtimeSettings {
     pub sleep_minute: i64,
     pub wake_minute: i64,
     pub lock_at_sleep: bool,
-    pub greyscale: bool,
     pub policy_id: Option<String>,
 }
 
@@ -32,7 +31,6 @@ impl Default for BedtimeSettings {
             sleep_minute: 23 * 60,
             wake_minute: 7 * 60,
             lock_at_sleep: true,
-            greyscale: false,
             policy_id: None,
         }
     }
@@ -140,7 +138,6 @@ mod tests {
             sleep_minute: 23 * 60,
             wake_minute: 7 * 60,
             lock_at_sleep: true,
-            greyscale: false,
             policy_id: Some("p1".into()),
         }
     }

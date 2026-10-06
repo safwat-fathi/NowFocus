@@ -3,8 +3,8 @@ import NowFocusCore
 
 /// Schedules a nightly `.locked` focus session (see BedtimeScheduler) — not
 /// in macOS's original phase scope, but the shared model already anticipated
-/// it (`SessionType.bedtime_winddown`, `EnforcementMode.locked`). Ships 2 of
-/// the mockup's 4 toggles (greyscale, lock); DND and "close the feeds" are
+/// it (`SessionType.bedtime_winddown`, `EnforcementMode.locked`). Ships 1 of
+/// the mockup's 4 toggles (lock); DND and "close the feeds" are
 /// dropped, same reasoning as Android's BedtimeSchedule.kt.
 struct BedtimeView: View {
     @State private var settings = BedtimeSettingsStore.shared.settings
@@ -51,15 +51,6 @@ struct BedtimeView: View {
                 timeRow("Wake", binding: timeBinding(\.wakeMinute))
 
                 sectionLabel("During wind-down")
-                Toggle(isOn: greyscaleBinding) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Greyscale screen")
-                            .font(NowFocusFonts.body(14))
-                        Text("Colour drains out, and so does the pull")
-                            .font(NowFocusFonts.body(12))
-                            .foregroundColor(NowFocusColors.neutral700)
-                    }
-                }
                 Toggle(isOn: lockAtSleepBinding) {
                     Text("Sleep the display (locks if Lock Screen requires a password immediately)")
                         .font(NowFocusFonts.body(14))
@@ -123,13 +114,6 @@ struct BedtimeView: View {
     private var lockAtSleepBinding: Binding<Bool> {
         Binding(get: { settings.lockAtSleep }, set: { newValue in
             settings.lockAtSleep = newValue
-            save()
-        })
-    }
-
-    private var greyscaleBinding: Binding<Bool> {
-        Binding(get: { settings.greyscale }, set: { newValue in
-            settings.greyscale = newValue
             save()
         })
     }

@@ -307,7 +307,7 @@ Late-night smartphone usage and blue light exposure disrupt the natural circadia
   - Sleep-supporting audio (meditation, white noise, audiobooks, and health/sleep tracking apps like Calm or Headspace).
 - **Strict Sleep Lock:** Optional late-night lock mode preventing impulsive disabling or session cancellations when willpower and cognitive resistance are lowest.
 - **Cross-Device Bedtime Synchronization:** Pro synchronization ensures that when Bedtime Wind-Down begins, it simultaneously triggers across the user's phone, tablet, and desktop—preventing the common habit of putting down the phone only to pick up a laptop in bed.
-- **Circadian Display Coordination:** Integrates with system Do Not Disturb / Sleep Focus modes and prompts switching screens to Grayscale or Night Shift to actively eliminate stimulating blue light cues.
+- **Circadian Display Coordination:** Integrates with system Do Not Disturb / Sleep Focus modes to quiet stimulating notifications during the wind-down window.
 
 ### Always-Blocked Commitment Shield (14-Day Strict Lock)
 

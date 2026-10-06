@@ -1048,15 +1048,12 @@ impl AppState {
         lock_at_sleep: bool,
         policy_id: Option<String>,
     ) -> Result<(), String> {
-        // This PC can't drain the colour, so the field only rides along: a value synced from another device survives a local edit.
-        let greyscale = self.db.get_bedtime().map(|b| b.greyscale).unwrap_or(false);
         let settings = BedtimeSettings {
             enabled,
             wind_down_minute,
             sleep_minute,
             wake_minute,
             lock_at_sleep,
-            greyscale,
             policy_id,
         };
         self.db.set_bedtime(&settings).map_err(|e| e.to_string())?;

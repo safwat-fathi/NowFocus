@@ -67,8 +67,6 @@ suspend fun reconcileQuietNotifications(context: Context, settings: BedtimeSetti
     val now = System.currentTimeMillis()
     // A cheat day is full use of the phone: Bedtime counts as off, which also hands back a filter it set.
     val cheating = SessionRepository(context).cheatDayFlow.first()?.isActive(now) == true
-    // Also reconciles greyscale: same triggers, and it must not depend on notification access being granted.
-    reconcileGreyscale(context, settings, cheating)
     val nm = context.getSystemService(NotificationManager::class.java) ?: return
     if (!nm.isNotificationPolicyAccessGranted) return
     val effective = if (cheating) settings.copy(enabled = false) else settings

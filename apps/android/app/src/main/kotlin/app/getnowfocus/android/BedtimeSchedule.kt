@@ -11,9 +11,7 @@ import java.util.Locale
  * Ships with 3 of the mockup's 4 toggles. "Close the feeds" is dropped:
  * feed-level blocking isn't visible to DNS blocking or foreground-app
  * detection - same reasoning as the Editor screen's dropped "Feeds only"
- * section. Greyscale has no public API for a normal app, so it only works
- * once the user grants WRITE_SECURE_SETTINGS over adb (see [reconcileGreyscale]);
- * until then the toggle shows the setup hint and nothing is changed.
+ * section.
  */
 data class BedtimeSettings(
     val windDownMinute: Int = 22 * 60,
@@ -24,8 +22,6 @@ data class BedtimeSettings(
     // One-shot GLOBAL_ACTION_LOCK_SCREEN at sleep time - needs API 28, so this
     // is forced false below that (see FocusAccessibilityService/BedtimeScreen).
     val lockAtSleep: Boolean = true,
-    // System-wide greyscale for the wind-down window. Off by default: it needs the adb grant above.
-    val greyscale: Boolean = false,
     // The block profile enforced (as a LOCKED session) during the window, like
     // macOS's BedtimeSettings.policyId. Null → nothing is blocked at bedtime.
     val policyId: String? = null,
@@ -114,22 +110,6 @@ object BedtimeSchedule {
 }
 
 enum class QuietDecision { SET_PRIORITY, RESTORE_ALL, NONE }
-
-enum class GreyscaleDecision { APPLY, RESTORE, NONE }
-
-/**
- * Greyscale on while Bedtime is enabled, the toggle is on and we're inside the
- * window; restored only when [applied] says we turned it on - so a colour
- * filter the user set themselves is never switched off by us.
- */
-fun BedtimeSchedule.decideGreyscale(settings: BedtimeSettings, now: Long, zone: ZoneId, applied: Boolean): GreyscaleDecision {
-    val should = settings.enabled && settings.greyscale && isQuietTimeNow(settings, now, zone)
-    return when {
-        should && !applied -> GreyscaleDecision.APPLY
-        !should && applied -> GreyscaleDecision.RESTORE
-        else -> GreyscaleDecision.NONE
-    }
-}
 
 /** "22:05" in 24-hour mode, "10:05 PM" otherwise. Follows the phone's clock setting via [is24Hour]. */
 internal fun formatClock(minutesSinceMidnight: Int, is24Hour: Boolean, locale: Locale = Locale.getDefault()): String =

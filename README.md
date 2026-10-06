@@ -30,7 +30,7 @@ The product is designed around:
 - Focus sessions
 - Scheduled focus sessions
 - Recurring focus routines
-- Bedtime wind-down & sleep mode (phone usage & blue light restriction)
+- Bedtime wind-down & sleep mode (phone usage restriction)
 - Always-Blocked Commitment Shield (strict 14-day lock for adult content, gambling, and addictive distractions)
 - Notification management where supported
 - Focus statistics
@@ -87,7 +87,7 @@ Includes:
 - Unlimited blocklists
 - Advanced schedules
 - Focus routines
-- Bedtime Wind-Down & Sleep Guard (automated phone restriction & blue light reduction before bedtime)
+- Bedtime Wind-Down & Sleep Guard (automated phone restriction before bedtime)
 - Always-Blocked Commitment Shield (strict 14-day lock, curated adult/gambling filters, anti-tamper clock verification)
 - Cross-device synchronization
 - Advanced statistics
@@ -293,7 +293,7 @@ Each device receives the user's applicable focus state.
 
 ## Bedtime Wind-Down (Sleep Guard)
 
-A specialized scheduled focus mode engineered for evening and night hours. It automatically restricts phone usage, shields stimulating digital feeds, and minimizes blue light exposure prior to sleep to promote restorative sleep hygiene.
+A specialized scheduled focus mode engineered for evening and night hours. It automatically restricts phone usage and shields stimulating digital feeds prior to sleep to promote restorative sleep hygiene.
 
 ## Developer Extension
 

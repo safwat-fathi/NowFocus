@@ -17,8 +17,7 @@ function timeToMinutes(value: string): number {
 /** Bedtime Wind-Down. During the wind-down→wake window the chosen profile is
  * enforced as a LOCKED session (matches macOS BedtimeScheduler); at the sleep
  * moment the screen can lock. Ships lock-at-sleep only: there is no clean
- * unprivileged Windows API for DND or greyscale, so the greyscale setting is
- * kept (and synced) but not offered here. This PC only, and NowFocus must be
+ * unprivileged Windows API for DND. This PC only, and NowFocus must be
  * running. */
 export function Bedtime({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
   const t = useT();
