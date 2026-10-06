@@ -81,6 +81,9 @@ jobs:
           pnpm exec tauri signer generate --ci -w "$env:RUNNER_TEMP/ci.key"
           "TAURI_SIGNING_PRIVATE_KEY=$((Get-Content "$env:RUNNER_TEMP/ci.key" -Raw).Trim())" >> $env:GITHUB_ENV
           "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> $env:GITHUB_ENV
+          # tauri build validates the configured pubkey, so point it at the throwaway key's too.
+          $pub = (Get-Content "$env:RUNNER_TEMP/ci.key.pub" -Raw).Trim()
+          "TAURI_CONFIG={`"plugins`":{`"updater`":{`"pubkey`":`"$pub`"}}}" >> $env:GITHUB_ENV
       - run: pnpm exec tauri build --debug
 
   # A release installer for hands-on testing, built on demand (Actions > Windows > Run workflow). Unsigned, so
@@ -130,6 +133,9 @@ jobs:
           pnpm exec tauri signer generate --ci -w "$env:RUNNER_TEMP/ci.key"
           "TAURI_SIGNING_PRIVATE_KEY=$((Get-Content "$env:RUNNER_TEMP/ci.key" -Raw).Trim())" >> $env:GITHUB_ENV
           "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> $env:GITHUB_ENV
+          # tauri build validates the configured pubkey, so point it at the throwaway key's too.
+          $pub = (Get-Content "$env:RUNNER_TEMP/ci.key.pub" -Raw).Trim()
+          "TAURI_CONFIG={`"plugins`":{`"updater`":{`"pubkey`":`"$pub`"}}}" >> $env:GITHUB_ENV
       - run: pnpm exec tauri build
 
       - uses: actions/upload-artifact@v4
