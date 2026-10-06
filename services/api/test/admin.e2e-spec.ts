@@ -28,7 +28,7 @@ describe('admin dashboard', () => {
       expect((await t.http.post('/v1/admin/session').set('Authorization', 'Bearer nope')).status).toBe(401);
       const { token } = (await t.http.post('/v1/admin/session').set(auth)).body;
       expect((await t.http.get('/v1/admin/waitlist').set('Authorization', `Bearer ${token}`)).status).toBe(200);
-      expect((await t.http.get('/v1/admin/waitlist').set('Authorization', `Bearer ${token.slice(0, -1)}0`)).status).toBe(401);
+      expect((await t.http.get('/v1/admin/waitlist').set('Authorization', `Bearer ${token.slice(0, -1)}${token.endsWith('0') ? '1' : '0'}`)).status).toBe(401);
       expect((await t.http.get('/v1/admin/waitlist').set('Authorization', `Bearer ${signSession(TOKEN, Date.now() - 1)}`)).status).toBe(401);
       expect((await t.http.get('/v1/admin/waitlist').set('Authorization', 'Bearer nope')).status).toBe(401);
 
