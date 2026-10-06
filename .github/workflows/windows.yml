@@ -74,10 +74,14 @@ jobs:
       # Bundles the app + the staged service sidecar and runs the NSIS
       # installer hooks (which register the service). Proves the whole thing
       # links and packages; not a signed release artifact.
-      # No updater signing key here (PRs don't get secrets), so skip the updater artifacts.
+      # The config asks for signed updater artifacts; this build is never released, so sign with a throwaway key.
+      - name: Throwaway updater signing key
+        shell: pwsh
+        run: |
+          pnpm exec tauri signer generate --ci -w "$env:RUNNER_TEMP/ci.key"
+          "TAURI_SIGNING_PRIVATE_KEY_PATH=$env:RUNNER_TEMP/ci.key" >> $env:GITHUB_ENV
+          "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> $env:GITHUB_ENV
       - run: pnpm exec tauri build --debug
-        env:
-          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false},"plugins":{"updater":null}}'
 
   # A release installer for hands-on testing, built on demand (Actions > Windows > Run workflow). Unsigned, so
   # Windows SmartScreen warns on first run: More info > Run anyway. The installer registers the NowFocus
@@ -119,9 +123,14 @@ jobs:
           Copy-Item target/release/now-focus-service.exe src-tauri/binaries/now-focus-service-x86_64-pc-windows-msvc.exe
 
       - run: pnpm install --frozen-lockfile
+      # The config asks for signed updater artifacts; this build is never released, so sign with a throwaway key.
+      - name: Throwaway updater signing key
+        shell: pwsh
+        run: |
+          pnpm exec tauri signer generate --ci -w "$env:RUNNER_TEMP/ci.key"
+          "TAURI_SIGNING_PRIVATE_KEY_PATH=$env:RUNNER_TEMP/ci.key" >> $env:GITHUB_ENV
+          "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> $env:GITHUB_ENV
       - run: pnpm exec tauri build
-        env:
-          TAURI_CONFIG: '{"bundle":{"createUpdaterArtifacts":false},"plugins":{"updater":null}}'
 
       - uses: actions/upload-artifact@v4
         with:
