@@ -902,13 +902,13 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
             "enum": [
               "policy",
               "session",
               "bedtime_settings",
               "user_settings"
-            ]
+            ],
+            "type": "string"
           },
           "id": {
             "type": "string",

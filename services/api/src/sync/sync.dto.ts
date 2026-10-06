@@ -1,10 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, IsArray, IsInt, IsOptional, Max, Min } from 'class-validator';
+import { WRITABLE_TYPES, type WritableType } from './validate.js';
 
 /** One entity change. Only `policy`, `session`, `bedtime_settings` and `user_settings` are writable. */
 export class PushChange {
-  type!: 'policy' | 'session' | 'bedtime_settings' | 'user_settings';
+  // Explicit enum: the plugin infers it from the union, whose order TypeScript changes with unrelated edits.
+  @ApiProperty({ enum: WRITABLE_TYPES })
+  type!: WritableType;
   /** UUID for policy/session (any case; stored lowercase); `default` for the settings types. */
   id!: string;
   /** ISO 8601 with timezone. Last-write-wins compares this; values >5 min in the future are clamped. */
