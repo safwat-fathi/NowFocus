@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { signSession } from '../src/admin/admin.guard.js';
 import { createTestApp } from './helpers/app.js';
 
 const TOKEN = 'a'.repeat(32);
@@ -23,6 +24,12 @@ describe('admin dashboard', () => {
       const { id } = (await t.http.post('/v1/waitlist').send({ email, platforms: ['android'], featureRequest: 'dark mode' })).body;
 
       expect((await t.http.get('/v1/admin/waitlist')).status).toBe(401);
+
+      expect((await t.http.post('/v1/admin/session').set('Authorization', 'Bearer nope')).status).toBe(401);
+      const { token } = (await t.http.post('/v1/admin/session').set(auth)).body;
+      expect((await t.http.get('/v1/admin/waitlist').set('Authorization', `Bearer ${token}`)).status).toBe(200);
+      expect((await t.http.get('/v1/admin/waitlist').set('Authorization', `Bearer ${token.slice(0, -1)}0`)).status).toBe(401);
+      expect((await t.http.get('/v1/admin/waitlist').set('Authorization', `Bearer ${signSession(TOKEN, Date.now() - 1)}`)).status).toBe(401);
       expect((await t.http.get('/v1/admin/waitlist').set('Authorization', 'Bearer nope')).status).toBe(401);
 
       const list = await t.http.get('/v1/admin/waitlist').set(auth);

@@ -26,9 +26,9 @@ td.fr{max-width:420px;white-space:pre-wrap;word-break:break-word}.mute{color:var
 </div>
 <script>
 const $=id=>document.getElementById(id);let rows=[];
-const tok=()=>{try{return sessionStorage.getItem('t')||''}catch{return ''}};
+const tok=()=>{try{return localStorage.getItem('t')||''}catch{return ''}};
 async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{Authorization:'Bearer '+tok()}});
- if(r.status===401||r.status===404){try{sessionStorage.removeItem('t')}catch{};show(false);$('err').textContent=r.status===401?'Wrong token':'Admin is disabled';throw 0}
+ if(r.status===401||r.status===404){try{localStorage.removeItem('t')}catch{};show(false);$('err').textContent=r.status===401?'Wrong token':'Admin is disabled';throw 0}
  if(r.status===429){$('err').textContent='Too many attempts, wait a minute';throw 0}
  if(!r.ok)throw 0;return r.status===204?null:r.json()}
 function show(on){$('app').hidden=!on;$('login').hidden=on}
@@ -47,7 +47,11 @@ const esc=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
 $('csv').onclick=()=>{const t=['date,email,platforms,feature_request,issue'].concat(view().map(r=>[r.createdAt,r.email,r.platforms.join(' '),r.featureRequest,r.githubIssueUrl].map(esc).join(','))).join('\\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='waitlist.csv';a.click()};
 for(const id of['q','plat','fr'])$(id).oninput=draw;
-$('out').onclick=()=>{try{sessionStorage.removeItem('t')}catch{};rows=[];show(false)};
-$('login').onsubmit=e=>{e.preventDefault();$('err').textContent='';try{sessionStorage.setItem('t',$('tok').value)}catch{};$('tok').value='';load().catch(()=>{})};
+$('out').onclick=()=>{try{localStorage.removeItem('t')}catch{};rows=[];show(false)};
+$('login').onsubmit=async e=>{e.preventDefault();$('err').textContent='';
+ const r=await fetch('/v1/admin/session',{method:'POST',headers:{Authorization:'Bearer '+$('tok').value}});$('tok').value='';
+ if(r.status===401||r.status===404)return void($('err').textContent=r.status===401?'Wrong token':'Admin is disabled');
+ if(r.status===429)return void($('err').textContent='Too many attempts, wait a minute');
+ if(!r.ok)return;try{localStorage.setItem('t',(await r.json()).token)}catch{};load().catch(()=>{})};
 if(tok())load().catch(()=>{});
 </script></body></html>`;
