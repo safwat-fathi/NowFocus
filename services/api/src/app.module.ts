@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { ShieldModule } from './shield/shield.module.js';
 import { SyncModule } from './sync/sync.module.js';
+import { UpdatesModule } from './updates/updates.module.js';
 import { WaitlistModule } from './waitlist/waitlist.module.js';
 import { Config } from './config.js';
 import { CoreModule } from './core.module.js';
@@ -20,6 +21,7 @@ import { MetaController } from './meta.controller.js';
     ShieldModule,
     RealtimeModule,
     WaitlistModule,
+    UpdatesModule,
     AdminModule,
   ],
   controllers: [MetaController],
