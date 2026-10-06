@@ -19,7 +19,7 @@ NowFocus is a deep-work app for Android, macOS and Windows. Start a session and 
 ## Platform status
 - Android: early access v0.3, Android 8.0+. Not on Google Play yet. Most complete. Website blocking at DNS level through an on-device VPN (DNS only); app blocking through an Accessibility service, which also reads the browser address bar only to count time for website daily limits (only minutes on limited sites are kept). Microphone only when recording a voice note. No contacts, phone or SMS permission.
 - macOS: early build, macOS 14+, Apple silicon and Intel. Not yet released or notarized. Menu-bar app. Website blocking through the hosts file; full-screen overlay for apps.
-- Windows: in development, Windows 10/11 64-bit. No installer yet. Tray app plus background service; hosts-file blocking.
+- Windows: early access, Windows 10/11 64-bit, public unsigned installer (tested on Windows 11). Tray app plus background service; hosts-file blocking; checks api.nowfocus.online for updates.
 - iOS: planned, no build, no date. Linux may follow.
 - Cross-device sync: not available on any platform yet; each device is independent.
 

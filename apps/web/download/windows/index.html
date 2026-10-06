@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NowFocus for Windows (in development): every screen</title>
-<meta name="description" content="NowFocus for Windows is in development. See what the app will do, every screen and how to use it, plus honest limits, and get notified at launch.">
+<title>Download NowFocus for Windows: early access</title>
+<meta name="description" content="Download NowFocus for Windows, free early access for Windows 10 and 11. Every screen and how to use it, how to install, and the honest limits.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#f3f2f2">
 <link rel="canonical" href="https://nowfocus.online/download/windows/">
@@ -17,8 +17,8 @@
 <link rel="preload" href="/fonts/archivo-800.woff2" as="font" type="font/woff2" crossorigin>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NowFocus">
-<meta property="og:title" content="NowFocus for Windows (in development): every screen">
-<meta property="og:description" content="NowFocus for Windows is in development. See what the app will do, every screen and how to use it, plus honest limits, and get notified at launch.">
+<meta property="og:title" content="Download NowFocus for Windows: early access">
+<meta property="og:description" content="Download NowFocus for Windows, free early access for Windows 10 and 11. Every screen and how to use it, how to install, and the honest limits.">
 <meta property="og:url" content="https://nowfocus.online/download/windows/">
 <meta property="og:image" content="https://nowfocus.online/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -70,8 +70,8 @@
       "@type": "WebPage",
       "@id": "https://nowfocus.online/download/windows/#webpage",
       "url": "https://nowfocus.online/download/windows/",
-      "name": "NowFocus for Windows (in development): every screen",
-      "description": "NowFocus for Windows is in development. See what the app will do, every screen and how to use it, plus honest limits, and get notified at launch.",
+      "name": "Download NowFocus for Windows: early access",
+      "description": "Download NowFocus for Windows, free early access for Windows 10 and 11. Every screen and how to use it, how to install, and the honest limits.",
       "isPartOf": {
         "@id": "https://nowfocus.online/#website"
       },
@@ -120,9 +120,10 @@
       "@id": "https://nowfocus.online/download/windows/#app",
       "name": "NowFocus for Windows",
       "url": "https://nowfocus.online/download/windows/",
-      "description": "NowFocus for Windows, in development, blocks distracting sites and apps during focus sessions and makes leaving early a decision instead of a reflex.",
+      "description": "NowFocus for Windows blocks distracting sites and apps during focus sessions and makes leaving early a decision instead of a reflex.",
       "applicationCategory": "UtilitiesApplication",
       "operatingSystem": "Windows 10+ (64-bit)",
+      "downloadUrl": "https://api.nowfocus.online/v1/downloads/windows",
       "softwareRequirements": "Windows 10 (64-bit) or Windows 11, x64",
       "featureList": [
         "Block websites and apps during focus sessions",
@@ -157,10 +158,10 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "When will NowFocus for Windows be available?",
+          "name": "Where can I download NowFocus for Windows?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "There’s no date yet. The Windows version is still being built and hasn’t been through testing on real PCs. Email us to hear when there’s a download."
+            "text": "It’s a free early-access build. Use the Download button at the top of this page. The installer isn’t code-signed, so Windows shows a “Windows protected your PC” warning: choose More info, then Run anyway. Once installed, NowFocus updates itself from Settings."
           }
         },
         {
@@ -237,13 +238,14 @@
 </nav>
 
   <header class="guide-hero">
-    <span class="status dev">In development · No installer yet</span>
+    <span class="status">Early access · Windows 10 and 11 · Free</span>
     <h1>NowFocus for Windows</h1>
-    <p class="lede">A tray app and background service that block distracting sites and apps during focus sessions, and make leaving early a decision instead of a reflex. Not available yet.</p>
+    <p class="lede">A tray app and background service that block distracting sites and apps during focus sessions, and make leaving early a decision instead of a reflex. Free early access.</p>
     <div class="actions">
-      <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
+      <a class="btn btn-primary" href="https://api.nowfocus.online/v1/downloads/windows">Download for Windows</a>
+      <button type="button" class="btn btn-secondary" data-waitlist-open>Get notified of updates</button>
     </div>
-    <div class="callout"><h4>In development</h4><p>There’s no installer yet, and the Windows version hasn’t been through testing on real PCs. This page describes what the app is built to do, and details may change before release.</p></div>
+    <div class="callout"><h4>Early access, not code-signed</h4><p>NowFocus for Windows has been tested on Windows 11 and hasn’t been tested on Windows 10 yet. The installer isn’t code-signed, so Windows will warn you before it runs: choose <strong>More info</strong>, then <strong>Run anyway</strong>. Details may change between versions.</p></div>
   </header>
 
   <div class="guide">
@@ -251,9 +253,9 @@
   <nav aria-label="On this page">
     <h2 class="toc-title">On this page</h2>
     <ol class="toc-list">
-      <li><a href="#requirements">Requirements (expected)</a>
+      <li><a href="#requirements">Requirements</a>
       </li>
-      <li><a href="#install">Install (expected)</a>
+      <li><a href="#install">Install</a>
       </li>
       <li><a href="#screens">Every screen and how to use it</a>
         <ol class="toc-sub">
@@ -272,7 +274,7 @@
       </li>
       <li><a href="#limits">What it can’t do</a>
       </li>
-      <li><a href="#uninstall">Uninstall (expected)</a>
+      <li><a href="#uninstall">Uninstall</a>
       </li>
       <li><a href="#faq">FAQ</a>
       </li>
@@ -282,24 +284,24 @@
 
 <article class="guide-body">
 <section id="requirements">
-  <h2>Requirements (expected)</h2>
+  <h2>Requirements</h2>
   <table class="table spec">
   <tbody>
-    <tr><th scope="row">Version</th><td>0.1.0, in development. No installer has been published.</td></tr>
-    <tr><th scope="row">Windows</th><td>Windows 10 (64-bit) or Windows 11, x64. There’s no ARM build.</td></tr>
+    <tr><th scope="row">Version</th><td>Early access. The Download button always gives the newest version.</td></tr>
+    <tr><th scope="row">Windows</th><td>Windows 10 (64-bit) or Windows 11, x64. There’s no ARM build. Tested on Windows 11; Windows 10 hasn’t been tested yet.</td></tr>
     <tr><th scope="row">Permissions</th><td>One administrator approval at install to set up the NowFocus background service. The app itself runs without administrator rights.</td></tr>
-    <tr><th scope="row">Network</th><td>None. The app and its service talk over a local pipe on your PC, and no firewall rules are added.</td></tr>
+    <tr><th scope="row">Network</th><td>Blocking needs none: the app and its service talk over a local pipe on your PC, and no firewall rules are added. The app contacts api.nowfocus.online to check for updates (it sends the app version) and, only if you create an account, to sync.</td></tr>
     <tr><th scope="row">Price</th><td>Free.</td></tr>
   </tbody>
 </table>
 </section>
 
 <section id="install">
-  <h2>Install (expected)</h2>
-  <p class="lead">There’s no installer yet. This is what installing is expected to look like once one is published.</p>
+  <h2>Install</h2>
+  <p class="lead">Free early-access installer for 64-bit Windows.</p>
   <ol>
-  <li>Download the NowFocus setup <code>.exe</code>. When a build is published, the button at the top of this page will link to it.</li>
-  <li>Run it. Windows asks for administrator approval once, because NowFocus installs for all users and sets up a background service called “NowFocus Service”. Early builds won’t be code-signed, so expect a “Windows protected your PC” warning: choose <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
+  <li>Download the NowFocus setup <code>.exe</code> with the button at the top of this page.</li>
+  <li>Run it. Windows asks for administrator approval once, because NowFocus installs for all users and sets up a background service called “NowFocus Service”. The installer isn’t code-signed, so expect a “Windows protected your PC” warning: choose <strong>More info</strong>, then <strong>Run anyway</strong>.</li>
   <li>NowFocus’s window uses Microsoft’s WebView2 runtime. It’s preinstalled on Windows 11 and most current Windows 10 PCs, and the installer may download it if it’s missing.</li>
   <li>Open NowFocus from the Start menu. A welcome screen appears once; click <strong>Get started</strong>.</li>
 </ol>
@@ -308,7 +310,7 @@
 
 <section id="screens">
   <h2>Every screen and how to use it</h2>
-  <p class="lead">Every screen the app is built with, as it exists in the current source. Button names and messages are quoted from the app, and details may change before release.</p>
+  <p class="lead">Every screen in the app. Button names and messages are quoted from the app, and details may change between versions.</p>
 <section class="screen" id="s-window">
   <h3>Window and tray</h3>
   <p>A 1280 × 800 window (minimum 960 × 640) with its own title bar. The sidebar lists Focus, Profiles, Devices and Stats, then an “Always on” group with Commitment and Bedtime. Its footer says “This PC”. During a session the title shows the profile and time left, for example “NowFocus · Deep Work · 42:10”.</p>
@@ -499,22 +501,22 @@
 </section>
 
 <section id="uninstall">
-  <h2>Uninstall (expected)</h2>
+  <h2>Uninstall</h2>
   <p>Uninstalling runs a cleanup that clears both hosts-file blocks (sessions and Commitment) and the saved commitment, then stops and removes the NowFocus Service. Uninstalling as an administrator is also the only way out of a Commitment early.</p>
   <h4>What it leaves behind</h4>
   <ul>
   <li>Your profiles and stats, in <code>%APPDATA%\app.getnowfocus.windows\</code>.</li>
   <li><code>%ProgramData%\NowFocus</code> and a backup of your hosts file, <code>hosts.nowfocus.backup</code>.</li>
 </ul>
-  <p>Delete these yourself if you want NowFocus gone entirely. The installer has never been run on a real PC, so this is what it’s built to do rather than what we’ve watched it do.</p>
+  <p>Delete these yourself if you want NowFocus gone entirely. The installer has been run on a real Windows 11 PC. It hasn’t been tested on Windows 10.</p>
 </section>
 
 <section id="faq">
   <h2>FAQ</h2>
   <div class="faq">
   <details>
-    <summary>When will NowFocus for Windows be available?</summary>
-    <p>There’s no date yet. The Windows version is still being built and hasn’t been through testing on real PCs. Email us to hear when there’s a download.</p>
+    <summary>Where can I download NowFocus for Windows?</summary>
+    <p>It’s a free early-access build. Use the Download button at the top of this page. The installer isn’t code-signed, so Windows shows a “Windows protected your PC” warning: choose More info, then Run anyway. Once installed, NowFocus updates itself from Settings.</p>
   </details>
   <details>
     <summary>Why does the installer need administrator approval?</summary>

@@ -152,7 +152,7 @@
           "name": "Where can I download it?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Nowhere yet. NowFocus isn’t published to any store, and there are no download links. Each platform’s guide says where it stands. Email us to hear when a build is out."
+            "text": "Windows has a public early-access installer: use the Download button on its guide page. Android and macOS builds aren’t published yet, and NowFocus isn’t in any store. Each platform’s guide says where it stands."
           }
         },
         {
@@ -192,7 +192,7 @@
           "name": "Which platform is furthest along?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Android has an early-access build (v0.3). macOS has an early build that hasn’t been released. Windows is in development and has no installer."
+            "text": "Android has an early-access build (v0.3). macOS has an early build that hasn’t been released. Windows has a public early-access installer, tested on Windows 11."
           }
         }
       ]
@@ -266,14 +266,15 @@
     </div>
     <div class="platform">
       <div>
-        <span class="status dev">In development</span>
+        <span class="status">Early access</span>
         <h3>Windows</h3>
       </div>
       <ul>
       <li>Windows 10 or 11, 64-bit</li>
-      <li>No installer yet</li>
+      <li>Free installer, not code-signed</li>
       <li>Tray app plus background service</li>
       </ul>
+      <a class="btn btn-primary" href="https://api.nowfocus.online/v1/downloads/windows">Download for Windows</a>
       <a class="btn btn-secondary" href="/download/windows/">Windows guide</a>
     </div>
     <div class="platform">
@@ -292,24 +293,24 @@
 
     <section id="which">
       <h2>Which should I pick?</h2>
-      <p class="lead">Use the device you’re most tempted on. Android is the furthest along, so it’s the best place to start if you can install an early-access app. The macOS build hasn’t been checked on a clean Mac yet, and Windows isn’t installable. Cross-device sync isn’t available, so each device is its own island: profiles and sessions don’t carry between them.</p>
+      <p class="lead">Use the device you’re most tempted on. Android is the furthest along, so it’s the best place to start if you can install an early-access app. The macOS build hasn’t been checked on a clean Mac yet, and Windows has a public early-access installer. Cross-device sync isn’t available, so each device is its own island: profiles and sessions don’t carry between them.</p>
     </section>
 
     <section id="compare">
       <h2>How the platforms compare</h2>
-      <p class="lead">Only what’s in the current source. “In development” means the Windows code exists but hasn’t been tested on real PCs.</p>
+      <p class="lead">Only what’s in the current source.</p>
       <table class="table matrix">
         <thead><tr><th>Feature</th><th>Android</th><th>macOS</th><th>Windows</th></tr></thead>
         <tbody>
-        <tr><th scope="row">Block websites</th><td data-label="Android">Yes, at the DNS level through an on-device VPN</td><td data-label="macOS">Yes, through your hosts file</td><td data-label="Windows">In development, through the hosts file</td></tr>
-        <tr><th scope="row">Block apps</th><td data-label="Android">Yes, with a block screen</td><td data-label="macOS">Yes, with a full-screen overlay</td><td data-label="Windows">In development: closes the app and shows an overlay</td></tr>
-        <tr><th scope="row">Normal, Strict and Locked sessions</th><td data-label="Android">Yes</td><td data-label="macOS">Yes</td><td data-label="Windows">In development</td></tr>
+        <tr><th scope="row">Block websites</th><td data-label="Android">Yes, at the DNS level through an on-device VPN</td><td data-label="macOS">Yes, through your hosts file</td><td data-label="Windows">Yes, through the hosts file</td></tr>
+        <tr><th scope="row">Block apps</th><td data-label="Android">Yes, with a block screen</td><td data-label="macOS">Yes, with a full-screen overlay</td><td data-label="Windows">Yes: closes the app and shows an overlay</td></tr>
+        <tr><th scope="row">Normal, Strict and Locked sessions</th><td data-label="Android">Yes</td><td data-label="macOS">Yes</td><td data-label="Windows">Yes</td></tr>
         <tr><th scope="row">Strict: your own voice note</th><td data-label="Android">Yes, you must hear your 10-second note</td><td data-label="macOS">Optional, plays when you click it (up to 60 seconds)</td><td data-label="Windows">Not available</td></tr>
         <tr><th scope="row">Partial blocking (Shorts, Reels)</th><td data-label="Android">Experimental</td><td data-label="macOS">Not available</td><td data-label="Windows">Saved but not enforced yet</td></tr>
-        <tr><th scope="row">14-day Commitment</th><td data-label="Android">Sites, apps and partial rules</td><td data-label="macOS">Websites</td><td data-label="Windows">Websites, in development</td></tr>
-        <tr><th scope="row">Bedtime Wind-Down</th><td data-label="Android">Yes, with quiet notifications and lock at sleep time</td><td data-label="macOS">Yes, while the app is open</td><td data-label="Windows">In development, while the app is running</td></tr>
+        <tr><th scope="row">14-day Commitment</th><td data-label="Android">Sites, apps and partial rules</td><td data-label="macOS">Websites</td><td data-label="Windows">Websites</td></tr>
+        <tr><th scope="row">Bedtime Wind-Down</th><td data-label="Android">Yes, with quiet notifications and lock at sleep time</td><td data-label="macOS">Yes, while the app is open</td><td data-label="Windows">Yes, while the app is running</td></tr>
         <tr><th scope="row">Reach out to someone instead</th><td data-label="Android">Up to five people, one-tap Call and Text</td><td data-label="macOS">Names shown as text</td><td data-label="Windows">Not available</td></tr>
-        <tr><th scope="row">Weekly stats</th><td data-label="Android">Yes, with an urge chart</td><td data-label="macOS">Yes</td><td data-label="Windows">In development</td></tr>
+        <tr><th scope="row">Weekly stats</th><td data-label="Android">Yes, with an urge chart</td><td data-label="macOS">Yes</td><td data-label="Windows">Yes</td></tr>
         <tr><th scope="row">Cross-device sync</th><td data-label="Android">Not yet</td><td data-label="macOS">Not yet</td><td data-label="Windows">Not yet</td></tr>
         </tbody>
       </table>
@@ -324,7 +325,7 @@
   </details>
   <details>
     <summary>Where can I download it?</summary>
-    <p>Nowhere yet. NowFocus isn’t published to any store, and there are no download links. Each platform’s guide says where it stands. Email us to hear when a build is out.</p>
+    <p>Windows has a public early-access installer: use the Download button on its guide page. Android and macOS builds aren’t published yet, and NowFocus isn’t in any store. Each platform’s guide says where it stands.</p>
   </details>
   <details>
     <summary>Does it sync between my devices?</summary>
@@ -344,7 +345,7 @@
   </details>
   <details>
     <summary>Which platform is furthest along?</summary>
-    <p>Android has an early-access build (v0.3). macOS has an early build that hasn’t been released. Windows is in development and has no installer.</p>
+    <p>Android has an early-access build (v0.3). macOS has an early build that hasn’t been released. Windows has a public early-access installer, tested on Windows 11.</p>
   </details>
 </div>
       <div class="next-links">
