@@ -79,7 +79,7 @@ jobs:
         shell: pwsh
         run: |
           pnpm exec tauri signer generate --ci -w "$env:RUNNER_TEMP/ci.key"
-          "TAURI_SIGNING_PRIVATE_KEY_PATH=$env:RUNNER_TEMP/ci.key" >> $env:GITHUB_ENV
+          "TAURI_SIGNING_PRIVATE_KEY=$((Get-Content "$env:RUNNER_TEMP/ci.key" -Raw).Trim())" >> $env:GITHUB_ENV
           "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> $env:GITHUB_ENV
       - run: pnpm exec tauri build --debug
 
@@ -128,7 +128,7 @@ jobs:
         shell: pwsh
         run: |
           pnpm exec tauri signer generate --ci -w "$env:RUNNER_TEMP/ci.key"
-          "TAURI_SIGNING_PRIVATE_KEY_PATH=$env:RUNNER_TEMP/ci.key" >> $env:GITHUB_ENV
+          "TAURI_SIGNING_PRIVATE_KEY=$((Get-Content "$env:RUNNER_TEMP/ci.key" -Raw).Trim())" >> $env:GITHUB_ENV
           "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> $env:GITHUB_ENV
       - run: pnpm exec tauri build
 
