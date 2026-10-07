@@ -4,10 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { Repository } from 'typeorm';
 import { Config } from '../config.js';
 import { WaitlistEntry } from '../db/entities.js';
+import { createGithubIssue, quote } from '../github.js';
 import { WaitlistDto } from './waitlist.dto.js';
-
-/** Stops user text from pinging people or injecting markdown headings/links into a public issue. */
-const quote = (text: string) => text.replace(/@/g, '@​').split('\n').map((l) => `> ${l}`).join('\n');
 
 @Injectable()
 export class WaitlistService {
@@ -30,7 +28,7 @@ export class WaitlistService {
     let githubIssueUrl = existing?.githubIssueUrl ?? null;
     if (featureRequest && featureRequest !== existing?.featureRequest && this.config.githubToken) {
       try {
-        githubIssueUrl = await this.createGithubIssue(platforms, featureRequest);
+        githubIssueUrl = await this.createGithubIssue(featureRequest);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(`Failed to create GitHub issue for waitlist ${id}: ${msg}`);
@@ -49,28 +47,9 @@ export class WaitlistService {
     return { ok: true, id, githubIssueUrl };
   }
 
-  private async createGithubIssue(platforms: string[], request: string): Promise<string | null> {
-    const repo = this.config.githubRepo ?? 'safwat-fathi/NowFocus';
+  private createGithubIssue(request: string): Promise<string | null> {
     const firstLine = request.split('\n')[0].replace(/@/g, '').slice(0, 60);
-    const body = [
-      '### Waitlist feature request',
-      '',
-      `**Platform(s):** ${platforms.length > 0 ? platforms.join(', ') : 'not specified'}`,
-      '',
-      quote(request),
-    ].join('\n');
-
-    const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.config.githubToken}`,
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'NowFocus-API',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ title: `[Feature request] ${firstLine || 'Community request'}`, body, labels: ['feature-request'] }),
-    });
-    if (!res.ok) throw new Error(`GitHub API returned ${res.status}: ${await res.text()}`);
-    return ((await res.json()) as { html_url?: string }).html_url ?? null;
+    const body = ['### Waitlist feature request', '', '', quote(request)].join('\n');
+    return createGithubIssue(this.config, `[Feature request] ${firstLine || 'Community request'}`, body, 'feature-request');
   }
 }

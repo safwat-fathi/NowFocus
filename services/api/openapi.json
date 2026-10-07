@@ -619,6 +619,31 @@
           "waitlist"
         ]
       }
+    },
+    "/v1/reports": {
+      "post": {
+        "operationId": "ReportsController_submit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Report stored"
+          }
+        },
+        "summary": "Send an issue report from an app",
+        "tags": [
+          "reports"
+        ]
+      }
     }
   },
   "info": {
@@ -1190,6 +1215,42 @@
         },
         "required": [
           "email"
+        ]
+      },
+      "ReportDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "contact": {
+            "type": "string",
+            "maxLength": 254
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "android",
+              "windows",
+              "macos"
+            ]
+          },
+          "appVersion": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "osVersion": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "message",
+          "platform",
+          "appVersion",
+          "osVersion"
         ]
       }
     }

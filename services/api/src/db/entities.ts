@@ -35,3 +35,15 @@ export class WaitlistEntry {
   @CreateDateColumn({ type: 'timestamptz' }) createdAt!: Date;
 }
 
+
+@Entity('issue_reports')
+export class IssueReport {
+  @PrimaryColumn('uuid') id!: string;
+  @Column({ type: 'text' }) message!: string;
+  @Column({ type: 'text', nullable: true }) contact!: string | null;
+  @Column({ type: 'text' }) platform!: string;
+  @Column({ type: 'text' }) appVersion!: string;
+  @Column({ type: 'text' }) osVersion!: string;
+  @Column({ type: 'text', nullable: true }) githubIssueUrl!: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) createdAt!: Date;
+}
