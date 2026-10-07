@@ -1,8 +1,8 @@
 # NowFocus (full text summary)
 
-Source: https://nowfocus.online/ · Last updated 2026-10-02 · Contact: safwat.rashwan@gmail.com
+Source: https://nowfocus.online/ · Last updated 2026-10-07 · Contact: safwat.rashwan@gmail.com
 
-NowFocus is a deep-work app for Android, macOS and Windows. Start a session and the apps and sites you chose go dark until the timer ends. It runs on your device, so what you block and what you try to open never reaches NowFocus. The apps have no account, no ads, no trackers and no analytics.
+NowFocus is a deep-work app for Android, macOS and Windows. Start a session and the apps and sites you chose go dark until the timer ends. It runs on your device, so what you block and what you try to open never reaches NowFocus. The apps need no account and have no ads, no trackers and no analytics; an optional account enables sync.
 
 ## How a session works
 1. Start a session: pick a Focus Profile (the apps and sites to block) and a length.
@@ -21,7 +21,7 @@ NowFocus is a deep-work app for Android, macOS and Windows. Start a session and 
 - macOS: early build, macOS 14+, Apple silicon and Intel. Not yet released or notarized. Menu-bar app. Website blocking through the hosts file; full-screen overlay for apps.
 - Windows: early access, Windows 10/11 64-bit, public unsigned installer (tested on Windows 11). Tray app plus background service; hosts-file blocking; checks api.nowfocus.online for updates.
 - iOS: planned, no build, no date. Linux may follow.
-- Cross-device sync: not available on any platform yet; each device is independent.
+- Cross-device sync: optional, needs an account, on Android and Windows (profiles, Bedtime settings, sessions); not on macOS. Signed out, the apps make no sync connection.
 
 ## Pricing
 Free. Nothing is locked behind payment today. Paid plans may come later and the site will say so first.

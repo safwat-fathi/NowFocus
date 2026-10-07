@@ -1,8 +1,8 @@
 # NowFocus
 
-> NowFocus is a privacy-first focus app for Android, macOS and Windows. It blocks distracting apps and sites during a focus session and makes quitting early a decision, not a reflex. Everything runs on the device; there is no account.
+> NowFocus is a privacy-first focus app for Android, macOS and Windows. It blocks distracting apps and sites during a focus session and makes quitting early a decision, not a reflex. Everything runs on the device; an account is optional and only needed for sync between devices.
 
-Status (2026-10-01): free, not in any store. Windows has a public early-access installer (unsigned, tested on Windows 11; see the Windows guide below); Android has an early-access build (v0.3) that is not public yet; macOS is an early unreleased build; iOS is planned. No cross-device sync yet. It is a self-control tool, not a lock: someone determined to uninstall it still can. There is a waitlist (email, platforms, optional feature request) on every page of the site; feature requests are posted publicly as GitHub issues, emails are not.
+Status (2026-10-07): free, not in any store. Windows has a public early-access installer (unsigned, tested on Windows 11; see the Windows guide below); Android has an early-access build (v0.3) that is not public yet; macOS is an early unreleased build; iOS is planned. Optional account sync (profiles, Bedtime settings and sessions) exists in the Android and Windows builds; macOS is not part of it. It is a self-control tool, not a lock: someone determined to uninstall it still can. There is a waitlist (email, platforms, optional feature request) on every page of the site; feature requests are posted publicly as GitHub issues, emails are not.
 
 ## Pages
 

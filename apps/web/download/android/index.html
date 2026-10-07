@@ -177,7 +177,7 @@
           "name": "Is my data sent anywhere?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No NowFocus server is involved. Your profiles, sessions, stats, people and voice notes stay on your phone. If Google’s device backup is on, Android may back up the app’s data, voice notes excluded, to your Google account."
+            "text": "Signed out, no NowFocus server is involved: your profiles, sessions, stats, people and voice notes stay on your phone. If you sign in to sync, your profiles, Bedtime settings and sessions are also stored on our server (see Privacy); stats, people and voice notes never are. If Google’s device backup is on, Android may back up the app’s data, voice notes excluded, to your Google account."
           }
         },
         {
@@ -301,7 +301,7 @@
     <tr><th scope="row">Version</th><td>0.1, early access. Not on Google Play yet.</td></tr>
     <tr><th scope="row">Android</th><td>Android 8.0 (API 26) or later.</td></tr>
     <tr><th scope="row">Permissions</th><td>Accessibility service, a VPN service (DNS only), Do Not Disturb access, and the microphone only when you record a voice note. No contacts, phone or SMS permission.</td></tr>
-    <tr><th scope="row">Network</th><td>Used only to pass DNS lookups on to your network’s DNS server. The app doesn’t connect to any NowFocus server.</td></tr>
+    <tr><th scope="row">Network</th><td>Used to pass DNS lookups on to your network’s DNS server and, only if you sign in, to sync with NowFocus. Signed out, the app doesn’t connect to any NowFocus server.</td></tr>
     <tr><th scope="row">Price</th><td>Free.</td></tr>
   </tbody>
 </table>
@@ -560,7 +560,7 @@
 </section>
 <section class="screen" id="s-devices">
   <h3>Devices</h3>
-  <p>A health check for this phone. There’s no multi-device screen yet, because cross-device sync isn’t available.</p>
+  <p>A health check for this phone, plus the optional Account section: sign in to sync your profiles and Bedtime settings with your other devices, see and remove them, and join sessions started elsewhere.</p>
   <h4>What’s on it</h4>
   <ul>
     <li>A “This phone” card marked Active or Degraded.</li>
@@ -585,7 +585,7 @@
   <li>Daily limits count an app’s time from Android’s usage access, and a website’s time by reading your browser’s address bar through Accessibility while that browser is in front. Only the minutes on the sites you limited are kept. That works for Chrome, Brave, Edge, Samsung Internet, Firefox, Opera and Vivaldi, but not in other browsers or in-app browsers, and a browser update can break it. When a site’s time is used up NowFocus steps back out of the page; it doesn’t block the site everywhere. Everything resets at your phone’s local midnight.</li>
   <li>Bedtime alarms can be a few minutes off, and “lock at sleep time” is skipped when Accessibility is off or on Android 8.</li>
   <li>We’ve tested NowFocus on a Samsung Galaxy M52 5G running Android 13 (One UI 5.1), where focus sessions and Bedtime Wind-Down kept working. Other makers’ battery savers (Xiaomi, Huawei, Oppo and similar) haven’t been tested.</li>
-  <li>Cross-device sync isn’t available. Each phone is on its own.</li>
+  <li>Sync is optional and needs an account. Signed out, this phone never contacts NowFocus. Only profiles, Bedtime settings and sessions sync; stats, history and Shield items stay on the phone.</li>
 </ul>
 </div>
 </section>
@@ -608,7 +608,7 @@
   </details>
   <details>
     <summary>Is my data sent anywhere?</summary>
-    <p>No NowFocus server is involved. Your profiles, sessions, stats, people and voice notes stay on your phone. If Google’s device backup is on, Android may back up the app’s data, voice notes excluded, to your Google account.</p>
+    <p>Signed out, no NowFocus server is involved: your profiles, sessions, stats, people and voice notes stay on your phone. If you sign in to sync, your profiles, Bedtime settings and sessions are also stored on our server (see Privacy); stats, people and voice notes never are. If Google’s device backup is on, Android may back up the app’s data, voice notes excluded, to your Google account.</p>
   </details>
   <details>
     <summary>Why is the Accessibility switch greyed out?</summary>
