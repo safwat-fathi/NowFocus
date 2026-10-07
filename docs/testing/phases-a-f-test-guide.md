@@ -4,6 +4,8 @@ Branch `feat/phases-a-f`. This guide is for you to run on your own devices and w
 
 **How to fill it in.** Each test has steps, what you should see, and a result line. Change `[ ]` to `[x]` on exactly one of pass / fail / skipped, and write anything odd under **Notes** (what you saw instead, the time, a screenshot name). A failure with a note is worth more to me than ten passes.
 
+**Status, 2026-10-07.** The Windows 11 PC test is done (owner-confirmed; reported 2026-10-06, per-test results not written down here). The account sync pass between Windows and Android is therefore marked as tested on the Windows side; see `docs/windows-release.md`.
+
 ## What was and wasn't checked before you got this
 
 | Area | Checked automatically | NOT checked by anyone yet |
