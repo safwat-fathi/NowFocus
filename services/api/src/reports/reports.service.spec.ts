@@ -22,13 +22,14 @@ describe('ReportsService', () => {
     expect(saved[0]).toMatchObject({ message: 'it crashes @bob', contact: null, platform: 'android', githubIssueUrl: null });
   });
 
-  it('opens a mention-safe GitHub issue', async () => {
+  it('opens a mention-safe GitHub issue, version fields included', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ html_url: 'https://github.com/o/r/issues/2' }) }));
     vi.stubGlobal('fetch', fetchMock);
     const { saved, service } = setup(config({ githubToken: 't', githubRepo: 'o/r' }));
-    await service.submit(dto);
+    await service.submit({ ...dto, appVersion: '0.7' });
     const sent = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body);
     expect(sent.body).toContain('> it crashes @​bob');
+    expect(sent.body).toContain('> android 0.7 · Android 14');
     expect(sent.labels).toEqual(['app-report']);
     expect(saved[0].githubIssueUrl).toBe('https://github.com/o/r/issues/2');
   });

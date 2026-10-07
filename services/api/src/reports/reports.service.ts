@@ -24,7 +24,8 @@ export class ReportsService {
     let githubIssueUrl: string | null = null;
     if (this.config.githubToken) {
       const title = `[App report] ${message.split('\n')[0].replace(/@/g, '').slice(0, 60)}`;
-      const body = [`**${dto.platform}** ${dto.appVersion} · ${dto.osVersion}`, '', quote(message)].join('\n');
+      const meta = `${dto.platform} ${dto.appVersion} · ${dto.osVersion}`.replace(/[\r\n]+/g, ' ');
+      const body = [quote(meta), '', quote(message)].join('\n');
       try {
         githubIssueUrl = await createGithubIssue(this.config, title, body, 'app-report');
       } catch (err: unknown) {
