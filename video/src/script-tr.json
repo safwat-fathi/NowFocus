@@ -1,0 +1,9 @@
+[
+  { "id": "hook", "text": "NowFocus is out for testing. On Android and Windows." },
+  { "id": "free", "text": "It's free. No account needed." },
+  { "id": "android", "text": "On Android, join through Google Play testing." },
+  { "id": "arabic", "text": "Now in Arabic, right to left. Switch any time in Settings." },
+  { "id": "windows", "text": "On Windows, download early access. It updates itself." },
+  { "id": "sync", "text": "Sign in if you want, and join a session from your phone or your PC." },
+  { "id": "cta", "text": "Try it at nowfocus dot online." }
+]

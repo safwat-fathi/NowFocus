@@ -2,6 +2,7 @@ import { ALL_FORMATS, Input, UrlSource } from "mediabunny";
 import { CalculateMetadataFunction, staticFile } from "remotion";
 import { LEAD } from "./common";
 import script from "./script.json";
+import scriptTr from "./script-tr.json";
 import scriptVs from "./script-vs.json";
 
 export const FPS = 30;
@@ -33,5 +34,18 @@ export const calculateChallengerMetadata: CalculateMetadataFunction<ChallengerPr
   return {
     props: { scenes },
     durationInFrames: scenes.reduce((a, b) => a + b, 0) - CH_FADE * (scenes.length - 1),
+  };
+};
+
+// The test-releases video: Android + Windows early access.
+export const TR_FADE = 8;
+export type TestersProps = { scenes: number[] };
+
+export const calculateTestersMetadata: CalculateMetadataFunction<TestersProps> = async () => {
+  const secs = await Promise.all(scriptTr.map((s) => audioSeconds(staticFile(`voiceover-tr/${s.id}.wav`))));
+  const scenes = secs.map((s) => Math.ceil(s * FPS) + LEAD + TAIL);
+  return {
+    props: { scenes },
+    durationInFrames: scenes.reduce((a, b) => a + b, 0) - TR_FADE * (scenes.length - 1),
   };
 };
