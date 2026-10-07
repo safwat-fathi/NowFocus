@@ -194,7 +194,11 @@ object SyncLogic {
         var rejected = 0
         for (res in results) {
             val out = sent.find { it.type == res.type && it.id.lowercase() == res.id.lowercase() } ?: continue
-            when (res.status) {
+            // policy_in_use: a session is running on this profile and the edit would loosen it. The server's copy wins
+            // outright, so the local edit is reverted (clear its dirty time, or "newer local edit wins" would resend it).
+            val inUse = res.status == "rejected" && res.code == "policy_in_use" && res.record != null && out.type == POLICY
+            if (inUse) cur.state.policies[out.id.lowercase()]?.let { m -> cur = cur.copy(state = cur.state.copy(policies = cur.state.policies + (out.id.lowercase() to m.copy(dirtyAt = null)))) }
+            when (if (inUse) "stale" else res.status) {
                 "applied" -> {
                     val rec = res.record ?: continue
                     when (out.type) {

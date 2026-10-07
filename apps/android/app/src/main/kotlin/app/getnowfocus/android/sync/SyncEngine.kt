@@ -39,7 +39,12 @@ class SyncEngine(
         val sessionRecords = ArrayList<ServerRecord>()
         while (guard++ < MAX_PAGES) {
             val cursor = store.transact { l -> l to l.state.cursor.takeIf { l.state.userId != null } } ?: return@withLock SyncReport(0, 0, 0)
-            val page = api.pull(cursor)
+            val page = try { api.pull(cursor) } catch (e: ApiException) {
+                if (e.status != 410) throw e
+                // The cursor is older than the server's history: start over and reconcile from the full set.
+                store.transact { l -> l.copy(state = l.state.copy(cursor = 0)) to Unit }
+                continue
+            }
             val applied = store.transact { l -> if (l.state.userId == null) l to null else SyncLogic.applyPulled(l, page.changes, page.cursor).let { it.local to it } }
             pulled += page.changes.size
             sessionRecords += page.changes.filter { it.type == SessionWire.TYPE }

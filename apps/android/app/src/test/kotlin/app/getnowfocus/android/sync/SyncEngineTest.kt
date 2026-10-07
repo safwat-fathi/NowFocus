@@ -18,12 +18,15 @@ private class FakeServer {
     var calls = 0
     var failNextPush: Exception? = null
     var rejectPolicyNamed: String? = null
+    var goneOnce = false
+    var inUse = false
 
     private fun key(type: String, id: String) = "$type:${id.lowercase()}"
     private fun view(type: String, id: String, r: Rec) = ServerRecord(type, id, r.data.toString(), r.deleted, r.revision, r.updatedAt)
 
     fun pull(cursor: Long, limit: Int): PullPage {
         calls++
+        if (goneOnce && cursor > 0) { goneOnce = false; throw ApiException(410, null, "cursor too old") }
         val all = records.entries.filter { it.value.seq > cursor }.sortedBy { it.value.seq }
         val page = all.take(limit)
         return PullPage(page.map { view(it.key.substringBefore(':'), it.key.substringAfter(':'), it.value) }, page.lastOrNull()?.value?.seq ?: cursor, all.size > page.size)
@@ -35,6 +38,7 @@ private class FakeServer {
         return changes.map { c ->
             val k = key(c.type, c.id)
             val cur = records[k]
+            if (inUse && c.type == "policy" && cur != null) return@map PushOutcome(c.type, c.id, "rejected", view(c.type, c.id.lowercase(), cur), "policy_in_use")
             if (c.type == "policy" && !c.deleted && JSONObject(c.dataJson!!).getString("name") == rejectPolicyNamed) return@map PushOutcome(c.type, c.id, "rejected", null, "invalid_data")
             if (cur != null && c.updatedAt <= cur.updatedAt) return@map PushOutcome(c.type, c.id, "stale", view(c.type, c.id.lowercase(), cur), null)
             val data = if (c.deleted) JSONObject() else JSONObject(c.dataJson!!).also { d ->
@@ -197,5 +201,31 @@ class SyncEngineTest {
         assertNull(a.store.local.state.policies["a1"])
         assertEquals(0L, a.store.local.state.cursor)
         assertFalse(a.store.local.state.initialPullDone)
+    }
+
+    @Test fun `a 410 on pull restarts from cursor zero and reconciles`() {
+        val server = FakeServer(); val clock = Clock()
+        val a = Device(server, clock); val b = Device(server, clock)
+        a.store.edit { it + p("a1", "Work", "x.com") }; a.sync(); b.sync()
+        assertTrue(b.store.local.state.cursor > 0)
+        server.goneOnce = true
+        val report = b.sync()
+        assertTrue("a full pull ran: $report", report.pulled >= 1)
+        assertEquals(listOf("x.com"), b.policies.single().domains)
+    }
+
+    @Test fun `policy_in_use puts the servers copy back and stops resending`() {
+        val server = FakeServer(); val clock = Clock()
+        val a = Device(server, clock); val b = Device(server, clock)
+        a.store.edit { it + p("a1", "Work", "x.com") }; a.sync(); b.sync()
+        clock.tick(); b.store.edit { it.map { x -> x.copy(domains = emptyList()) } }
+        server.inUse = true
+        val report = b.sync()
+        assertEquals(0, report.rejected)
+        assertEquals(listOf("x.com"), b.policies.single().domains)
+        val calls = server.calls
+        b.sync()
+        assertTrue("nothing left to push", SyncLogic.planPush(b.store.local, clock.now).isEmpty())
+        assertTrue(server.calls > calls)
     }
 }
