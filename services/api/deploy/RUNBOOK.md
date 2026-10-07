@@ -74,12 +74,14 @@ Real disaster, on the VPS: stop the app (`pm2 stop nowfocus-api`), recreate an e
 
 ## Monitoring checklist
 
-Tick each when done on the VPS or the monitoring site (first three done 2026-10-04):
+Tick each when done on the VPS or the monitoring site (done 2026-10-04 to 2026-10-07):
 
 - [x] **External uptime monitor:** free UptimeRobot or Better Stack check on `https://api.nowfocus.online/healthz`, 5-minute interval, alert by email. It must check the 200 status or the `"ok"` body, so a 503 `db_unavailable` also alerts.
 - [x] **Backup cron installed:** step 6 above; `crontab -l` shows the `backup.sh` line.
 - [x] **Backup dead-man switch:** `HEALTHCHECK_URL` set in `~/.config/nowfocus-backup.env` (healthchecks.io, period 12h, grace 2h).
-- [ ] **Restore drill done once**, then every quarter (see above).
+- [x] **Restore drill done once** (confirmed 2026-10-07), then every quarter (see above). Next due: 2027-01.
+- [x] **`pm2 startup` set** (confirmed 2026-10-07), so the API comes back after a reboot.
+- [x] **Manual `backup.sh` run** shipped an encrypted dump to R2 and pinged healthchecks.io green (confirmed 2026-10-07).
 
 ## When `/healthz` fails
 

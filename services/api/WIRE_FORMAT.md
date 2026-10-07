@@ -4,7 +4,7 @@ Normative guide for people writing a client adapter (Android, macOS, iOS, Window
 
 Production base URL: **`https://api.nowfocus.online`** (one build constant per client, overridable in debug builds for a local server). Design background: [`docs/superpowers/specs/2026-09-29-sync-api-design.md`](../../docs/superpowers/specs/2026-09-29-sync-api-design.md).
 
-**Slice status.** Slice 1 syncs `policy` and `bedtime_settings`. The Android adapter implements it (`apps/android/app/src/main/kotlin/app/getnowfocus/android/sync/`, unreleased), and so does macOS (`apps/macos/NowFocusCore/Sync/`, unreleased; the engine compiles into iOS too, which has no account UI yet), and Windows (`apps/windows/sync/`, unreleased). `session` (slice 2) and `shield_item` (slice 3) are specified here so the model doesn't change later, but no adapter implements them yet. `user_settings` exists on the server and no client has any settings to put in it.
+**Slice status.** Slices 1 and 2 are implemented: `policy`, `bedtime_settings` and `session` sync on Android (`apps/android/app/src/main/kotlin/app/getnowfocus/android/sync/`) and Windows (`apps/windows/sync/`), both unreleased; macOS has a slice-1 adapter (`apps/macos/NowFocusCore/Sync/`, parked; the engine compiles into iOS too, which has no account UI yet). `shield_item` (slice 3) is specified here so the model doesn't change later, but no adapter implements it. `user_settings` exists on the server and no client has any settings to put in it.
 
 ## 1. Conventions
 
@@ -50,7 +50,7 @@ Per-change rejection codes and what to do:
 | `code` | Meaning | Adapter action |
 |---|---|---|
 | `invalid_data` / `invalid_change` / `invalid_id` | The server's validation failed (for example an unsafe domain) | Do not retry the same payload. Log, surface "couldn't sync <name>", keep the local value. |
-| `policy_in_use` | A session is running on this policy and the edit would loosen it (blocklist: remove, disable or weaken a rule; allowlist: add or enable one), change `mode`, or delete it | **Adopt the server record and restore it locally.** Additions are always accepted. |
+| `policy_in_use` | A session is running on this policy and the edit would loosen it (blocklist: remove, disable or weaken a rule; allowlist: add or enable one), change `mode`, or delete it | **Adopt the server record and restore it locally** (both clients do, and stop resending). Additions are always accepted. |
 | `unknown_type` / `read_only` / `not_deletable` | You pushed something the server doesn't accept (`shield_item` is written only through `/v1/always-blocked`) | A bug in the adapter. Do not retry. |
 | session codes (`invalid_transition`, `immutable_field`, `end_shortened`, `session_locked`, `too_early`, `too_long`) | Slice 2 | See section 6. |
 
@@ -103,7 +103,7 @@ Policies are last-write-wins **as a whole**. If an adapter rebuilds a policy fro
 
 Server-enforced: `enabled`/`lockAtSleep` booleans; the three minutes are integers 0–1439. `policyId` is a lowercase policy UUID or null. Android has an extra `quietNotifications`: send it, and preserve it from the server record on other platforms. Android forces `lockAtSleep` off below API 28; do not push that forced value as if the user chose it. Pushing bedtime must keep the local nightly schedule running from local state, not from the last pull.
 
-## 6. `session` (slice 2, not implemented yet)
+## 6. `session` (slice 2, implemented on Android and Windows)
 
 `{ id, policyId, sessionType: "focus"|"bedtime_winddown", source: "user"|"extension"|"schedule" (default "user"), status: "scheduled"|"active"|"completed"|"cancelled"|"expired"|"error", enforcementMode: "normal"|"strict"|"locked", startAt, endAt, … }`, extras such as `notificationMode`, `deviceId`, `policySnapshot` stored verbatim.
 
@@ -130,5 +130,5 @@ Written only by `POST /v1/always-blocked/items` (and `cancel-grace`, `recommit`,
 
 ## 10. Reserved behaviour
 
-- `GET /v1/sync/pull` returning **410** will mean "your cursor is older than the server's history: discard the cursor, pull from 0 and reconcile". It is never returned today. Handle it now so tombstone compaction can ship later without breaking old clients.
+- `GET /v1/sync/pull` returning **410** will mean (Android and Windows already reset the cursor to 0 and re-pull) "your cursor is older than the server's history: discard the cursor, pull from 0 and reconcile". It is never returned today. Handle it now so tombstone compaction can ship later without breaking old clients.
 - Access tokens carry `sub` (user) and `did` (device). Don't parse them; treat both tokens as opaque.
