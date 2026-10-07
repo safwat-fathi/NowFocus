@@ -1220,18 +1220,37 @@ impl AppState {
         after: &now_focus_sync::model::Local,
     ) -> Result<(), String> {
         let json = |p: &Profile| serde_json::to_string(p).unwrap_or_default();
+        // The profile a running session enforces is never changed or deleted by a pull (a remote edit could lift
+        // the block). The local copy is kept and stamped as the newer edit, so the next push wins it back.
+        let in_use = self.running_session_policy_id();
+        let is_in_use = |id: &str| {
+            in_use
+                .as_deref()
+                .is_some_and(|u| u.eq_ignore_ascii_case(id))
+        };
         for p in &after.profiles {
-            let unchanged = before
-                .profiles
-                .iter()
-                .find(|b| b.policy.id == p.policy.id)
-                .is_some_and(|b| json(b) == json(p));
-            if !unchanged {
-                self.db.save_profile(p).map_err(|e| e.to_string())?;
+            let old = before.profiles.iter().find(|b| b.policy.id == p.policy.id);
+            if old.is_some_and(|b| json(b) == json(p)) {
+                continue;
+            }
+            match old {
+                Some(b) if is_in_use(&b.policy.id) => {
+                    let mut keep = b.clone();
+                    keep.policy.updated_at = Utc::now();
+                    self.db.save_profile(&keep).map_err(|e| e.to_string())?;
+                }
+                _ => self.db.save_profile(p).map_err(|e| e.to_string())?,
             }
         }
         for b in &before.profiles {
-            if !after.profiles.iter().any(|p| p.policy.id == b.policy.id) {
+            if after.profiles.iter().any(|p| p.policy.id == b.policy.id) {
+                continue;
+            }
+            if is_in_use(&b.policy.id) {
+                let mut keep = b.clone();
+                keep.policy.updated_at = Utc::now();
+                self.db.save_profile(&keep).map_err(|e| e.to_string())?;
+            } else {
                 self.db
                     .delete_profile(&b.policy.id)
                     .map_err(|e| e.to_string())?;
@@ -1267,17 +1286,21 @@ impl AppState {
         self.db.get_profile(id).map_err(|e| e.to_string())
     }
 
+    fn running_session_policy_id(&mut self) -> Option<String> {
+        self.recover()
+            .ok()
+            .flatten()
+            .filter(|s| session_engine::is_active(s, Utc::now()))
+            .map(|s| s.policy_id)
+    }
+
     /// Profiles something still points at (bedtime's, the current session's): sync never drops these.
     pub fn sync_referenced_ids(&mut self) -> std::collections::HashSet<String> {
         let mut ids = std::collections::HashSet::new();
         if let Ok(b) = self.db.get_bedtime() {
             ids.extend(b.policy_id.map(|p| p.to_lowercase()));
         }
-        if let Ok(Some(s)) = self.recover() {
-            if session_engine::is_active(&s, Utc::now()) {
-                ids.insert(s.policy_id.to_lowercase());
-            }
-        }
+        ids.extend(self.running_session_policy_id().map(|p| p.to_lowercase()));
         ids
     }
 
@@ -1652,6 +1675,56 @@ mod tests {
         log.lock().unwrap().clear();
 
         (state, profile_id, log)
+    }
+
+    #[test]
+    fn a_pull_never_changes_or_deletes_the_profile_a_running_session_uses() {
+        let (mut state, profile_id, _log) = setup();
+        let before = state.sync_read_local().unwrap();
+
+        // The account changed it (a site removed) and then deleted it.
+        let mut weaker = before.clone();
+        let p = weaker
+            .profiles
+            .iter_mut()
+            .find(|p| p.policy.id == profile_id)
+            .unwrap();
+        p.policy.domains.clear();
+        p.policy.name = "Renamed elsewhere".into();
+        state.sync_write_local(&before, &weaker).unwrap();
+        let mut gone = weaker.clone();
+        gone.profiles.retain(|p| p.policy.id != profile_id);
+        state.sync_write_local(&before, &gone).unwrap();
+
+        let kept = state
+            .sync_profile(&profile_id)
+            .unwrap()
+            .expect("still here");
+        assert_eq!(kept.policy.name, "Test Profile");
+        assert!(
+            kept.policy.updated_at
+                > before
+                    .profiles
+                    .iter()
+                    .find(|p| p.policy.id == profile_id)
+                    .unwrap()
+                    .policy
+                    .updated_at
+        );
+
+        // Another profile is not protected.
+        let other = before
+            .profiles
+            .iter()
+            .find(|p| p.policy.id != profile_id)
+            .unwrap()
+            .policy
+            .id
+            .clone();
+        let mut gone2 = before.clone();
+        gone2.profiles.retain(|p| p.policy.id != other);
+        state.sync_write_local(&before, &gone2).unwrap();
+        assert!(state.sync_profile(&other).unwrap().is_none());
     }
 
     #[test]
