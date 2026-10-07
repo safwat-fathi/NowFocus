@@ -45,7 +45,8 @@ export class WaitlistService {
         githubIssueUrl,
       }),
     );
-    if (!existing && this.config.brevoApiKey) await this.notify(email);
+    // not awaited: a slower response for new emails would reveal who is already on the list
+    if (!existing && this.config.brevoApiKey) void this.notify(email);
     return { ok: true, id, githubIssueUrl };
   }
 
