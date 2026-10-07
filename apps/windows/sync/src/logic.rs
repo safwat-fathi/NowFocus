@@ -280,7 +280,23 @@ pub fn apply_push_results(local: &Local, sent: &[Outgoing], results: &[PushOutco
             continue;
         };
         let id = out.id.to_lowercase();
-        match res.status.as_str() {
+        // policy_in_use: a session is running on this profile and the edit would loosen it. The server's copy wins
+        // outright, so the local edit is reverted (aged to the record's time, or "newer local edit wins" resends it).
+        let in_use = res.status == "rejected"
+            && res.code.as_deref() == Some("policy_in_use")
+            && out.typ == POLICY
+            && res.record.is_some();
+        if let (true, Some(rec)) = (in_use, &res.record) {
+            if let Some(p) = cur
+                .profiles
+                .iter_mut()
+                .find(|p| p.policy.id.to_lowercase() == id)
+            {
+                p.policy.updated_at = rec.updated_at;
+            }
+        }
+        let status = if in_use { "stale" } else { res.status.as_str() };
+        match status {
             "applied" => {
                 let Some(rec) = &res.record else { continue };
                 match out.typ.as_str() {

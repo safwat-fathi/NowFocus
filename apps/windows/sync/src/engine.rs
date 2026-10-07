@@ -89,7 +89,18 @@ impl<H: Host, A: ApiPort> Engine<H, A> {
             else {
                 return Ok(SyncReport::default()); // signed out: no network at all
             };
-            let page = self.api.pull(cursor, 500)?;
+            let page = match self.api.pull(cursor, 500) {
+                Ok(p) => p,
+                // The cursor is older than the server's history: start over and reconcile from the full set.
+                Err(ApiError::Http { status: 410, .. }) => {
+                    self.host.transact(&mut |mut l| {
+                        l.state.cursor = 0;
+                        l
+                    })?;
+                    continue;
+                }
+                Err(e) => return Err(e.into()),
+            };
             self.host.transact(&mut |l| {
                 if l.state.user_id.is_none() {
                     l
@@ -717,6 +728,112 @@ mod tests {
         let _ = (iso(Utc::now()), eb);
     }
 
+    /// Wraps the fake server to script the two answers it never gives on its own.
+    struct Scripted {
+        inner: FakeApi,
+        gone_once: Mutex<bool>,
+        in_use: bool,
+    }
+
+    impl ApiPort for Scripted {
+        fn pull(&self, cursor: i64, limit: u32) -> Result<Page, ApiError> {
+            if cursor > 0 && std::mem::take(&mut *self.gone_once.lock().unwrap()) {
+                return Err(ApiError::Http {
+                    status: 410,
+                    code: None,
+                    message: "cursor too old".into(),
+                });
+            }
+            self.inner.pull(cursor, limit)
+        }
+        fn push(&self, changes: &[Outgoing]) -> Result<Vec<PushOutcome>, ApiError> {
+            if !self.in_use {
+                return self.inner.push(changes);
+            }
+            let s = self.inner.0.lock().unwrap();
+            Ok(changes
+                .iter()
+                .map(|c| {
+                    let prev = s
+                        .records
+                        .get(&(c.typ.clone(), c.id.to_lowercase()))
+                        .unwrap();
+                    PushOutcome {
+                        typ: c.typ.clone(),
+                        id: c.id.clone(),
+                        status: "rejected".into(),
+                        record: Some(rec(&c.typ, &c.id, prev)),
+                        code: Some("policy_in_use".into()),
+                    }
+                })
+                .collect())
+        }
+    }
+
+    #[test]
+    fn a_410_on_pull_restarts_from_cursor_zero_and_reconciles() {
+        let ((ha, ea), (hb, eb)) = pair();
+        ha.edit(|l| {
+            l.profiles[0]
+                .policy
+                .domains
+                .push(DomainRule::new("youtube.com"));
+            touch(&mut l.profiles[0]);
+        });
+        ea.sync_once().unwrap();
+        eb.sync_once().unwrap();
+        assert!(hb.0.lock().unwrap().local.state.cursor > 0);
+
+        let gone = Engine::new(
+            hb.clone(),
+            Scripted {
+                inner: ea.api.clone(),
+                gone_once: Mutex::new(true),
+                in_use: false,
+            },
+        );
+        let report = gone.sync_once().expect("recovers from the 410");
+        assert!(report.pulled >= 1, "a full pull ran: {report:?}");
+        assert_eq!(hb.profiles().len(), 1);
+        assert_eq!(hb.profiles()[0].policy.domains[0].domain, "youtube.com");
+    }
+
+    #[test]
+    fn policy_in_use_restores_the_servers_copy_and_stops_resending() {
+        let ((ha, ea), (hb, eb)) = pair();
+        ha.edit(|l| {
+            l.profiles[0]
+                .policy
+                .domains
+                .push(DomainRule::new("youtube.com"));
+            touch(&mut l.profiles[0]);
+        });
+        ea.sync_once().unwrap();
+        eb.sync_once().unwrap();
+
+        // B loosens the profile; the server (a session is running on it) refuses.
+        hb.edit(|l| {
+            l.profiles[0].policy.domains.clear();
+            l.profiles[0].policy.updated_at = Utc::now();
+        });
+        let strict = Engine::new(
+            hb.clone(),
+            Scripted {
+                inner: ea.api.clone(),
+                gone_once: Mutex::new(false),
+                in_use: true,
+            },
+        );
+        let report = strict.sync_once().expect("sync");
+        assert_eq!(report.rejected, 0, "{report:?}");
+        assert_eq!(hb.profiles()[0].policy.domains[0].domain, "youtube.com");
+        assert_eq!(
+            strict.sync_once().unwrap().pushed,
+            0,
+            "nothing left to resend"
+        );
+    }
+
     // ---- against a real server (set SYNC_IT_URL, e.g. a local services/api on a *_test database)
 
     struct MemAuth(Mutex<Option<crate::api::StoredAuth>>);
@@ -812,5 +929,114 @@ mod tests {
         // A second sync with nothing changed sends nothing.
         assert_eq!(ea.sync_once().expect("idle").pushed, 0);
         ea.api.delete_account(pw).expect("cleanup");
+    }
+
+    /// An Android-shaped policy and bedtime reach a PC, a PC edit goes back, and everything the PC can't express
+    /// (other platforms' rules, unknown partials, categories, unknown fields) is still on the server verbatim.
+    #[test]
+    fn live_android_shaped_data_survives_a_windows_edit() {
+        let Ok(url) = std::env::var("SYNC_IT_URL") else {
+            return;
+        };
+        let email = format!("win-android-{}@example.com", uuid::Uuid::new_v4().simple());
+        let pw = "correct horse battery staple";
+        let api = || {
+            crate::api::Api::new(
+                &url,
+                "NowFocus-Windows/it",
+                Box::new(MemAuth(Mutex::new(None))),
+            )
+        };
+        let (phone, api_pc) = (api(), api());
+        let acct = phone.register(&email, pw, "Phone").expect("register");
+        api_pc.login(&email, pw, "PC").expect("login");
+
+        let pid = uuid::Uuid::new_v4().to_string();
+        let t = Utc::now() - Duration::seconds(30);
+        let out = |typ: &str, id: &str, data: Value| Outgoing {
+            typ: typ.into(),
+            id: id.into(),
+            updated_at: t,
+            data: Some(data),
+            deleted: false,
+            fingerprint: String::new(),
+        };
+        let res = phone
+            .push(&[
+                out(
+                    "policy",
+                    &pid,
+                    json!({
+                        "id": pid, "name": "Android work", "mode": "blocklist",
+                        "domainRules": [
+                            {"id": uuid::Uuid::new_v4().to_string(), "domain": "reddit.com", "includeSubdomains": false, "enabled": true},
+                        ],
+                        "applicationRules": [
+                            {"id": uuid::Uuid::new_v4().to_string(), "platform": "android", "nativeIdentifier": "com.reddit.frontpage", "displayName": "Reddit", "enabled": true},
+                            {"id": uuid::Uuid::new_v4().to_string(), "platform": "windows", "nativeIdentifier": r"C:\Games\steam.exe", "displayName": "Steam", "enabled": true},
+                        ],
+                        "partial": ["YT_RELATED", "FB_REELS", "YT_SHORTS"],
+                        "categories": ["social"], "notificationPolicy": "quiet",
+                        "futureField": {"keep": true},
+                    }),
+                ),
+                out(
+                    "bedtime_settings",
+                    "default",
+                    json!({"enabled": true, "windDownMinute": 1300, "sleepMinute": 1400, "wakeMinute": 400,
+                           "lockAtSleep": false, "policyId": null, "quietNotifications": true}),
+                ),
+            ])
+            .expect("phone pushes");
+        assert!(res.iter().all(|r| r.status == "applied"), "{res:?}");
+
+        let (hb, _) = FakeHost::new("pc");
+        hb.signed_in(&acct.user_id);
+        let eb = Engine::new(hb.clone(), api_pc);
+        eb.sync_once().expect("PC pulls");
+        let p = hb.profiles();
+        assert_eq!(p.len(), 1, "the untouched starter was replaced: {p:?}");
+        assert_eq!(p[0].policy.domains.len(), 1);
+        assert_eq!(
+            p[0].policy.applications.len(),
+            1,
+            "only the Windows app rule is imported"
+        );
+        assert!(hb.0.lock().unwrap().local.bedtime.enabled);
+
+        hb.edit(|l| {
+            l.profiles[0].policy.domains.push(DomainRule::new("x.com"));
+            l.profiles[0].policy.updated_at = Utc::now(); // newer than the phone's push, or last-write-wins keeps the phone's
+        });
+        eb.sync_once().expect("PC pushes");
+
+        let page = phone.pull(0, 500).expect("phone pulls");
+        let rec = |typ: &str| {
+            page.changes
+                .iter()
+                .find(|c| c.typ == typ)
+                .expect(typ)
+                .data
+                .clone()
+        };
+        let pol = rec("policy");
+        assert_eq!(pol["futureField"], json!({"keep": true}));
+        assert_eq!(pol["categories"], json!(["social"]));
+        assert_eq!(pol["notificationPolicy"], json!("quiet"));
+        let partial = pol["partial"].to_string();
+        assert!(
+            partial.contains("YT_RELATED") && partial.contains("FB_REELS"),
+            "{partial}"
+        );
+        let apps = pol["applicationRules"].to_string();
+        assert!(
+            apps.contains("com.reddit.frontpage"),
+            "Android's app rule survived: {apps}"
+        );
+        let doms = pol["domainRules"].to_string();
+        assert!(doms.contains("x.com"), "the PC's new site arrived: {doms}");
+        assert!(doms.contains("\"includeSubdomains\":false"), "{doms}");
+        assert_eq!(rec("bedtime_settings")["quietNotifications"], json!(true));
+        phone.delete_account(pw).expect("cleanup");
     }
 }
