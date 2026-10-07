@@ -1,5 +1,7 @@
 # Android release (Google Play)
 
+**Test status (2026-10-07).** Account sync with the Windows PC was tested by the owner on a real Android phone against production, together with the Windows 11 test in `docs/windows-release.md`. Per-test results were not written down.
+
 One-time: create the upload key and back it up somewhere off this machine (password manager). Play App Signing holds the real signing key; this one can be reset via Play support if lost.
 
     keytool -genkey -v -keystore ~/nowfocus-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
