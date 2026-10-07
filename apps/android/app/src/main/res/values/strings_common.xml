@@ -9,6 +9,8 @@
     <string name="back_rules">‹ Rules</string>
     <string name="back_to_focus">‹ Back to focus</string>
     <string name="cancel">Cancel</string>
+    <string name="a11y_disclosure_title">Allow NowFocus to use Accessibility?</string>
+    <string name="a11y_agree">Agree</string>
     <string name="remove">Remove</string>
     <string name="delete">Delete</string>
     <string name="deleting">Deleting…</string>

@@ -126,7 +126,7 @@ private fun OnboardingFirstSession(
     onUnpick: (packageName: String) -> Unit,
     accessibilityOk: Boolean,
 ) {
-    val context = LocalContext.current
+    val openAccessibility = accessibilityOpener()
     var picking by remember { mutableStateOf(false) }
     Text(stringResource(R.string.onb_step5), style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s2))
@@ -142,9 +142,7 @@ private fun OnboardingFirstSession(
     GhostButton(stringResource(if (picked.isEmpty()) R.string.onb_pick_app else R.string.onb_add_another)) { picking = true }
     if (!accessibilityOk) {
         Spacer(Modifier.height(NowFocusSpace.s4))
-        PermissionRow(stringResource(R.string.devices_app_blocking), stringResource(R.string.onb_blocking_needed), false) {
-            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }
+        PermissionRow(stringResource(R.string.devices_app_blocking), stringResource(R.string.onb_blocking_needed), false, openAccessibility)
         Text(stringResource(R.string.restricted_settings_hint), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
     }
     if (picking) {
@@ -249,6 +247,7 @@ private fun OnboardingPermissions(resumeKey: Int) {
     // caller): granting Accessibility or Notification access happens in
     // Settings, away from this screen entirely, so only a resume signal -
     // not the VPN result alone - catches those.
+    val openAccessibility = accessibilityOpener()
     var vpnResumeKey by remember { mutableIntStateOf(0) }
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { vpnResumeKey++ }
 
@@ -268,9 +267,7 @@ private fun OnboardingPermissions(resumeKey: Int) {
         val vpnOk = Enforcement.isVpnPermitted(context)
         val notifOk = context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted ?: false
 
-        PermissionRow(stringResource(R.string.devices_app_blocking), stringResource(R.string.onb_perm_blocking), accessibilityOk) {
-            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }
+        PermissionRow(stringResource(R.string.devices_app_blocking), stringResource(R.string.onb_perm_blocking), accessibilityOk, openAccessibility)
         if (!accessibilityOk) {
             Text(stringResource(R.string.restricted_settings_hint), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
         }

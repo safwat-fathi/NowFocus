@@ -26,7 +26,7 @@ private val links = listOf(
     R.string.about_privacy to "https://nowfocus.online/privacy/",
     R.string.about_terms to "https://nowfocus.online/terms/",
     R.string.about_source to "https://github.com/safwat-fathi/NowFocus",
-    R.string.about_support to "mailto:safwat.rashwan@gmail.com",
+    R.string.about_support to "mailto:hello@nowfocus.online",
 )
 
 @Composable

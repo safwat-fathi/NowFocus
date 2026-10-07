@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 @Composable
 fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit) {
     val context = LocalContext.current
+    val openAccessibility = accessibilityOpener()
     // resumeKey comes from App() (bumped on ON_RESUME) - a local one here
     // would never change, since permissions are granted in Settings, away
     // from this screen entirely.
@@ -81,7 +82,7 @@ fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit
             // One button per missing layer, each going straight to that permission.
             if (!appBlockingOk) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
-                GhostButton(stringResource(R.string.devices_enable_blocking)) { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+                GhostButton(stringResource(R.string.devices_enable_blocking), onClick = openAccessibility)
             }
             if (!websiteFilterOk) {
                 Spacer(Modifier.height(NowFocusSpace.s2))

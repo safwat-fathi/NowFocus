@@ -18,7 +18,7 @@
     <string name="onb_step3_body">When a blocked app opens, we\'ll point you to someone you haven\'t talked to in a while, with one tap to call or text. Nothing leaves this phone.</string>
     <string name="onb_step4">STEP 4 OF 5 · PERMISSIONS</string>
     <string name="onb_step4_title">A few permissions, so blocking actually holds.</string>
-    <string name="onb_step4_body">Everything runs on this phone. Your browsing and app lists never leave it.</string>
+    <string name="onb_step4_body">Blocking runs on this phone. Your browsing never leaves it. Your app and site lists sync only if you sign in.</string>
     <string name="onb_perm_blocking">Spots when a blocked app opens. With partial blocking on, also reads the YouTube, Facebook, Instagram and X screens during a session (experimental), on-device only</string>
     <string name="onb_perm_filter">Blocks sites on-device, no traffic routed anywhere</string>
     <string name="onb_perm_dnd">Lets Bedtime Wind-Down quiet things down</string>

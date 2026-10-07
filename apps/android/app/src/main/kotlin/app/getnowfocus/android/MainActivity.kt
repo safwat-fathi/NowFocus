@@ -1430,6 +1430,7 @@ private fun TimePickerDialog(title: String, minutes: Int, is24Hour: Boolean, onC
 /** Android counterpart of the macOS health dot + "needs approval" hint. */
 @Composable
 private fun HealthRow() {
+    val openAccessibility = accessibilityOpener()
     val context = LocalContext.current
     val vpnOk = Enforcement.isVpnPermitted(context)
     val strictDns = Enforcement.strictPrivateDns(context) != null
@@ -1449,7 +1450,7 @@ private fun HealthRow() {
     )
     if (!appsOk) {
         Spacer(Modifier.height(NowFocusSpace.s1))
-        GhostButton(stringResource(R.string.health_enable)) { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        GhostButton(stringResource(R.string.health_enable), onClick = openAccessibility)
         Text(
             stringResource(R.string.restricted_settings_hint),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),

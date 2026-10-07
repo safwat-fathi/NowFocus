@@ -5,6 +5,8 @@
     <string name="back_rules">‹ القواعد</string>
     <string name="back_to_focus">‹ العودة إلى التركيز</string>
     <string name="cancel">إلغاء</string>
+    <string name="a11y_disclosure_title">هل تسمح لـ NowFocus باستخدام خدمة إمكانية الوصول؟</string>
+    <string name="a11y_agree">أوافق</string>
     <string name="remove">إزالة</string>
     <string name="delete">حذف</string>
     <string name="deleting">جارٍ الحذف…</string>
