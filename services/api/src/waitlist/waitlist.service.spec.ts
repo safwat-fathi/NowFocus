@@ -54,4 +54,18 @@ describe('WaitlistService', () => {
     expect(res.id).toBe('old');
     expect(saved[0]).toMatchObject({ id: 'old', platforms: ['android', 'macos'], featureRequest: 'x', githubIssueUrl: 'u' });
   });
+
+  it('emails only a new signup, and never fails it when Brevo errors', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: false, status: 401, text: async () => 'bad key' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const cfg = config({ brevoApiKey: 'k', mailFrom: 'hello@x.co', brevoListId: 3 });
+    const { saved, service } = setup(null, cfg);
+    await service.submit({ email: 'a@b.co' });
+    expect(saved).toHaveLength(1);
+    expect(fetchMock.mock.calls.map((c) => (c as unknown as [string])[0])).toEqual(['https://api.brevo.com/v3/smtp/email', 'https://api.brevo.com/v3/contacts']);
+    fetchMock.mockClear();
+    const old = { id: 'o', email: 'a@b.co', platforms: [], featureRequest: null, githubIssueUrl: null } as unknown as WaitlistEntry;
+    await setup(old, cfg).service.submit({ email: 'a@b.co' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

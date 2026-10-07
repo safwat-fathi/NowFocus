@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Config } from '../config.js';
 import { WaitlistEntry } from '../db/entities.js';
 import { createGithubIssue, quote } from '../github.js';
+import { addContact, sendMail } from '../mail.js';
 import { WaitlistDto } from './waitlist.dto.js';
 
 @Injectable()
@@ -44,7 +45,17 @@ export class WaitlistService {
         githubIssueUrl,
       }),
     );
+    if (!existing && this.config.brevoApiKey) await this.notify(email);
     return { ok: true, id, githubIssueUrl };
+  }
+
+  /** Welcome email + launch-list contact. Never fails the signup. */
+  private async notify(email: string) {
+    const jobs = [sendMail(this.config, email, "You're on the NowFocus waitlist | أنت على قائمة الانتظار", WELCOME)];
+    if (this.config.brevoListId) jobs.push(addContact(this.config, email));
+    for (const r of await Promise.allSettled(jobs)) {
+      if (r.status === 'rejected') this.logger.warn(`Brevo failed for a waitlist signup: ${r.reason instanceof Error ? r.reason.message : r.reason}`);
+    }
   }
 
   private createGithubIssue(request: string): Promise<string | null> {
@@ -53,3 +64,6 @@ export class WaitlistService {
     return createGithubIssue(this.config, `[Feature request] ${firstLine || 'Community request'}`, body, 'feature-request');
   }
 }
+
+const WELCOME = `<p>Thanks for joining the NowFocus waitlist. We'll email you once when your platform is ready. Just reply to this email if you have questions.</p>
+<p dir="rtl">شكرًا لانضمامك إلى قائمة انتظار NowFocus. سنراسلك مرة واحدة عندما تصبح منصتك جاهزة. يمكنك الرد على هذا البريد لأي سؤال.</p>`;
