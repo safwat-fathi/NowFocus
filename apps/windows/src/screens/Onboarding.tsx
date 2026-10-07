@@ -2,9 +2,15 @@ import { useState } from "react";
 import { api } from "../lib/api";
 import type { AppState } from "../types";
 import { ArrowRightIcon } from "../components/Icons";
-import { errorText, useT } from "../i18n";
+import { errorText, useT, type LangPref } from "../i18n";
 
 const FIRST_PROFILE = "First focus";
+
+const LANGUAGES: [LangPref, "set.system" | "set.english" | "set.arabic"][] = [
+  ["system", "set.system"],
+  ["en", "set.english"],
+  ["ar", "set.arabic"],
+];
 
 const LAYERS = [
   { title: "onb.layer1", sub: "onb.layer1Sub" },
@@ -68,6 +74,19 @@ export function Onboarding({
         <p className="onboard__body">
           {t("onb.body")}
         </p>
+        <div className="chip-grid chip-grid--3" style={{ marginTop: 24 }}>
+          {LANGUAGES.map(([value, label]) => (
+            <button
+              key={value}
+              className="chip"
+              data-selected={state.language === value}
+              onClick={async () => onState(await api.setLanguage(value))}
+              lang={value === "ar" ? "ar" : value === "en" ? "en" : undefined}
+            >
+              {t(label)}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="onboard__pane">
         <div className="onboard__kicker" style={{ color: "var(--color-neutral-700)" }}>

@@ -1,11 +1,13 @@
 package app.getnowfocus.android
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.net.VpnService
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -68,6 +70,7 @@ fun OnboardingScreen(
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
+    BackHandler(enabled = step > 0) { step-- }
     Column(Modifier.fillMaxSize().padding(NowFocusSpace.s6)) {
         Row(Modifier.fillMaxWidth()) {
             repeat(LAST_STEP + 1) { i ->
@@ -104,10 +107,12 @@ fun OnboardingScreen(
                     },
                 ),
             ) { step++ }
+            if (step > 0) GhostButton(stringResource(R.string.back_plain)) { step-- }
         } else {
             // Blocking has to work before the "win": with Accessibility off the picked apps are never bounced.
             PrimaryButton(stringResource(R.string.onb_start), enabled = picked.isNotEmpty() && accessibilityOk) { onStartFirstSession(picked) }
             GhostButton(stringResource(R.string.friction_not_now), onClick = onDone)
+            GhostButton(stringResource(R.string.back_plain)) { step-- }
         }
     }
 }
@@ -199,6 +204,24 @@ private fun OnboardingWelcome() {
     Text(
         stringResource(R.string.onb_welcome_body),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 16.sp, color = NowFocusColors.neutral800),
+    )
+    Spacer(Modifier.height(NowFocusSpace.s4))
+    val context = LocalContext.current
+    val language = AppLanguage.read(context)
+    SegmentedControl(
+        options = listOf(
+            stringResource(R.string.lang_system) to AppLanguage.SYSTEM,
+            stringResource(R.string.lang_english) to AppLanguage.EN,
+            stringResource(R.string.lang_arabic) to AppLanguage.AR,
+        ),
+        selected = language,
+        // Recreate re-reads the language; MainActivity sends a not-yet-onboarded user straight back here, at step 0.
+        onSelect = { picked ->
+            if (picked != language) {
+                AppLanguage.write(context, picked)
+                (context as? Activity)?.recreate()
+            }
+        },
     )
     Spacer(Modifier.height(NowFocusSpace.s6))
     SectionRule(thick = true)

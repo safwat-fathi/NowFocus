@@ -161,6 +161,8 @@ struct OnboardingView: View {
 
     // MARK: - Step 0: Welcome
 
+    @State private var languageChoice = AppLanguage.choice
+
     private var welcomeStep: some View {
         VStack(alignment: .leading, spacing: NowFocusSpace.s4) {
             Text("What matters\nto you?")
@@ -181,6 +183,25 @@ struct OnboardingView: View {
                 .foregroundColor(NowFocusColors.neutral700)
                 .fixedSize(horizontal: false, vertical: true)
                 .lineSpacing(3)
+
+            NowFocusSegmentedControl(
+                options: [
+                    (label: "System default", value: AppLanguageChoice.system),
+                    (label: LocalizedStringKey("English"), value: AppLanguageChoice.en),
+                    (label: LocalizedStringKey("العربية"), value: AppLanguageChoice.ar),
+                ],
+                selection: $languageChoice
+            )
+            .frame(maxWidth: 420)
+
+            if languageChoice != AppLanguage.choice {
+                // Onboarding restarts at Welcome after the relaunch; nothing is lost on this step.
+                NowFocusPrimaryButton(title: "Restart now") {
+                    AppLanguage.set(languageChoice)
+                    AppLanguage.relaunch()
+                }
+                .frame(maxWidth: 220)
+            }
         }
     }
 
