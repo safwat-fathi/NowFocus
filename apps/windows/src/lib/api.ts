@@ -44,6 +44,7 @@ export const api = {
   syncSignOut: () => invoke<AppState>("sync_sign_out"),
   syncNow: () => invoke<AppState>("sync_now"),
   syncDeleteAccount: (password: string) => invoke<AppState>("sync_delete_account", { password }),
+  reportIssue: (message: string, contact: string) => invoke<void>("report_issue", { message, contact }),
   syncDevices: () => invoke<DeviceInfo[]>("sync_devices"),
   syncRevokeDevice: (id: string) => invoke<void>("sync_revoke_device", { id }),
   syncSetJoinRemote: (on: boolean) => invoke<AppState>("sync_set_join_remote", { on }),

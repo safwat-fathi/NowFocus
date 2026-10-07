@@ -1,5 +1,6 @@
 import SwiftUI
 import Sparkle
+import NowFocusCore
 
 /// App-wide settings: the language, updates, and About (version, links, license).
 struct SettingsView: View {
@@ -16,6 +17,12 @@ struct SettingsView: View {
         ("Source code", "https://github.com/safwat-fathi/NowFocus"),
         ("Contact support", "mailto:safwat.rashwan@gmail.com"),
     ]
+
+    @State private var reportMessage = ""
+    @State private var reportContact = ""
+    @State private var reportBusy = false
+    @State private var reportResult: String?
+    @State private var reportSent = false
 
     private var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
@@ -43,6 +50,11 @@ struct SettingsView: View {
                 Text("Update server not configured yet.")
                     .font(NowFocusFonts.body(12))
                     .foregroundColor(NowFocusColors.neutral700)
+
+                NowFocusRule()
+                    .padding(.vertical, NowFocusSpace.s2)
+
+                report
 
                 NowFocusRule()
                     .padding(.vertical, NowFocusSpace.s2)
@@ -89,6 +101,49 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: 220)
                 }
+            }
+        }
+    }
+
+    private var report: some View {
+        VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
+            Text(loc("Report an issue").uppercased())
+                .font(NowFocusFonts.body(11).weight(.semibold))
+                .nfTracking(1.0)
+                .foregroundColor(NowFocusColors.neutral700)
+            Text("We get the app version and your macOS version, nothing else.")
+                .font(NowFocusFonts.body(12))
+                .foregroundColor(NowFocusColors.neutral700)
+            TextField(loc("What went wrong?"), text: $reportMessage, axis: .vertical)
+                .lineLimit(4...8)
+                .modifier(FieldStyle())
+                .frame(maxWidth: 420)
+                .onChange(of: reportMessage) { _, new in
+                    reportSent = false
+                    if new.count > 4000 { reportMessage = String(new.prefix(4000)) }
+                }
+            TextField(loc("Email, if you want a reply (optional)"), text: $reportContact)
+                .modifier(FieldStyle())
+                .frame(maxWidth: 420)
+            NowFocusPrimaryButton(title: reportBusy ? "Sending…" : "Send") {
+                reportBusy = true; reportResult = nil
+                Task {
+                    reportResult = await SyncController.shared.reportIssue(message: reportMessage, contact: reportContact)
+                    reportBusy = false
+                    if reportResult == nil { reportMessage = ""; reportContact = ""; reportSent = true }
+                }
+            }
+            .disabled(reportBusy || reportMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .frame(maxWidth: 220)
+            if reportSent {
+                Text("Thanks, your report was sent.")
+                    .font(NowFocusFonts.body(12))
+                    .foregroundColor(NowFocusColors.neutral700)
+            }
+            if let e = reportResult {
+                Text(e)
+                    .font(NowFocusFonts.body(12))
+                    .foregroundColor(NowFocusColors.accent700)
             }
         }
     }

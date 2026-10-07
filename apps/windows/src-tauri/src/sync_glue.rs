@@ -245,6 +245,13 @@ impl SyncController {
         Ok(())
     }
 
+    pub fn report_issue(&self, message: &str, contact: &str) -> Result<(), String> {
+        let os = format!("windows {}", std::env::consts::ARCH);
+        self.api
+            .report_issue(message, contact, env!("CARGO_PKG_VERSION"), &os)
+            .map_err(|e| e.friendly())
+    }
+
     pub fn devices(&self) -> Result<Vec<DeviceInfo>, String> {
         self.api.devices().map_err(|e| e.friendly())
     }

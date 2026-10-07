@@ -179,7 +179,7 @@ struct AccountView: View {
 }
 
 /// The design system's input: square, 1px rule border (Windows `.input`, iOS `nfField`).
-private struct FieldStyle: ViewModifier {
+struct FieldStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .textFieldStyle(.plain)

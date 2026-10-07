@@ -1,8 +1,10 @@
 package app.getnowfocus.android.sync
 
 import android.content.Context
+import android.os.Build
 import app.getnowfocus.android.BedtimeScheduler
 import app.getnowfocus.android.BedtimeSettings
+import app.getnowfocus.android.BuildConfig
 import app.getnowfocus.android.FocusSessionStatus
 import app.getnowfocus.android.R
 import app.getnowfocus.android.SessionRepository
@@ -125,6 +127,12 @@ class SyncController(
         session?.cancel()
         store.transact { l -> l.copy(state = SyncLogic.unlink()) to Unit }
         _status.update { SyncStatus(loaded = true) }
+        null
+    } catch (e: CancellationException) { throw e } catch (e: Exception) { friendly(e) }
+
+    /** Returns an error message or null. */
+    suspend fun reportIssue(message: String, contact: String): UiText? = try {
+        api.reportIssue(message.trim(), contact, BuildConfig.VERSION_NAME, "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
         null
     } catch (e: CancellationException) { throw e } catch (e: Exception) { friendly(e) }
 

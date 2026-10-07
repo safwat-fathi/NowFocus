@@ -3,4 +3,12 @@
     <string name="settings_title">الإعدادات</string>
     <string name="settings_language">اللغة</string>
     <string name="lang_system">لغة الجهاز</string>
+    <string name="report_title">الإبلاغ عن مشكلة</string>
+    <string name="report_row">أخبرنا بما حدث</string>
+    <string name="report_sent">شكرًا، تم إرسال بلاغك</string>
+    <string name="report_body">صف ما حدث. نستلم إصدار التطبيق وإصدار أندرويد فقط، ولا شيء غير ذلك.</string>
+    <string name="report_message">ما المشكلة؟</string>
+    <string name="report_contact">بريدك الإلكتروني إن أردت ردًا (اختياري)</string>
+    <string name="report_send">إرسال</string>
+    <string name="report_sending">جارٍ الإرسال…</string>
 </resources>

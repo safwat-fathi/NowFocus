@@ -185,6 +185,7 @@ pub fn run() {
             commands::sync_sign_out,
             commands::sync_now,
             commands::sync_delete_account,
+            commands::report_issue,
             commands::sync_devices,
             commands::sync_revoke_device,
             commands::sync_set_join_remote,

@@ -91,6 +91,13 @@ class SyncApi(
         forget()
     }
 
+    /** Anonymous and user-initiated: works signed out, so it never touches the tokens. */
+    suspend fun reportIssue(message: String, contact: String, appVersion: String, osVersion: String) {
+        val body = JSONObject().put("message", message).put("platform", "android").put("appVersion", appVersion).put("osVersion", osVersion)
+        if (contact.isNotBlank()) body.put("contact", contact.trim())
+        send(Request.Builder().url("$base/v1/reports").post(body.toRequestBody(JSON)))
+    }
+
     suspend fun devices(): List<DeviceInfo> =
         JSONArray(authedText { it.url("$base/v1/devices").get() }).objects()
             .map { DeviceInfo(it.getString("id"), it.s("name") ?: "", it.s("platform") ?: "", it.s("lastSeenAt"), it.b("current", false), !it.isNull("revokedAt")) }

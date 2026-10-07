@@ -6,4 +6,12 @@
     <!-- Each language names itself in its own script, so it can be found from the wrong language. -->
     <string name="lang_english" translatable="false">English</string>
     <string name="lang_arabic" translatable="false">العربية</string>
+    <string name="report_title">Report an issue</string>
+    <string name="report_row">Tell us what went wrong</string>
+    <string name="report_sent">Thanks, your report was sent</string>
+    <string name="report_body">Describe what happened. We get the app version and your Android version, nothing else.</string>
+    <string name="report_message">What went wrong?</string>
+    <string name="report_contact">Email, if you want a reply (optional)</string>
+    <string name="report_send">Send</string>
+    <string name="report_sending">Sending…</string>
 </resources>

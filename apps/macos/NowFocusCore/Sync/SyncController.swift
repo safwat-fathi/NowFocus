@@ -111,6 +111,15 @@ public final class SyncController: ObservableObject {
         } catch is CancellationError { return nil } catch { return friendly(error) }
     }
 
+    /// Returns an error message or nil.
+    public func reportIssue(message: String, contact: String) async -> String? {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
+        do {
+            try await api.reportIssue(message: message, contact: contact, appVersion: version, osVersion: ProcessInfo.processInfo.operatingSystemVersionString)
+            return nil
+        } catch is CancellationError { return nil } catch { return friendly(error) }
+    }
+
     public func devices() async throws -> [DeviceInfo] { try await api.devices() }
 
     public func revokeDevice(id: String) async -> String? {

@@ -409,7 +409,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                     onCancel = viewModel::cancelCheatDay,
                     onBack = { screen = Screen.Policies },
                 )
-                Screen.Settings -> SettingsScreen(onOpenAbout = { screen = Screen.About })
+                Screen.Settings -> SettingsScreen(viewModel.sync, onOpenAbout = { screen = Screen.About })
                 Screen.About -> AboutScreen(onBack = { screen = Screen.Settings })
             }
         }

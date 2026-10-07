@@ -416,6 +416,16 @@ pub async fn sync_delete_account(
 }
 
 #[tauri::command]
+pub async fn report_issue(
+    sync: State<'_, Arc<SyncController>>,
+    message: String,
+    contact: String,
+) -> Result<(), String> {
+    let ctl = sync.inner().clone();
+    blocking(move || ctl.report_issue(&message, &contact)).await
+}
+
+#[tauri::command]
 pub async fn sync_devices(sync: State<'_, Arc<SyncController>>) -> Result<Vec<DeviceInfo>, String> {
     let ctl = sync.inner().clone();
     blocking(move || ctl.devices()).await

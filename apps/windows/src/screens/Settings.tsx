@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api } from "../lib/api";
-import { useI18n, type LangPref } from "../i18n";
+import { errorText, useI18n, type LangPref } from "../i18n";
 import type { Updater } from "../lib/update";
 import type { AppState } from "../types";
 
@@ -24,6 +24,23 @@ const LINKS = [
 export function Settings({ state, onState, updater }: { state: AppState; onState: (s: AppState) => void; updater: Updater }) {
   const { t } = useI18n();
   const [version, setVersion] = useState("");
+  const [message, setMessage] = useState("");
+  const [contact, setContact] = useState("");
+  const [report, setReport] = useState<"idle" | "sending" | "sent">("idle");
+  const [reportError, setReportError] = useState("");
+  const sendReport = async () => {
+    setReport("sending");
+    setReportError("");
+    try {
+      await api.reportIssue(message, contact);
+      setMessage("");
+      setContact("");
+      setReport("sent");
+    } catch (e) {
+      setReportError(errorText(e, t));
+      setReport("idle");
+    }
+  };
   useEffect(() => {
     getVersion().then(setVersion).catch(() => {});
   }, []);
@@ -70,6 +87,22 @@ export function Settings({ state, onState, updater }: { state: AppState; onState
             {updater.status === "failed" && <p>{t("upd.failed")}</p>}
           </>
         )}
+
+        <div className="field-label" style={{ marginTop: 32 }}>{t("report.title")}</div>
+        <p>{t("report.body")}</p>
+        <div className="field">
+          <label>{t("report.message")}</label>
+          <textarea className="input" rows={4} maxLength={4000} value={message} onChange={(e) => { setMessage(e.target.value); setReport("idle"); }} />
+        </div>
+        <div className="field">
+          <label>{t("report.contact")}</label>
+          <input className="input" type="email" maxLength={254} value={contact} onChange={(e) => setContact(e.target.value)} />
+        </div>
+        <button className="btn btn-primary" disabled={!message.trim() || report === "sending"} onClick={sendReport} style={{ minHeight: 44 }}>
+          {t(report === "sending" ? "report.sending" : "report.send")}
+        </button>
+        {report === "sent" && <p>{t("report.sent")}</p>}
+        {reportError && <div className="error-line">{reportError}</div>}
 
         <div className="field-label" style={{ marginTop: 32 }}>{t("about.title")}</div>
         <p className="screen-lede" style={{ margin: "0 0 12px" }}>{t("about.lede")}</p>

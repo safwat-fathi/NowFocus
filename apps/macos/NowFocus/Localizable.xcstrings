@@ -1052,6 +1052,17 @@
         }
       }
     },
+    "Email, if you want a reply (optional)": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "بريدك الإلكتروني إن أردت ردًا (اختياري)"
+          }
+        }
+      }
+    },
     "Enabled": {
       "extractionState": "manual",
       "localizations": {
@@ -1877,6 +1888,17 @@
         }
       }
     },
+    "Report an issue": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الإبلاغ عن مشكلة"
+          }
+        }
+      }
+    },
     "Restart now": {
       "extractionState": "manual",
       "localizations": {
@@ -1972,6 +1994,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "اختر تطبيقًا لحجبه"
+          }
+        }
+      }
+    },
+    "Send": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إرسال"
+          }
+        }
+      }
+    },
+    "Sending…": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "جارٍ الإرسال…"
           }
         }
       }
@@ -2317,6 +2361,17 @@
         }
       }
     },
+    "Thanks, your report was sent.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "شكرًا، تم إرسال بلاغك."
+          }
+        }
+      }
+    },
     "That doesn't look like a website. Try something like example.com": {
       "extractionState": "manual",
       "localizations": {
@@ -2570,6 +2625,17 @@
         }
       }
     },
+    "We get the app version and your macOS version, nothing else.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "نستلم إصدار التطبيق وإصدار macOS فقط، ولا شيء غير ذلك."
+          }
+        }
+      }
+    },
     "We'll remind you while you wait to end a Strict session early, and when a blocked app opens.": {
       "extractionState": "manual",
       "localizations": {
@@ -2643,6 +2709,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "ما الذي\nيهمّك؟"
+          }
+        }
+      }
+    },
+    "What went wrong?": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ما المشكلة؟"
           }
         }
       }

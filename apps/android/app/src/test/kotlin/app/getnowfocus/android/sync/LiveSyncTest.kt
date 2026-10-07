@@ -36,6 +36,12 @@ class LiveSyncTest {
         fun at() { Thread.sleep(3); clock.now = System.currentTimeMillis() }
     }
 
+    @Test fun `report an issue is accepted signed out`() {
+        val url = System.getenv("SYNC_IT_URL")
+        assumeTrue("set SYNC_IT_URL to run against a live API", url != null)
+        runBlocking { SyncApi(url!!, "NowFocus-Android/it", MemoryAuth()).reportIssue("it works", "", "it", "Android test") }
+    }
+
     @Test fun `two phones converge through the real API`() {
         val url = System.getenv("SYNC_IT_URL")
         assumeTrue("set SYNC_IT_URL to run against a live API", url != null)

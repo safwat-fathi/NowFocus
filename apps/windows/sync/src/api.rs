@@ -216,6 +216,23 @@ impl Api {
         Ok(())
     }
 
+    /// Anonymous and user-initiated: works signed out, so it never touches the tokens.
+    pub fn report_issue(
+        &self,
+        message: &str,
+        contact: &str,
+        app_version: &str,
+        os_version: &str,
+    ) -> Result<(), ApiError> {
+        self.send(
+            "POST",
+            "/v1/reports",
+            Some(report_body(message, contact, app_version, os_version)),
+            None,
+        )
+        .map(|_| ())
+    }
+
     pub fn devices(&self) -> Result<Vec<DeviceInfo>, ApiError> {
         let res = self.authed("GET", "/v1/devices", None)?;
         Ok(res
@@ -362,6 +379,19 @@ impl Api {
     }
 }
 
+fn report_body(message: &str, contact: &str, app_version: &str, os_version: &str) -> Value {
+    let mut body = json!({
+        "message": message.trim(),
+        "platform": "windows",
+        "appVersion": app_version,
+        "osVersion": os_version,
+    });
+    if !contact.trim().is_empty() {
+        body["contact"] = json!(contact.trim());
+    }
+    body
+}
+
 impl ApiPort for Api {
     fn pull(&self, cursor: i64, limit: u32) -> Result<Page, ApiError> {
         let res = self.authed(
@@ -407,5 +437,19 @@ impl ApiPort for Api {
                     .collect()
             })
             .unwrap_or_default())
+    }
+}
+
+#[cfg(test)]
+mod report_tests {
+    use super::report_body;
+
+    #[test]
+    fn report_body_trims_and_omits_a_blank_contact() {
+        let b = report_body("  it crashes ", "  ", "0.4.2", "windows x86_64");
+        assert_eq!(b["message"], "it crashes");
+        assert_eq!(b["platform"], "windows");
+        assert!(b.get("contact").is_none());
+        assert_eq!(report_body("x", " a@b.co ", "1", "w")["contact"], "a@b.co");
     }
 }

@@ -272,6 +272,7 @@ func runController() async {
         await checkAsync("C creates an account") { await ctlC.signIn(email: emailY, password: Cfg.password, createAccount: true) == nil }
         await checkAsync("D signs in") { await ctlD.signIn(email: emailY, password: Cfg.password, createAccount: false) == nil }
         check(ctlC.status.signedIn && ctlC.status.email == emailY, "status shows the account")
+        await checkAsync("a report is accepted") { await ctlC.reportIssue(message: "live check", contact: "") == nil }
         await checkAsync("a wrong password is reported in plain words") { await ctlC.signIn(email: emailY, password: "wrong-wrong", createAccount: false) == "Wrong email or password." }
         try c.manager.savePolicy(BlockPolicy(name: "From C", domains: [DomainRule(domain: "example.org")]))
         await checkWait(10, "a profile made on C appears on D by itself (socket nudge)") { d.policies.contains { $0.name == "From C" } }

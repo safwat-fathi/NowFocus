@@ -92,6 +92,15 @@ final class SyncAPI: SyncAPIPort, @unchecked Sendable {
         forget()
     }
 
+    /// Anonymous and user-initiated: works signed out, so it never touches the tokens.
+    func reportIssue(message: String, contact: String, appVersion: String, osVersion: String) async throws {
+        var body: JSONObject = ["message": message.trimmingCharacters(in: .whitespacesAndNewlines), "platform": "macos",
+                                "appVersion": appVersion, "osVersion": osVersion]
+        let c = contact.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !c.isEmpty { body["contact"] = c }
+        _ = try await sendJSON(request("/v1/reports", method: "POST", body: body))
+    }
+
     func devices() async throws -> [DeviceInfo] {
         let data = try await authed(request("/v1/devices", method: "GET"))
         let list = (try? JSONSerialization.jsonObject(with: data)) as? [Any] ?? []
