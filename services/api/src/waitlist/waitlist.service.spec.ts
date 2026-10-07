@@ -68,4 +68,14 @@ describe('WaitlistService', () => {
     await setup(old, cfg).service.submit({ email: 'a@b.co' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('sends the Arabic template for locale ar', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    await setup(null, config({ brevoApiKey: 'k', mailFrom: 'h@x.co' })).service.submit({ email: 'a@b.co', locale: 'ar' });
+    const sent = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body);
+    expect(sent.subject).toContain('قائمة انتظار');
+    expect(sent.htmlContent).toContain('dir="rtl"');
+    expect(sent.htmlContent).toContain('logo-512.png');
+  });
 });

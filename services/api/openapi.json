@@ -1211,6 +1211,13 @@
           "featureRequest": {
             "type": "string",
             "maxLength": 4000
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "en",
+              "ar"
+            ]
           }
         },
         "required": [

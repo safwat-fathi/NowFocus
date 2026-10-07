@@ -103,6 +103,7 @@
         email,
         platforms: checkedPlatforms,
         featureRequest: featureRequest || undefined,
+        locale: AR ? "ar" : "en",
       };
 
       const submitErr = dialog.querySelector("#wl-submit-err");

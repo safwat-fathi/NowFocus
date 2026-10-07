@@ -15,4 +15,8 @@ export class WaitlistDto {
   @IsOptional()
   @MaxLength(4000)
   featureRequest?: string;
+
+  @IsIn(['en', 'ar'])
+  @IsOptional()
+  locale?: 'en' | 'ar';
 }
