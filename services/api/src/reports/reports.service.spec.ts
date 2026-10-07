@@ -40,4 +40,14 @@ describe('ReportsService', () => {
     await service.submit(dto);
     expect(saved).toHaveLength(1);
   });
+
+  it('stops opening GitHub issues after 20 an hour but keeps storing reports', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ html_url: 'https://github.com/o/r/issues/3' }) }));
+    vi.stubGlobal('fetch', fetchMock);
+    const { saved, service } = setup(config({ githubToken: 't', githubRepo: 'o/r' }));
+    for (let i = 0; i < 25; i++) await service.submit(dto);
+    expect(fetchMock).toHaveBeenCalledTimes(20);
+    expect(saved).toHaveLength(25);
+    expect(saved[24].githubIssueUrl).toBeNull();
+  });
 });

@@ -7,6 +7,8 @@ import { IssueReport } from '../db/entities.js';
 import { createGithubIssue, quote } from '../github.js';
 import { ReportDto } from './reports.dto.js';
 
+const MAX_ISSUES_PER_HOUR = 20;
+
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
@@ -16,13 +18,25 @@ export class ReportsService {
     private readonly config: Config,
   ) {}
 
+  // ponytail: in-memory and per process (the API runs one pm2 instance); a shared counter if it ever scales out.
+  private readonly issueTimes: number[] = [];
+
+  /** Caps public GitHub issues from this anonymous endpoint across all clients, so rotating IPs can't flood the repo. Reports are still stored. */
+  private issueBudget(): boolean {
+    const now = Date.now();
+    while (this.issueTimes.length && now - this.issueTimes[0] > 3_600_000) this.issueTimes.shift();
+    if (this.issueTimes.length >= MAX_ISSUES_PER_HOUR) return false;
+    this.issueTimes.push(now);
+    return true;
+  }
+
   /** Always stores the report; the GitHub issue is best effort. */
   async submit(dto: ReportDto): Promise<{ ok: boolean; id: string }> {
     const message = dto.message.trim();
     const contact = dto.contact?.trim() || null;
     const id = randomUUID();
     let githubIssueUrl: string | null = null;
-    if (this.config.githubToken) {
+    if (this.config.githubToken && this.issueBudget()) {
       const title = `[App report] ${message.split('\n')[0].replace(/@/g, '').slice(0, 60)}`;
       const meta = `${dto.platform} ${dto.appVersion} · ${dto.osVersion}`.replace(/[\r\n]+/g, ' ');
       const body = [quote(meta), '', quote(message)].join('\n');
