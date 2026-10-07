@@ -43,8 +43,8 @@ targets:
       INFOPLIST_KEY_NSMicrophoneUsageDescription: "NowFocus can record a 10-second note to yourself for a Strict session. It stays on this Mac, and you hear it only if you try to end that session early."
       CODE_SIGN_ENTITLEMENTS: NowFocus/NowFocus.entitlements
       GENERATE_INFOPLIST_FILE: YES
-      MARKETING_VERSION: "1.2"
-      CURRENT_PROJECT_VERSION: "3"
+      MARKETING_VERSION: "1.3"
+      CURRENT_PROJECT_VERSION: "4"
     postBuildScripts:
       - name: "Embed Daemon"
         script: |
