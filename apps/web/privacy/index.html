@@ -164,6 +164,7 @@
 
   <h2>macOS and Windows</h2>
   <p>These apps enforce your rules locally and keep your history and stats on the computer. They don’t send usage, stats or the sites you visit anywhere. Optional sync is described in <a href="#sync">Optional account and sync</a>.</p>
+  <p><strong>Reading a browser tab’s address.</strong> If you switch on a “Pages to close” rule (YouTube Shorts, Instagram Reels and Explore, Facebook Reels), then only while a session with that rule is running, NowFocus asks the browser in front for the address of its current tab so it can close the tab on those pages. On Windows it reads the address bar of Chrome, Edge, Brave or Firefox with Windows UI Automation. On macOS it asks Safari, Chrome, Brave, Edge or Arc with AppleScript, and macOS asks for your permission once per browser (System Settings, Privacy &amp; Security, Automation). The address is checked in memory and forgotten: it is never stored, logged or sent, and only the name of the rule, such as “YouTube Shorts”, is kept in your block history on that computer.</p>
 
   <h2 id="sync">Optional account and sync</h2>
   <p>Sync is optional and off until you create an account or sign in, in the Android or Windows app. A signed-out app makes no connection to NowFocus, apart from the Windows update check described on its download page. Once you sign in, these are stored on our server:</p>
