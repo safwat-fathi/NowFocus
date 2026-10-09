@@ -132,7 +132,7 @@
         "Bedtime Wind-Down",
         "Reach-out prompt with one-tap call or text on the block screen",
         "Weekly stats and urge chart",
-        "Partial blocking of YouTube Shorts and Facebook Reels (experimental)"
+        "Partial blocking of YouTube Shorts, Facebook and Instagram Reels, the X For you feed and TikTok (experimental)"
       ],
       "offers": {
         "@type": "Offer",
@@ -161,7 +161,7 @@
           "name": "Why does NowFocus need the Accessibility permission?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "It lets NowFocus see which app comes to the foreground so it can block the apps you chose and, only if you turn on partial blocking, read the YouTube and Facebook screens during a session. If you add a daily limit for a website, it also reads your browser’s address bar, only while that browser is in front, to count the minutes on the sites you limited. Nothing else on screen is read, and nothing but those minutes is stored; nothing leaves your phone."
+            "text": "It lets NowFocus see which app comes to the foreground so it can block the apps you chose and, only if you turn on partial blocking, read the YouTube, Facebook, Instagram, X and TikTok screens during a session. If you add a daily limit for a website, it also reads your browser’s address bar, only while that browser is in front, to count the minutes on the sites you limited. Nothing else on screen is read, and nothing but those minutes is stored; nothing leaves your phone."
           }
         },
         {
@@ -475,13 +475,16 @@
 </section>
 <section class="screen" id="s-partial">
   <h3>Partial blocking (experimental)</h3>
-  <p>Keep an app, lose the part that pulls you in. Four switches, in the profile editor and in Commitment Shield setup:</p>
+  <p>Keep an app, lose the part that pulls you in. Seven switches, in the profile editor and in Commitment Shield setup:</p>
   <h4>What’s on it</h4>
   <ul>
     <li><strong>YouTube Shorts:</strong> backs out of the Shorts player and tab.</li>
     <li><strong>YouTube Home feed:</strong> hides recommended videos on the Home tab.</li>
     <li><strong>YouTube up next / related:</strong> hides the list under a playing video.</li>
     <li><strong>Facebook Reels:</strong> backs out of the Reels tab and viewer.</li>
+    <li><strong>Instagram Reels &amp; Explore:</strong> backs out of the Reels tab, viewer and Explore tab.</li>
+    <li><strong>X “For you”:</strong> hides the For you timeline; Following stays open.</li>
+    <li><strong>TikTok:</strong> hides the main feed and Explore (Inbox and Me stay open) and backs out of full-screen videos.</li>
   </ul>
   <h4>How to use it</h4>
   <ol>
@@ -489,7 +492,7 @@
     <li>Make sure NowFocus is enabled in Accessibility settings. The app warns you if it isn’t.</li>
     <li>Start a session. Covered lists show “Recommendations are off while you focus”.</li>
   </ol>
-  <div class="callout"><h4>Experimental</h4><p>These rules recognise YouTube and Facebook screens by their internal layout. We haven’t verified that on real devices yet, and those apps can change it at any time. They only work while a session or Commitment Shield with the rule is running. Tip, also untested: if a profile blocks youtube.com at the site level, that may override the YouTube rules, so try partial blocking on a profile that doesn’t.</p></div>
+  <div class="callout"><h4>Experimental</h4><p>These rules recognise each app’s screens by its internal layout. We’ve checked them on one phone against the current versions of those apps, and the apps can change that layout at any time, so a rule may stop working after an app update. They only work while a session or Commitment Shield with the rule is running. Tip, still untested: if a profile blocks youtube.com at the site level, that may override the YouTube rules, so try partial blocking on a profile that doesn’t.</p></div>
 </section>
 <section class="screen" id="s-shield">
   <h3>Commitment Shield</h3>
@@ -600,7 +603,7 @@
   <div class="faq">
   <details>
     <summary>Why does NowFocus need the Accessibility permission?</summary>
-    <p>It lets NowFocus see which app comes to the foreground so it can block the apps you chose and, only if you turn on partial blocking, read the YouTube and Facebook screens during a session. If you add a daily limit for a website, it also reads your browser’s address bar, only while that browser is in front, to count the minutes on the sites you limited. Nothing else on screen is read, and nothing but those minutes is stored; nothing leaves your phone.</p>
+    <p>It lets NowFocus see which app comes to the foreground so it can block the apps you chose and, only if you turn on partial blocking, read the YouTube, Facebook, Instagram, X and TikTok screens during a session. If you add a daily limit for a website, it also reads your browser’s address bar, only while that browser is in front, to count the minutes on the sites you limited. Nothing else on screen is read, and nothing but those minutes is stored; nothing leaves your phone.</p>
   </details>
   <details>
     <summary>Why does it use a VPN?</summary>

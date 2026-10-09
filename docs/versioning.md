@@ -27,7 +27,7 @@ During the Alpha stage, **routine updates, bug fixes, UI improvements, and new f
 Examples:
 - If current version is `0.2.0`, the next release is `0.2.1`, followed by `0.2.2`, `0.2.3`, etc.
 - If current version is `0.4.2`, the next release is `0.4.3`.
-- If current version is `0.8.0`, the next release is `0.8.1`.
+- If current version is `0.8.1`, the next release is `0.8.2`.
 
 > [!IMPORTANT]
 > Do NOT bump the minor semantic version for regular releases during Alpha. Bumps such as `0.2` $\rightarrow$ `0.3` or `0.7` $\rightarrow$ `0.8` are forbidden for routine releases.
@@ -45,7 +45,7 @@ Platform versions are tracked independently while adhering to the 3-part SemVer 
 | Platform | Current Version | Next Release | Config / Manifest Location |
 | :--- | :--- | :--- | :--- |
 | **Windows** | `0.4.2` | `0.4.3` | `apps/windows/src-tauri/tauri.conf.json`, `apps/windows/src-tauri/Cargo.toml`, `apps/windows/package.json` |
-| **Android** | `0.8.0` | `0.8.1` | `apps/android/app/build.gradle.kts` (`versionName`, bump `versionCode`) |
+| **Android** | `0.8.1` | `0.8.2` | `apps/android/app/build.gradle.kts` (`versionName`, bump `versionCode`) |
 | **macOS** | `0.3.0` | `0.3.1` | `apps/macos/project.yml` (`MARKETING_VERSION`, bump `CURRENT_PROJECT_VERSION`) |
 | **iOS** | `0.1.0` | `0.1.1` | `apps/ios/project.yml` (`MARKETING_VERSION`, bump `CURRENT_PROJECT_VERSION`) |
 | **API** | `0.0.1` | `0.0.2` | `services/api/package.json` |

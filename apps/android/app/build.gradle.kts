@@ -15,8 +15,8 @@ android {
         applicationId = "app.getnowfocus.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.8.0"
+        versionCode = 9
+        versionName = "0.8.1"
         // The sync server. Point a debug build at a local one with `-PsyncBaseUrl=http://10.0.2.2:3000` (emulator).
         val syncBaseUrl = (project.findProperty("syncBaseUrl") as String?) ?: "https://api.nowfocus.online"
         buildConfigField("String", "SYNC_BASE_URL", "\"$syncBaseUrl\"")
