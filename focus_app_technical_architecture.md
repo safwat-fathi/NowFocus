@@ -1787,6 +1787,12 @@ The app should not collect or upload:
 - private messages;
 - accessibility screen content.
 
+One exception, in memory only: while a session with a "Pages to close" rule runs, the Windows and macOS apps read the
+address of the front browser's active tab (UI Automation address bar on Windows, AppleScript on macOS) to close a
+Shorts or Reels tab. The address is matched by `feed_url` / `FeedURLMatcher` and dropped; it is never stored, logged
+or sent, and the block event keeps only the rule's label. Android's equivalent reads the screen of the apps it names
+(see `accessibility_description`).
+
 ## 21.3 Optional telemetry
 
 If telemetry is later introduced:

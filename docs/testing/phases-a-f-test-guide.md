@@ -505,6 +505,59 @@ With Chrome **not** allowed and Notes (or any app with sign-in, share and file p
 
 ---
 
+# I. In-app blocking (Shorts, Reels, feeds)
+
+Android reads the screen of YouTube, Facebook, Instagram, X and TikTok. Windows and macOS can only see a browser tab's address, so they close the tab on three pages: YouTube Shorts, Instagram Reels / Explore, Facebook Reels. The other four rules are Android-only and are carried through sync untouched.
+
+## I1 — Android: every app (phone)
+In a profile, switch on one rule at a time, start a session, then open the matching screen. Check that the rest of the app stays usable.
+- YouTube Shorts: Shorts tab and a Shorts link back out; Home and a normal video still play. YouTube Home / up next: the list is covered.
+- Facebook Reels, Instagram Reels and Explore: the tab and viewer back out; the feed and DMs stay open.
+- X For you: covered; Following stays open; scrolling the tab row away keeps the cover and lets touches through.
+- TikTok feed: For You and Following are covered; Inbox, Explore and Me stay reachable.
+
+**Expect:** each rule only touches its own screen, a block event is logged once per stretch, and a cheat day pauses all of it.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+## I2 — Windows: close the tab (PC) *(first run of the address check on a real PC)*
+Profile, "Pages to close": switch on YouTube Shorts and Instagram Reels & Explore. Start a session. In Chrome, Edge, Brave and Firefox in turn:
+1. Open `youtube.com/shorts/<any id>` in the active tab.
+2. Open a normal `youtube.com/watch?v=…` video.
+3. Click the address bar and type `youtube.com/shorts` without pressing Enter.
+4. Hold Shift while opening a Shorts link.
+5. Open `instagram.com/explore/`, then `instagram.com/` (the feed).
+6. Devices screen, "Browser address check".
+7. While the session runs, try to switch Shorts off in the profile.
+
+**Expect:** 1 and 5 (explore) close the tab within about a second; 2 and the Instagram feed stay open; 3 never closes anything; 4 does not close the window; 6 says "Working" (or "Can't read the address bar" for a browser that doesn't expose it, which is worth a note); 7 is refused with the "can't remove blocks" message. Stats show the rule name, never an address.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes (browser, what happened):**
+
+## I3 — macOS: close the tab (Mac)
+Profile, "Pages to Close": switch on YouTube Shorts and Facebook Reels. Start a session, then in Safari and Chrome:
+1. Open a Shorts URL. The first time, macOS asks to let NowFocus control the browser: allow it.
+2. Open a normal video, then `facebook.com/reel/123` and `facebook.com/`.
+3. Switch NowFocus off under System Settings, Privacy & Security, Automation, then reopen a Shorts URL.
+4. Switch it back on.
+
+**Expect:** a Shorts or Reel tab closes about a second after it becomes the front tab; a normal video and the Facebook home stay open; with permission off the profile shows "Your browser said no" with an Open Automation Settings button and nothing closes; switching it back on works without restarting NowFocus. Firefox is not covered on a Mac.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+## I4 — Cross-device: rules a device can't enforce survive
+On the phone turn on YouTube Shorts and TikTok feed. On the PC or Mac open the same profile, switch Instagram Reels on, then back on the phone.
+
+**Expect:** the phone still has TikTok feed, YouTube Shorts and now Instagram Reels; the PC/Mac never shows the TikTok row.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
+---
+
 # Things I know are rough (you don't need to report these as bugs)
 
 - **Windows has never run on a PC.** Seven files still carry "UNVERIFIED" banners; W0 is the first real test.
@@ -512,7 +565,7 @@ With Chrome **not** allowed and Notes (or any app with sign-in, share and file p
 - **Windows enforcement is weaker than Android's:** Task Manager ends app blocking; hosts-file blocking has no URL paths, ignores DNS-over-HTTPS in some browsers, and an administrator can stop the service.
 - **Whitelist mode (Windows):** everything under the Windows folder is always allowed, so Notepad, cmd and PowerShell are never closed, and Store (UWP) apps show up as one host process, so they can't be allowed or closed individually. **Whitelist mode (Android):** Camera and Chrome (Custom Tabs) are closed unless you allow them. Sites are not filtered in a whitelist, only apps.
 - **Windows has no autostart**, so schedules, Bedtime and sync only work while the app is running.
-- **Windows partial blocking (Shorts, Reels) is saved but not enforced.** Android's partial blocking is still experimental and unverified.
+- **Windows and macOS in-app blocking is address-only and unverified.** It closes the tab on Shorts / Reels pages (Windows: Chrome, Edge, Brave, Firefox; macOS: Safari, Chrome, Brave, Edge, Arc). It can't hide parts of a page, so X For you, TikTok and YouTube Home/Related stay Android-only. Another browser, or turning Automation off on a Mac, gets around it. Closing the last tab closes the window.
 - **Android background sync is every ~15 minutes and inexact.** Samsung's battery manager may delay it; the session joins sooner if you open the app.
 - **A remote Locked session can lock a device for up to 24 hours** (the phone and PC cap it; the server cap is not deployed). Turn "Join sessions from my other devices" off if that worries you.
 - **Cheat day uses the wall clock**, so changing the date can start one early. It is a plan-ahead tool, not tamper-proof.
