@@ -3,6 +3,7 @@ apps/macos/build/
 apps/macos/*.xcodeproj/
 apps/ios/*.xcodeproj/
 graphify-out/cache/
+apps/graphify-out/
 apps/android/build/
 apps/android/app/build/
 apps/android/.gradle/
