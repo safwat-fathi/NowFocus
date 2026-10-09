@@ -13,6 +13,10 @@ describe('versionEmail', () => {
     expect(html).toContain('Fixes the block screen');
     expect(html).toContain(`href="${base.unsubUrl}"`);
     expect(html).toContain('logo-512.png');
+    expect(html).toContain('Thank you for joining the waitlist');
+    expect(html).toContain('early tester');
+    expect(html).toContain('an honour');
+    expect(html).toContain('<strong>Safwat Fathi</strong>');
   });
 
   it('renders Arabic right-to-left', () => {
@@ -20,6 +24,7 @@ describe('versionEmail', () => {
     expect(subject).toContain('أندرويد');
     expect(html).toContain('dir="rtl"');
     expect(html).toContain('إلغاء الاشتراك');
+    expect(html).toContain('صفوت فتحي');
   });
 
   it('escapes notes and version because they are injected into HTML', () => {

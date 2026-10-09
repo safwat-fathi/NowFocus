@@ -10,9 +10,9 @@ const brevo = async (config: Config, path: string, body: unknown) => {
 };
 
 /** Sends one transactional email from the configured sender. Throws on a non-2xx from Brevo. */
-export const sendMail = (config: Config, to: string, subject: string, html: string, headers?: Record<string, string>) =>
+export const sendMail = (config: Config, to: string, subject: string, html: string, headers?: Record<string, string>, fromName = 'NowFocus') =>
   brevo(config, '/smtp/email', {
-    sender: { name: 'NowFocus', email: config.mailFrom },
+    sender: { name: fromName, email: config.mailFrom },
     replyTo: { email: config.mailFrom },
     to: [{ email: to }],
     subject,

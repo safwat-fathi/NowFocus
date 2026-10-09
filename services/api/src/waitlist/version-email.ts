@@ -18,23 +18,33 @@ const HINT = {
   },
 } as const;
 
+/** Name on the signature and the From line: these emails are written as personal notes from the founder. */
+export const SENDER_NAME = 'Safwat Fathi (NowFocus)';
+const SIGNED = { en: 'Safwat Fathi', ar: 'صفوت فتحي' } as const;
+
 const COPY = {
   en: {
     subject: (v: string, p: string) => `NowFocus ${v} is ready to test on ${p}`,
     title: (v: string) => `NowFocus ${v} is ready.`,
-    intro: (p: string) => `A new test build for ${p} is out. Thanks for being early.`,
+    hello: "Hi, it's Safwat, the person building NowFocus. Thank you for joining the waitlist.",
+    honour: "I've signed you up as an early tester, and it's an honour to have you. Early testers are the reason this app gets better: what you find shapes what I fix next.",
+    intro: (p: string) => `A new test build for ${p} is out:`,
     news: "What's new",
     cta: (v: string) => `Get NowFocus ${v}`,
-    reply: 'Found a bug, or have an idea? Just reply to this email. It goes straight to a person.',
+    reply: 'Found a bug, or have an idea? Just reply to this email. It comes straight to me.',
+    thanks: 'Thank you,',
     foot: (p: string) => `You received this because you joined the NowFocus waitlist for ${p}.`,
   },
   ar: {
     subject: (v: string, p: string) => `NowFocus ${v} جاهز للتجربة على ${p}`,
     title: (v: string) => `NowFocus ${v} جاهز.`,
-    intro: (p: string) => `صدر إصدار تجريبي جديد لمنصة ${p}. شكرًا لأنك من أوائل المجرّبين.`,
+    hello: 'أهلًا، أنا صفوت، صانع NowFocus. شكرًا لانضمامك إلى قائمة الانتظار.',
+    honour: 'سجّلتك ضمن المجرّبين الأوائل، وهذا شرف لي. المجرّبون الأوائل هم من يجعلون التطبيق أفضل: ما تكتشفه يحدّد ما أصلحه بعد ذلك.',
+    intro: (p: string) => `صدر إصدار تجريبي جديد لمنصة ${p}:`,
     news: 'الجديد',
     cta: (v: string) => `احصل على NowFocus ${v}`,
-    reply: 'وجدت خطأً أو عندك فكرة؟ ردّ على هذا البريد وسيصلنا مباشرة.',
+    reply: 'وجدت خطأً أو عندك فكرة؟ ردّ على هذا البريد وسيصلني مباشرة.',
+    thanks: 'شكرًا لك،',
     foot: (p: string) => `وصلتك هذه الرسالة لأنك انضممت إلى قائمة انتظار NowFocus لمنصة ${p}.`,
   },
 } as const;
@@ -61,6 +71,8 @@ export function versionEmail(i: VersionEmailInput): { subject: string; html: str
 
   const rows =
     heading(c.title(v)) +
+    row(c.hello) +
+    row(c.honour) +
     row(c.intro(p)) +
     (notes.length
       ? row(`<strong>${c.news}</strong><ul style="margin:8px 0 0;${pad};">${notes.map((n) => `<li style="margin:0 0 4px;">${escapeHtml(n)}</li>`).join('')}</ul>`)
@@ -70,9 +82,10 @@ export function versionEmail(i: VersionEmailInput): { subject: string; html: str
       '24px 32px 0',
     ) +
     (hint ? row(hint, '16px 32px 0', 'font-size:14px;line-height:22px;') : '') +
-    row(c.reply, '24px 32px 32px');
+    row(c.reply, '24px 32px 0') +
+    row(`${c.thanks}<br><strong>${SIGNED[locale]}</strong><br><span style="color:#6b6866;">NowFocus</span>`, '16px 32px 32px');
 
   const subject = c.subject(i.version, p);
   const foot = `${c.foot(p)} ${UNSUB[locale](i.unsubUrl)}`;
-  return { subject, html: emailShell({ locale, subject, preheader: c.intro(p), rows, foot }) };
+  return { subject, html: emailShell({ locale, subject, preheader: c.hello, rows, foot }) };
 }

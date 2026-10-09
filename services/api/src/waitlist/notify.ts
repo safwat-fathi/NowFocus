@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm';
 import { Config } from '../config.js';
 import { sendMail } from '../mail.js';
 import { Locale, unsubscribeUrl } from './email-layout.js';
-import { versionEmail } from './version-email.js';
+import { SENDER_NAME, versionEmail } from './version-email.js';
 
 export interface NotifyOpts {
   platform: string;
@@ -35,7 +35,7 @@ export async function notifyVersion(ds: DataSource, config: Config, o: NotifyOpt
 
   if (o.to) {
     const m = build(randomUUID(), o.locale ?? 'en');
-    await mail(config, o.to, m.subject, m.html, m.headers);
+    await mail(config, o.to, m.subject, m.html, m.headers, SENDER_NAME);
     log(`preview sent to ${o.to}`);
     return { pending: 1, sent: 1, failed: 0 };
   }
@@ -58,7 +58,7 @@ export async function notifyVersion(ds: DataSource, config: Config, o: NotifyOpt
   for (const r of rows) {
     try {
       const m = build(r.id, r.locale);
-      await mail(config, r.email, m.subject, m.html, m.headers);
+      await mail(config, r.email, m.subject, m.html, m.headers, SENDER_NAME);
       await ds.query('insert into waitlist_sends (waitlist_id, platform, version) values ($1, $2, $3) on conflict do nothing', [r.id, o.platform, o.version]);
       res.sent++;
       streak = 0;
