@@ -78,12 +78,21 @@ Server-enforced: `name` 1–200 chars; `mode` is `blocklist` or `allowlist`; at 
 | `domainRules[]` | `domains: List<String>`. Every domain implies `includeSubdomains: true, enabled: true`. | `domains: [DomainRule]` (same shape; **rename the key**) | `domains` with `include_subdomains` (snake_case) |
 | `applicationRules[]` | `apps: List<AppRule(packageName, label)>` ↔ rules with `platform: "android"`, `nativeIdentifier = packageName`, `displayName = label` | `applications: [ApplicationRule]` (**rename the key**), `platform: "macos"` | `applications` with `native_identifier`, `display_name`, `platform: "windows"` |
 | `mode` | `mode: PolicyMode` (`BLOCKLIST` / `ALLOWLIST`) | `mode` (macOS/iOS enforce blocklists only, see rule 4) | `mode` |
-| `partial` | `partial: Set<PartialRule>` | none yet (listed, not switchable) | `feed_rules` rows, mapped below |
+| `partial` | `partial: Set<PartialRule>` | `partial: Set<String>` (the three URL rules, see below) | `feed_rules` rows, mapped below |
 | ids | lowercase already | **uppercase today: lowercase them** | lowercase already |
 
 ### `partial` vocabulary
 
-Exactly six names, **UPPERCASE**, identical on Android (`PartialRule` enum) and macOS/iOS (`FeedRules.all`): `YT_SHORTS`, `YT_HOME`, `YT_RELATED`, `FB_REELS`, `IG_REELS`, `X_FOR_YOU`. The server treats the list as opaque. Windows' four feed keys map `shorts → YT_SHORTS`, `ythome → YT_HOME`, `xfy → X_FOR_YOU`, `reels → IG_REELS` (its label is "Instagram Reels & Explore"); it has no source for `YT_RELATED` or `FB_REELS` and must preserve them. `feedRules` is reserved and unspecified: preserve it, don't write it.
+Exactly seven names, **UPPERCASE**: `YT_SHORTS`, `YT_HOME`, `YT_RELATED`, `FB_REELS`, `IG_REELS`, `X_FOR_YOU`, `TT_FOR_YOU` (Android's `PartialRule` enum is the source of order and spelling). The server treats the list as opaque. Which platform *enforces* which name:
+
+| Name | Android | Windows | macOS |
+|---|---|---|---|
+| `YT_SHORTS` | yes (screen) | yes (`feed_key` `shorts`, URL `youtube.com/shorts`) | yes (URL) |
+| `IG_REELS` | yes (screen) | yes (`reels`, URL `instagram.com/reels`, `/reel/`, `/explore`) | yes (URL) |
+| `FB_REELS` | yes (screen) | yes (`fbreels`, URL `facebook.com/reel/`, `/reels`) | yes (URL) |
+| `YT_HOME`, `YT_RELATED`, `X_FOR_YOU`, `TT_FOR_YOU` | yes (screen) | stored/synced (`ythome`, `xfy`), **not enforced** | preserved, not enforced |
+
+Desktop enforcement reads the front browser tab's address in memory and closes the tab; a page section such as "the For you tab" has no URL, so those four names stay Android-only. A client never drops a name it cannot enforce: Windows maps `shorts → YT_SHORTS`, `ythome → YT_HOME`, `xfy → X_FOR_YOU`, `reels → IG_REELS`, `fbreels → FB_REELS` and preserves `YT_RELATED` and `TT_FOR_YOU`; macOS owns only the three URL names. `feedRules` is reserved and unspecified: preserve it, don't write it.
 
 ### The preserve-unknown rule (most important)
 

@@ -51,6 +51,8 @@ describe('editing a policy while a session runs on it', () => {
   it('rejects dropping a feed/partial rule, including ones it has never heard of', () => {
     expect(checkPolicyEdit(policy(), policy({ feedRules: [] }))).toMatch(/feedRules/);
     expect(checkPolicyEdit(policy({ partial: ['YT_SHORTS', 'FUTURE_X'] }), policy({ partial: ['YT_SHORTS'] }))).toMatch(/partial/);
+    expect(checkPolicyEdit(policy({ partial: ['YT_SHORTS', 'TT_FOR_YOU'] }), policy({ partial: ['YT_SHORTS'] }))).toMatch(/partial/);
+    expect(checkPolicyEdit(policy({ partial: ['YT_SHORTS'] }), policy({ partial: ['YT_SHORTS', 'TT_FOR_YOU'] }))).toBeNull();
   });
 
   it('rejects flipping blocklist/allowlist mode', () => {
