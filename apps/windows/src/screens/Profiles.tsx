@@ -3,7 +3,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "../lib/api";
 import type { AppState, PolicyMode, Profile } from "../types";
 import { profileSummary } from "../lib/profile";
-import { errorText, useI18n } from "../i18n";
+import { errorText, tOr, useI18n } from "../i18n";
 import { GlobeIcon, PlusIcon, RemoveIcon } from "../components/Icons";
 
 export function Profiles({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
@@ -191,6 +191,30 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
             <PlusIcon />
             {t("prof.addApp")}
           </button>
+
+          <div className="column-header" style={{ marginTop: 22 }}>
+            <span className="column-header__label">{t("prof.feedsTitle")}</span>
+            <span className="column-header__hint">{t("prof.feedsHint")}</span>
+          </div>
+          <div className="rule-list" style={{ marginTop: 6 }}>
+            {profile.feeds.map((f) => (
+              <button
+                key={f.feedKey}
+                className="feed-toggle"
+                data-on={f.enabled}
+                onClick={() => run(() => api.toggleFeed(profile.id, f.feedKey))}
+              >
+                <span style={{ flex: 1 }}>
+                  <span className="feed-toggle__label">{tOr(t, `feed.${f.feedKey}`, f.label)}</span>
+                  <span className="feed-toggle__sub">{tOr(t, `feed.${f.feedKey}.sub`, f.sub)}</span>
+                </span>
+                <span className="switch">
+                  <span className="switch__knob" />
+                </span>
+              </button>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: "var(--color-neutral-700)", margin: "8px 0 0" }}>{t("prof.feedsNote")}</p>
           <div className="error-line">{appError}</div>
         </div>
       </div>

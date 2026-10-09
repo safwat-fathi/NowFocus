@@ -12,6 +12,7 @@ pub mod commitment;
 pub mod daily_limit;
 pub mod domain_validation;
 pub mod enforcement_health;
+pub mod feed_url;
 pub mod focus_session;
 pub mod history_stats;
 pub mod hosts_block;

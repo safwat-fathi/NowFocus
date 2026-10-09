@@ -7,6 +7,7 @@ use chrono::{
 use now_focus_core::block_policy::FeedRule;
 use now_focus_core::cheat_day::{self, CheatDay};
 use now_focus_core::daily_limit::{self, DailyLimit};
+use now_focus_core::feed_url::URL_FEEDS;
 use now_focus_core::history_stats::BlockEvent;
 use now_focus_core::schedule::{self, Schedule};
 use now_focus_core::{
@@ -43,22 +44,24 @@ fn unlock_matches(typed: &str) -> bool {
     typed == UNLOCK_SENTENCE || typed == UNLOCK_SENTENCE_AR
 }
 
-/// Feed keys the design defines, with their labels/sub-copy — matches the
-/// `FEEDS` table in the fetched NowFocus PC.dc.html script. Not enforced
-/// until the Phase 5 browser-extension milestone; stored now so profile
-/// data doesn't need a migration later.
+/// The feed rules this PC can enforce: pages with their own address (see `feed_url`), checked in the front
+/// browser's address bar. The other synced names (`ythome`, `xfy`, Android's) are kept but have no row here.
+/// Labels live in the UI's i18n (`feed.<key>`); these are the English fallback the DTO carries.
 const FEED_DEFS: &[(&str, &str, &str)] = &[
-    ("shorts", "YouTube Shorts", "Videos and search still work"),
-    ("reels", "Instagram Reels & Explore", "DMs stay open"),
     (
-        "xfy",
-        "X \u{201c}For You\u{201d} feed",
-        "Following tab only",
+        "shorts",
+        "YouTube Shorts",
+        "Closes the tab when a Shorts page opens",
     ),
     (
-        "ythome",
-        "YouTube home recommendations",
-        "Opens straight to search",
+        "reels",
+        "Instagram Reels & Explore",
+        "Closes the tab; the feed and DMs stay open",
+    ),
+    (
+        "fbreels",
+        "Facebook Reels",
+        "Closes the tab; the feed stays open",
     ),
 ];
 
@@ -223,6 +226,25 @@ impl AppState {
             }
             .to_string();
         }
+        // The old "browser extensions" layer was a placeholder for a feature that never shipped; this row
+        // says whether the address check can read the browser, which is what the feed rules rely on.
+        health.layers.retain(|l| l.name != "extensions");
+        health.layers.push(crate::dto::DeviceLayerDto {
+            name: "feeds".to_string(),
+            #[cfg(windows)]
+            state: if crate::browser_guard::can_read() {
+                "ok"
+            } else {
+                "cantRead"
+            }
+            .to_string(),
+            #[cfg(not(windows))]
+            state: "devMode".to_string(),
+            #[cfg(windows)]
+            healthy: crate::browser_guard::can_read(),
+            #[cfg(not(windows))]
+            healthy: false,
+        });
 
         let bedtime = bedtime_to_dto(&self.db.get_bedtime().map_err(|e| e.to_string())?);
 
@@ -447,6 +469,10 @@ impl AppState {
             .iter_mut()
             .find(|f| f.feed_key == feed_key)
         {
+            // Switching a rule off loosens a running session, like removing a site or an app.
+            if rule.enabled {
+                self.reject_if_active(profile_id)?;
+            }
             rule.enabled = !rule.enabled;
         } else {
             profile.feed_rules.push(FeedRule {
@@ -890,6 +916,48 @@ impl AppState {
         let _ = self.record_block_attempt("app".to_string(), display_name.clone());
         self.shield_native = Some(native);
         Some(display_name)
+    }
+
+    /// The address-checked feed rules (`feed_url::URL_FEEDS`) switched on for the session running now. Empty
+    /// outside a session and on a cheat day. Feed rules apply to allowlist profiles too (WIRE_FORMAT.md, section 4).
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub fn live_feeds(&mut self) -> Vec<String> {
+        let Some(session) = self.recover().ok().flatten() else {
+            return Vec::new();
+        };
+        let now = Utc::now();
+        if !session_engine::is_active(&session, now) || self.cheat_active(now) {
+            return Vec::new();
+        }
+        let Some(profile) = self.db.get_profile(&session.policy_id).ok().flatten() else {
+            return Vec::new();
+        };
+        profile
+            .feed_rules
+            .iter()
+            .filter(|f| f.enabled && URL_FEEDS.contains(&f.feed_key.as_str()))
+            .map(|f| f.feed_key.clone())
+            .collect()
+    }
+
+    /// Logs that a tab on `feed_key`'s page was closed. Unlike an app block this shows no Shield: the page is
+    /// gone and the browser is still theirs. Only the rule's label is kept, never the address.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    pub fn record_feed_block(&mut self, feed_key: &str) {
+        let Some(label) = FEED_DEFS
+            .iter()
+            .find(|(k, _, _)| *k == feed_key)
+            .map(|(_, l, _)| *l)
+        else {
+            return;
+        };
+        let Ok(Some(session)) = self.recover() else {
+            return;
+        };
+        let metadata = serde_json::json!({ "kind": "feed", "name": label }).to_string();
+        let _ = self
+            .db
+            .record_event(&session.id, "BLOCK_ATTEMPT", Some(&metadata));
     }
 
     // ---- Daily limits ---------------------------------------------------------
@@ -2422,5 +2490,67 @@ mod tests {
         // The UI displays the sentence from its dictionary and the backend compares it: they must be the same text.
         assert!(include_str!("../../src/i18n/en.ts").contains(UNLOCK_SENTENCE));
         assert!(include_str!("../../src/i18n/ar.ts").contains(UNLOCK_SENTENCE_AR));
+    }
+    fn state_with_profile() -> (AppState, String) {
+        let db = Database::open_in_memory().expect("in-memory DB");
+        let (fake, _log) = FakeEnforcer::new();
+        let mut state = AppState::open_with_db(db, Box::new(fake)).unwrap();
+        state
+            .create_profile("Feeds".into(), PolicyMode::Blocklist)
+            .unwrap();
+        let id = state
+            .snapshot()
+            .unwrap()
+            .profiles
+            .iter()
+            .find(|p| p.name == "Feeds")
+            .expect("profile should exist")
+            .id
+            .clone();
+        (state, id)
+    }
+
+    #[test]
+    fn feed_rules_are_live_only_while_a_session_runs_and_cannot_be_switched_off_in_it() {
+        let (mut state, id) = state_with_profile();
+        state.toggle_feed(&id, "shorts").unwrap();
+        assert!(
+            state.live_feeds().is_empty(),
+            "no session, nothing to enforce"
+        );
+
+        state.start_session(&id, 60, "normal").unwrap();
+        assert_eq!(state.live_feeds(), vec!["shorts".to_string()]);
+
+        state.toggle_feed(&id, "reels").unwrap(); // switching one on only adds a block
+        assert_eq!(
+            state.live_feeds(),
+            vec!["shorts".to_string(), "reels".to_string()]
+        );
+
+        assert_eq!(
+            state.toggle_feed(&id, "shorts"),
+            Err("cantRemove".to_string()),
+            "switching one off would loosen the running session"
+        );
+        assert!(state.live_feeds().contains(&"shorts".to_string()));
+    }
+
+    #[test]
+    fn a_feed_rule_the_address_check_cannot_see_is_never_live() {
+        let (mut state, id) = state_with_profile();
+        state.toggle_feed(&id, "xfy").unwrap(); // synced from Android; a section of a page, not an address
+        state.start_session(&id, 60, "normal").unwrap();
+        assert!(state.live_feeds().is_empty());
+    }
+
+    #[test]
+    fn the_profile_screen_lists_only_the_feed_rules_this_pc_can_enforce() {
+        let (mut state, id) = state_with_profile();
+        state.toggle_feed(&id, "xfy").unwrap();
+        let snap = state.snapshot().unwrap();
+        let p = snap.profiles.iter().find(|p| p.id == id).unwrap();
+        let keys: Vec<&str> = p.feeds.iter().map(|f| f.feed_key.as_str()).collect();
+        assert_eq!(keys, ["shorts", "reels", "fbreels"]);
     }
 }

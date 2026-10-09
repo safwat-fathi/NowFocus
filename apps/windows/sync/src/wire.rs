@@ -4,8 +4,8 @@
 //! The one rule that matters: policies are last-write-wins as a whole, so an edit is MERGED into the last
 //! server JSON, never rebuilt from the Windows model. Windows owns the name, the mode (set when a profile is created,
 //! never changed), the domain rules, the apps with
-//! `platform: "windows"` and the four feed names it can express; every other field and rule (Android's
-//! apps, `YT_RELATED`, `categories`, unknown fields) is carried over untouched.
+//! `platform: "windows"` and the five feed names it can express; every other field and rule (Android's
+//! apps, `YT_RELATED`, `TT_FOR_YOU`, `categories`, unknown fields) is carried over untouched.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -18,11 +18,12 @@ use serde_json::{json, Value};
 
 pub const PLATFORM: &str = "windows";
 /// The feed keys Windows can express, as the wire's `partial` names.
-pub const FEEDS: [(&str, &str); 4] = [
+pub const FEEDS: [(&str, &str); 5] = [
     ("shorts", "YT_SHORTS"),
     ("ythome", "YT_HOME"),
     ("xfy", "X_FOR_YOU"),
     ("reels", "IG_REELS"),
+    ("fbreels", "FB_REELS"),
 ];
 
 fn s<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
@@ -263,7 +264,7 @@ fn merge_apps(local: &[ApplicationRule], existing: &[Value]) -> Vec<Value> {
 
 fn merge_partial(feeds: &[FeedRule], out: &mut Value) {
     let known: Vec<&str> = FEEDS.iter().map(|(_, n)| *n).collect();
-    // Names this build doesn't own (YT_RELATED, FB_REELS, a newer one, a non-string) belong to someone else.
+    // Names this build doesn't own (YT_RELATED, TT_FOR_YOU, a newer one, a non-string) belong to someone else.
     let mut next: Vec<Value> = arr(out, "partial")
         .iter()
         .filter(|v| !v.as_str().is_some_and(|n| known.contains(&n)))
@@ -340,4 +341,57 @@ pub mod bedtime {
 /// RFC3339 with a timezone, as the wire requires.
 pub fn iso(t: DateTime<Utc>) -> String {
     t.to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn names(v: &Value) -> BTreeSet<String> {
+        arr(v, "partial")
+            .iter()
+            .filter_map(Value::as_str)
+            .map(String::from)
+            .collect()
+    }
+
+    #[test]
+    fn partial_names_round_trip_and_the_ones_windows_cannot_express_survive() {
+        let raw = json!({
+            "id": "p1", "name": "Deep work", "mode": "blocklist",
+            "partial": ["YT_SHORTS", "FB_REELS", "YT_RELATED", "TT_FOR_YOU", "X_FOR_YOU"],
+        });
+        let local = to_local(&raw, None).expect("a profile");
+        let keys: Vec<&str> = local
+            .feed_rules
+            .iter()
+            .map(|f| f.feed_key.as_str())
+            .collect();
+        assert_eq!(
+            keys,
+            ["shorts", "xfy", "fbreels"],
+            "FB_REELS is Windows' own since the URL guard"
+        );
+
+        let back = names(&merge(&local, Some(&raw)));
+        assert_eq!(
+            back,
+            names(&raw),
+            "an untouched profile pushes the same list"
+        );
+
+        let mut off = local.clone();
+        for f in off
+            .feed_rules
+            .iter_mut()
+            .filter(|f| f.feed_key == "fbreels")
+        {
+            f.enabled = false;
+        }
+        let after = names(&merge(&off, Some(&raw)));
+        assert!(!after.contains("FB_REELS"), "{after:?}");
+        for kept in ["YT_SHORTS", "YT_RELATED", "TT_FOR_YOU", "X_FOR_YOU"] {
+            assert!(after.contains(kept), "{kept} lost: {after:?}");
+        }
+    }
 }

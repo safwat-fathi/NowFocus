@@ -975,7 +975,7 @@ mod tests {
                             {"id": uuid::Uuid::new_v4().to_string(), "platform": "android", "nativeIdentifier": "com.reddit.frontpage", "displayName": "Reddit", "enabled": true},
                             {"id": uuid::Uuid::new_v4().to_string(), "platform": "windows", "nativeIdentifier": r"C:\Games\steam.exe", "displayName": "Steam", "enabled": true},
                         ],
-                        "partial": ["YT_RELATED", "FB_REELS", "YT_SHORTS"],
+                        "partial": ["YT_RELATED", "FB_REELS", "YT_SHORTS", "TT_FOR_YOU"],
                         "categories": ["social"], "notificationPolicy": "quiet",
                         "futureField": {"keep": true},
                     }),
@@ -1025,7 +1025,9 @@ mod tests {
         assert_eq!(pol["notificationPolicy"], json!("quiet"));
         let partial = pol["partial"].to_string();
         assert!(
-            partial.contains("YT_RELATED") && partial.contains("FB_REELS"),
+            partial.contains("YT_RELATED")
+                && partial.contains("FB_REELS")
+                && partial.contains("TT_FOR_YOU"),
             "{partial}"
         );
         let apps = pol["applicationRules"].to_string();

@@ -127,7 +127,7 @@ fn handle_foreground(app: &AppHandle, hwnd: HWND) {
 /// Returns `None` on any failure (process already exited, access denied,
 /// etc.) — those are normal races, not something to log on every
 /// foreground change.
-fn foreground_process_path(hwnd: HWND) -> Option<String> {
+pub(crate) fn foreground_process_path(hwnd: HWND) -> Option<String> {
     let mut pid: u32 = 0;
     // SAFETY: `hwnd` is a valid window handle from the hook callback;
     // `pid` is a valid out-param.

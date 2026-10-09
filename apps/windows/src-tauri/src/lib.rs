@@ -1,5 +1,7 @@
 #[cfg(windows)]
 mod app_blocker;
+#[cfg(windows)]
+mod browser_guard;
 mod commands;
 mod credentials;
 mod dto;
@@ -151,6 +153,8 @@ pub fn run() {
             // running in the user-level NowFocus app, not the daemon.
             #[cfg(windows)]
             app_blocker::install(app.handle().clone());
+            #[cfg(windows)]
+            browser_guard::install(app.handle().clone());
 
             Ok(())
         })
