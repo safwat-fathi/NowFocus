@@ -21,6 +21,16 @@ The product is designed around:
 
 ---
 
+## Project Status: Alpha
+
+> [!WARNING]
+> **NowFocus is currently in Alpha (pre-Beta).**  
+> All client applications and backend services are under active daily development. Features, local data schemas, and synchronization protocols may change rapidly.
+>
+> **Versioning Policy:** Routine releases bump **only the patch version** (e.g., `0.2` &rarr; `0.2.1` &rarr; `0.2.2`). The minor semantic version is frozen during Alpha and reserved strictly for major milestone transitions (such as Beta). See [Versioning Policy](file:///Users/safwat/Coding/Projects/side-projects/now-focus/docs/versioning.md) for full details.
+
+---
+
 # Features
 
 ## Core

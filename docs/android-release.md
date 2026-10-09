@@ -17,7 +17,7 @@ or the env vars `NOWFOCUS_KEYSTORE`, `NOWFOCUS_KEYSTORE_PASSWORD`, `NOWFOCUS_KEY
 
 Each upload:
 
-1. Bump `versionCode` (must increase every upload) and `versionName` in `apps/android/app/build.gradle.kts`.
+1. Bump `versionCode` (must increase every upload) and bump the patch version in `versionName` (e.g. `0.8.0` &rarr; `0.8.1`) in `apps/android/app/build.gradle.kts`. Per [Versioning Policy](file:///Users/safwat/Coding/Projects/side-projects/now-focus/docs/versioning.md), only bump the patch number during Alpha; do not change the minor version.
 2. `cd apps/android && ./gradlew :app:bundleRelease`
 3. Upload `app/build/outputs/bundle/release/app-release.aab` in Play Console.
 
