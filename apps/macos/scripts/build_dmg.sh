@@ -108,7 +108,10 @@ codesign --force --sign "${SIGN_IDENTITY}" "${SIGN_FLAGS[@]}" \
   "${APP_PATH}/Contents/Frameworks/NowFocusCore.framework"
 codesign --force --sign "${SIGN_IDENTITY}" "${SIGN_FLAGS[@]}" \
   "${DAEMON_DIR}/NowFocusDaemon"
+# The entitlements go on the app itself: the archive step above signs nothing, and a Hardened Runtime
+# (Developer ID) signature without them blocks the microphone note and the browser Apple events.
 codesign --force --sign "${SIGN_IDENTITY}" "${SIGN_FLAGS[@]}" \
+  --entitlements "${PROJECT_DIR}/NowFocus/NowFocus.entitlements" \
   "${APP_PATH}"
 
 # 4. Create DMG with the standard drag-to-Applications layout.

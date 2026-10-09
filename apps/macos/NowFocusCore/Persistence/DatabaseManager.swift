@@ -133,6 +133,13 @@ public class DatabaseManager {
             }
         }
 
+        // Feed rules the Mac enforces by closing a browser tab (FeedRules.enforceable); JSON array of wire names.
+        migrator.registerMigration("v6") { db in
+            try db.alter(table: "blockPolicy") { t in
+                t.add(column: "partialData", .blob).notNull().defaults(to: Data("[]".utf8))
+            }
+        }
+
         return migrator
     }
     

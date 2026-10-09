@@ -171,6 +171,9 @@ struct PolicyListView: View {
         let newEnabledApps = Set(new.applications.filter(\.enabled).map(\.id))
         if !oldEnabledApps.isSubset(of: newEnabledApps) { return true }
 
+        // Switching a feed rule off loosens a running session like removing a site does.
+        if !Set(old.partial).isSubset(of: Set(new.partial)) { return true }
+
         return false
     }
 

@@ -164,11 +164,67 @@ check(!notes.hasPending, "an empty pending file does not count")
 notes.deletePending()
 check(!FileManager.default.fileExists(atPath: notes.pendingURL.path), "deletePending removes the file")
 
-// MARK: Feed rules (the cross-platform contract: same six names, same order, same labels as Android's PartialRule)
+// MARK: Feed rules (the cross-platform contract: same seven names, same order, same labels as Android's PartialRule)
 
-check(FeedRules.all.map { $0.id } == ["YT_SHORTS", "YT_HOME", "YT_RELATED", "FB_REELS", "IG_REELS", "X_FOR_YOU"], "the six rule names and their order")
-check(FeedRules.all.map { $0.label } == ["YouTube Shorts", "YouTube Home feed", "YouTube up next / related", "Facebook Reels", "Instagram Reels & Explore", "X \u{201C}For you\u{201D} feed"], "rule labels match Android")
+check(FeedRules.all.map { $0.id } == ["YT_SHORTS", "YT_HOME", "YT_RELATED", "FB_REELS", "IG_REELS", "X_FOR_YOU", "TT_FOR_YOU"], "the seven rule names and their order")
+check(FeedRules.all.map { $0.label } == ["YouTube Shorts", "YouTube Home feed", "YouTube up next / related", "Facebook Reels", "Instagram Reels & Explore", "X \u{201C}For you\u{201D} feed", "TikTok feed"], "rule labels match Android")
 check(FeedRules.all.allSatisfy { !$0.detail.isEmpty }, "every rule explains itself")
+check(FeedRules.enforceable == ["YT_SHORTS", "IG_REELS", "FB_REELS"] && Set(FeedRules.enforceable).isSubset(of: Set(FeedRules.all.map { $0.id })), "a Mac enforces the three rules that have an address")
+
+// MARK: Feed URLs (a Mac sees a tab's address, not the page; keep these cases identical to core/src/feed_url.rs)
+
+for (url, want) in [
+    ("https://www.youtube.com/shorts/abc123", "YT_SHORTS"), ("youtube.com/shorts/abc123", "YT_SHORTS"),
+    ("m.youtube.com/shorts/abc123?feature=share", "YT_SHORTS"), ("YouTube.com/Shorts", "YT_SHORTS"), ("youtube.com:443/shorts/x", "YT_SHORTS"),
+    ("https://www.instagram.com/reels/", "IG_REELS"), ("instagram.com/reel/Cxyz/", "IG_REELS"),
+    ("instagram.com/explore/", "IG_REELS"), ("instagram.com/explore", "IG_REELS"),
+    ("https://www.facebook.com/reel/123", "FB_REELS"), ("web.facebook.com/reels", "FB_REELS"), ("m.facebook.com/reels/?x=1#top", "FB_REELS"),
+] {
+    check(FeedURLMatcher.rule(for: url) == want, "\(url) is \(want)")
+}
+for url in [
+    "https://www.youtube.com/", "youtube.com/watch?v=abc", "youtube.com/feed/subscriptions", "youtube.com/shortsfoo",
+    "youtube.com/@creator/shorts", "youtube.com/watch?v=x&next=/shorts/y",
+    "instagram.com/", "instagram.com/explorer", "instagram.com/someone/",
+    "facebook.com/", "facebook.com/watch/?v=1", "facebook.com/reelsfoo",
+    "notyoutube.com/shorts/a", "youtube.com.evil.com/shorts/a", "youtube.com@evil.com/shorts/a", "evil.com/youtube.com/shorts/a",
+    "youtube.com:evil/shorts/a", "www.google.com/search?q=youtube.com/shorts", "youtube shorts", "", "   ", "https://",
+] {
+    check(FeedURLMatcher.rule(for: url) == nil, "\"\(url)\" is not a feed page")
+}
+do {
+    var gate = CloseGate()
+    check(gate.allow(now: now), "the first close is allowed")
+    check(!gate.allow(now: now.addingTimeInterval(CloseGate.cooldown - 0.1)), "a second close inside the cooldown is not")
+    check(gate.allow(now: now.addingTimeInterval(CloseGate.cooldown)), "and one after it is")
+}
+
+// Sync: the Mac owns the three address-checked names and carries every other name through untouched.
+do {
+    let raw = "{\"id\":\"p1\",\"name\":\"Deep work\",\"mode\":\"blocklist\",\"partial\":[\"YT_SHORTS\",\"FB_REELS\",\"YT_RELATED\",\"TT_FOR_YOU\",\"X_FOR_YOU\"]}"
+    let local = PolicyWire.toLocal(J(raw))
+    check(local.partial == ["YT_SHORTS", "FB_REELS"], "only the names a Mac enforces are imported")
+    let pushed = JSONKit.array(PolicyWire.merge(local, into: J(raw)), "partial").compactMap { $0 as? String }
+    check(Set(pushed) == ["YT_SHORTS", "FB_REELS", "YT_RELATED", "TT_FOR_YOU", "X_FOR_YOU"], "an untouched profile pushes the same list")
+    var off = local
+    off.partial = ["YT_SHORTS"]
+    let after = Set(JSONKit.array(PolicyWire.merge(off, into: J(raw)), "partial").compactMap { $0 as? String })
+    check(after == ["YT_SHORTS", "YT_RELATED", "TT_FOR_YOU", "X_FOR_YOU"], "switching one off drops only that name")
+    var on = local
+    on.partial = ["YT_SHORTS", "IG_REELS", "FB_REELS"]
+    check(Set(JSONKit.array(PolicyWire.merge(on, into: J(raw)), "partial").compactMap { $0 as? String }).contains("IG_REELS"), "switching one on adds it")
+    check(PolicyWire.weakens(old: local, new: off), "dropping a feed rule weakens")
+    check(!PolicyWire.weakens(old: off, new: local), "adding one does not")
+    check(!PolicyWire.same(local, off), "a feed rule is part of what a profile means")
+    let none = PolicyWire.merge(pol("n"), into: nil)
+    check(none["partial"] == nil, "an empty list invents no field on a new policy")
+    let decoded = try JSONDecoder().decode(BlockPolicy.self, from: JSONEncoder().encode(local))
+    check(decoded.partial == local.partial, "partial survives the daemon's JSON round trip")
+    var legacy = (try JSONSerialization.jsonObject(with: JSONEncoder().encode(local))) as! [String: Any]
+    legacy["partial"] = nil
+    let legacyDecoded = try JSONDecoder().decode(BlockPolicy.self, from: JSONSerialization.data(withJSONObject: legacy))
+    check(legacyDecoded.partial == [], "a payload from before feed rules still decodes")
+}
 
 // MARK: Commitment Shield (port of Android's CommitmentShield)
 

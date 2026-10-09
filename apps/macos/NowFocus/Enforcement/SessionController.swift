@@ -54,6 +54,7 @@ enum SessionController {
             endAt: endAt,
             sessionType: sessionType
         )
+        BrowserGuard.shared.update(sessionId: sessionId, rules: policy.partial)
         status.isActive = true
         status.endAt = endAt
         status.startTicking()
@@ -63,6 +64,7 @@ enum SessionController {
     static func stopEnforcement() {
         DaemonClient.shared.clear()
         AppBlocker.shared.updatePolicy(sessionId: nil, isSessionActive: false, blockedApps: [])
+        BrowserGuard.shared.update(sessionId: nil, rules: [])
         status.isActive = false
         status.endAt = nil
         status.stopTicking()

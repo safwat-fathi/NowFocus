@@ -23,6 +23,7 @@ public struct BlockPolicyRecord: Codable, FetchableRecord, PersistableRecord {
     public var domainsData: Data
     public var applicationsData: Data
     public var categoriesData: Data
+    public var partialData: Data
     
     public let notificationPolicy: NotificationMode
     
@@ -37,6 +38,7 @@ public struct BlockPolicyRecord: Codable, FetchableRecord, PersistableRecord {
         self.domainsData = try JSONEncoder().encode(policy.domains)
         self.applicationsData = try JSONEncoder().encode(policy.applications)
         self.categoriesData = try JSONEncoder().encode(policy.categories)
+        self.partialData = try JSONEncoder().encode(policy.partial)
         self.notificationPolicy = policy.notificationPolicy
         self.createdAt = policy.createdAt
         self.updatedAt = policy.updatedAt
@@ -47,6 +49,7 @@ public struct BlockPolicyRecord: Codable, FetchableRecord, PersistableRecord {
         let domains = try JSONDecoder().decode([DomainRule].self, from: domainsData)
         let apps = try JSONDecoder().decode([ApplicationRule].self, from: applicationsData)
         let cats = try JSONDecoder().decode([String].self, from: categoriesData)
+        let partial = try JSONDecoder().decode([String].self, from: partialData)
         
         return BlockPolicy(
             id: id,
@@ -55,6 +58,7 @@ public struct BlockPolicyRecord: Codable, FetchableRecord, PersistableRecord {
             domains: domains,
             applications: apps,
             categories: cats,
+            partial: partial,
             notificationPolicy: notificationPolicy,
             createdAt: createdAt,
             updatedAt: updatedAt,

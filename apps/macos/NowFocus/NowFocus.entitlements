@@ -5,5 +5,8 @@
 	<!-- Hardened Runtime is on, so recording the optional voice note needs this explicitly. -->
 	<key>com.apple.security.device.audio-input</key>
 	<true/>
+	<!-- Closing a Shorts or Reels tab means asking the browser for its address (AppleScript); Hardened Runtime blocks Apple events without this. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
 </dict>
 </plist>

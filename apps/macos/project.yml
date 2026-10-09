@@ -41,6 +41,7 @@ targets:
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       INFOPLIST_KEY_LSUIElement: YES
       INFOPLIST_KEY_NSMicrophoneUsageDescription: "NowFocus can record a 10-second note to yourself for a Strict session. It stays on this Mac, and you hear it only if you try to end that session early."
+      INFOPLIST_KEY_NSAppleEventsUsageDescription: "While a session runs, NowFocus asks your browser for the address of the tab in front, so it can close Shorts and Reels pages you chose to block. The address is checked and forgotten; it is never saved or sent."
       CODE_SIGN_ENTITLEMENTS: NowFocus/NowFocus.entitlements
       GENERATE_INFOPLIST_FILE: YES
       MARKETING_VERSION: "0.3.0"

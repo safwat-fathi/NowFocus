@@ -11,6 +11,7 @@ struct PolicyDetailView: View {
 
     @State private var newDomain: String = ""
     @FocusState private var nameFieldFocused: Bool
+    @ObservedObject private var browserGuard = BrowserGuard.shared
 
     var body: some View {
         ScrollView {
@@ -104,9 +105,69 @@ struct PolicyDetailView: View {
                     NowFocusSecondaryButton(title: "Add Application…") { pickApplication() }
                         .padding(.top, NowFocusSpace.s2)
                 }
+
+                section("Pages to Close") {
+                    Text("While a session runs, NowFocus asks Safari, Chrome, Brave, Edge or Arc for the address of the tab in front and closes it on these pages. The address is never stored or sent.")
+                        .font(NowFocusFonts.body(12))
+                        .foregroundColor(NowFocusColors.neutral700)
+                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(spacing: 0) {
+                        ForEach(FeedRules.enforceable, id: \.self) { id in
+                            let copy = Self.feedCopy(id)
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(copy.label)
+                                        .font(NowFocusFonts.body(14))
+                                        .foregroundColor(NowFocusColors.ink)
+                                    Text(copy.detail)
+                                        .font(NowFocusFonts.body(12))
+                                        .foregroundColor(NowFocusColors.neutral700)
+                                }
+                                Spacer()
+                                Toggle("", isOn: feedBinding(id))
+                                    .labelsHidden()
+                                    .toggleStyle(.switch)
+                            }
+                            .padding(.vertical, NowFocusSpace.s2)
+                            .overlay(alignment: .bottom) { NowFocusRule() }
+                        }
+                    }
+                    if browserGuard.needsAutomation {
+                        VStack(alignment: .leading, spacing: NowFocusSpace.s2) {
+                            Text("Your browser said no. Switch NowFocus on under Privacy & Security → Automation, or these pages stay open.")
+                                .font(NowFocusFonts.body(12))
+                                .foregroundColor(NowFocusColors.accent700)
+                                .fixedSize(horizontal: false, vertical: true)
+                            NowFocusSecondaryButton(title: "Open Automation Settings") {
+                                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation") {
+                                    NSWorkspace.shared.open(url)
+                                }
+                            }
+                        }
+                        .padding(.top, NowFocusSpace.s2)
+                    }
+                }
             }
             .padding(NowFocusSpace.s6)
         }
+    }
+
+    private static func feedCopy(_ id: String) -> (label: LocalizedStringResource, detail: LocalizedStringResource) {
+        switch id {
+        case "YT_SHORTS": return ("YouTube Shorts", "Closes the tab when a Shorts page opens")
+        case "IG_REELS": return ("Instagram Reels & Explore", "Closes the tab on those pages; the feed and messages stay open")
+        default: return ("Facebook Reels", "Closes the tab on Reels pages; the feed stays open")
+        }
+    }
+
+    private func feedBinding(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { policy.partial.contains(id) },
+            set: { on in
+                if on { if !policy.partial.contains(id) { policy.partial.append(id) } } else { policy.partial.removeAll { $0 == id } }
+                save()
+            }
+        )
     }
 
     private func section(_ title: LocalizedStringResource, @ViewBuilder content: () -> some View) -> some View {

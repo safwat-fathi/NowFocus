@@ -11,6 +11,17 @@
           }
         }
       }
+    },
+    "NSAppleEventsUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أثناء الجلسة يسأل NowFocus متصفحك عن عنوان التبويب الأمامي ليغلق صفحات Shorts وReels التي اخترت حجبها. يُفحص العنوان ثم يُنسى؛ لا يُحفظ ولا يُرسل أبدًا."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -2943,6 +2943,116 @@
           }
         }
       }
+    },
+    "Pages to Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "صفحات تُغلق"
+          }
+        }
+      }
+    },
+    "While a session runs, NowFocus asks Safari, Chrome, Brave, Edge or Arc for the address of the tab in front and closes it on these pages. The address is never stored or sent.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أثناء الجلسة يسأل NowFocus متصفح Safari أو Chrome أو Brave أو Edge أو Arc عن عنوان التبويب الأمامي ويغلقه عند فتح هذه الصفحات. لا يُحفظ العنوان ولا يُرسل."
+          }
+        }
+      }
+    },
+    "YouTube Shorts": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "YouTube Shorts"
+          }
+        }
+      }
+    },
+    "Closes the tab when a Shorts page opens": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يغلق التبويب عند فتح صفحة Shorts"
+          }
+        }
+      }
+    },
+    "Instagram Reels & Explore": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instagram Reels وExplore"
+          }
+        }
+      }
+    },
+    "Closes the tab on those pages; the feed and messages stay open": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يغلق التبويب في هذه الصفحات؛ تبقى الخلاصة والرسائل مفتوحة"
+          }
+        }
+      }
+    },
+    "Facebook Reels": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facebook Reels"
+          }
+        }
+      }
+    },
+    "Closes the tab on Reels pages; the feed stays open": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يغلق التبويب في صفحات Reels؛ تبقى الخلاصة مفتوحة"
+          }
+        }
+      }
+    },
+    "Your browser said no. Switch NowFocus on under Privacy & Security → Automation, or these pages stay open.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "رفض المتصفح الطلب. فعّل NowFocus في الخصوصية والأمان ← الأتمتة، وإلا ستبقى هذه الصفحات مفتوحة."
+          }
+        }
+      }
+    },
+    "Open Automation Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "فتح إعدادات الأتمتة"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

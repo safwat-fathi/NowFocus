@@ -57,6 +57,9 @@ public struct BlockPolicy: Codable, Identifiable {
     public var domains: [DomainRule]
     public var applications: [ApplicationRule]
     public var categories: [String]
+    /// The `FeedRules.enforceable` names switched on (wire `partial`). Names a Mac can't enforce stay in the
+    /// synced JSON, not here.
+    public var partial: [String]
     
     public let notificationPolicy: NotificationMode
     
@@ -73,6 +76,7 @@ public struct BlockPolicy: Codable, Identifiable {
                 domains: [DomainRule] = [],
                 applications: [ApplicationRule] = [],
                 categories: [String] = [],
+                partial: [String] = [],
                 notificationPolicy: NotificationMode = .normal,
                 createdAt: Date = Date(),
                 updatedAt: Date = Date(),
@@ -86,10 +90,35 @@ public struct BlockPolicy: Codable, Identifiable {
         self.domains = domains
         self.applications = applications
         self.categories = categories
+        self.partial = partial
         self.notificationPolicy = notificationPolicy
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.revision = revision
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, mode, source, createdByExtensionId, extensionMetadata, domains, applications, categories, partial
+        case notificationPolicy, createdAt, updatedAt, revision
+    }
+
+    /// Hand-written only so that JSON from before `partial` existed (no such key) still decodes.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        mode = try c.decode(PolicyMode.self, forKey: .mode)
+        source = try c.decode(SessionSource.self, forKey: .source)
+        createdByExtensionId = try c.decodeIfPresent(String.self, forKey: .createdByExtensionId)
+        extensionMetadata = try c.decodeIfPresent(ExtensionMeta.self, forKey: .extensionMetadata)
+        domains = try c.decode([DomainRule].self, forKey: .domains)
+        applications = try c.decode([ApplicationRule].self, forKey: .applications)
+        categories = try c.decode([String].self, forKey: .categories)
+        partial = try c.decodeIfPresent([String].self, forKey: .partial) ?? []
+        notificationPolicy = try c.decode(NotificationMode.self, forKey: .notificationPolicy)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        revision = try c.decode(Int.self, forKey: .revision)
     }
 }
 
