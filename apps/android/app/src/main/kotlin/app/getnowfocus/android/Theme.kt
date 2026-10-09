@@ -7,7 +7,9 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -309,12 +311,14 @@ fun ToggleRow(label: String, sub: String, on: Boolean, onToggle: () -> Unit, mod
 
 @Composable
 fun <T> SegmentedControl(options: List<Pair<String, T>>, selected: T, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().border(1.dp, NowFocusColors.divider), horizontalArrangement = Arrangement.SpaceEvenly) {
+    // Min intrinsic height + fillMaxHeight: every segment is as tall as the tallest label (Arabic glyphs are taller).
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min).border(1.dp, NowFocusColors.divider), horizontalArrangement = Arrangement.SpaceEvenly) {
         options.forEachIndexed { i, (label, value) ->
             val isSelected = value == selected
             Box(
                 Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .then(if (i > 0) Modifier.border(androidx.compose.foundation.BorderStroke(1.dp, NowFocusColors.divider)) else Modifier)
                     .background(if (isSelected) NowFocusColors.accent else Color.Transparent)
                     .clickable { onSelect(value) }

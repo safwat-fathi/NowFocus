@@ -79,4 +79,6 @@
     <string name="partial_ig_reels_sub">يخرج من علامة تبويب Reels ومشغّلها وعلامة الاستكشاف</string>
     <string name="partial_x_for_you">خلاصة «لك» في X</string>
     <string name="partial_x_for_you_sub">يخفي الخط الزمني «لك»؛ ويبقى «المتابَعون» مفتوحًا</string>
+    <string name="partial_tt_feed">خلاصة TikTok</string>
+    <string name="partial_tt_feed_sub">يخفي الخلاصة والاستكشاف، ويخرج من الفيديوهات؛ وتبقى الرسائل وحسابي مفتوحَين</string>
 </resources>

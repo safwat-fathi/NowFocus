@@ -74,4 +74,6 @@
     <string name="partial_ig_reels_sub">Backs out of the Reels tab, viewer and Explore tab</string>
     <string name="partial_x_for_you">X “For you” feed</string>
     <string name="partial_x_for_you_sub">Hides the For you timeline; Following stays open</string>
+    <string name="partial_tt_feed">TikTok feed</string>
+    <string name="partial_tt_feed_sub">Hides the feed and Explore, backs out of videos; Inbox and Me stay open</string>
 </resources>

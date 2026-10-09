@@ -5,11 +5,14 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.media.AudioManager
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.CoroutineScope
@@ -49,6 +52,8 @@ class FocusAccessibilityService : AccessibilityService() {
         private const val MAX_NODES = 400
         private const val MAX_DEPTH = 30
         private const val SYSTEM_UI = "com.android.systemui"
+        private const val PREFS = "nowfocus_cover"
+        private const val KEY_MUTED = "muted_by_cover"
         private const val SITE_TICK_MS = 2_500L
         private const val SITE_FLUSH_MS = 15_000L
         /** How long the browser may be out of front (shade pulled down, a dialog) before the heartbeat stops. */
@@ -105,10 +110,20 @@ class FocusAccessibilityService : AccessibilityService() {
     private var contentEventsOn = false
     private val leaveGate = LeaveGate()
     private val matchLog = MatchLogGate()
+    private val feedMemory = FeedMemory()
+    private val prefs by lazy { getSharedPreferences(PREFS, MODE_PRIVATE) }
     private var overlay: View? = null
+    private var overlayRule: PartialRule? = null
+    /** True while this service has the media stream muted for a cover, so only it ever unmutes. */
+    private var mutedByCover = false
 
     override fun onServiceConnected() {
         instance = this
+        // A crash or a force-stop while a cover was up would have left the media stream muted for good.
+        if (prefs.getBoolean(KEY_MUTED, false)) {
+            mutedByCover = true
+            unmuteMedia()
+        }
         val repo = SessionRepository(this).also { this.repo = it }
         scope.launch { Enforcement.activeRulesFlow(repo).collect { applyRules(it) } }
         scope.launch { repo.limitsFlow.collect { limits = it; syncServiceInfo() } }
@@ -168,7 +183,7 @@ class FocusAccessibilityService : AccessibilityService() {
                 watchSites(pkg)
                 frictionApp(pkg)
                 // The cover is a system-level window: drop it once the user is somewhere else.
-                if (pkg !in PartialSignatures.PACKAGES && pkg != SYSTEM_UI) { clearOverlay(); matchLog.clear() }
+                if (pkg !in PartialSignatures.PACKAGES && pkg != SYSTEM_UI) { clearOverlay(); matchLog.clear(); feedMemory.xForYou = true }
             }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {}
             else -> return
@@ -384,14 +399,14 @@ class FocusAccessibilityService : AccessibilityService() {
         val snapshot = if (root != null && root.packageName?.toString() == pkg) root.snapshot(intArrayOf(MAX_NODES), 0) else null
         @Suppress("DEPRECATION") root?.recycle()
 
-        val match = PartialBlocking.detect(pkg, snapshot, enabled)
+        val match = PartialBlocking.detect(pkg, snapshot, enabled, feedMemory)
         if (match == null) {
             clearOverlay()
             matchLog.clear()
             return
         }
         if (matchLog.shouldLog(pkg, match.rule)) logBlock(pkg, now)
-        when (match.rule.action) {
+        when (match.action) {
             PartialAction.COVER -> cover(match)
             PartialAction.LEAVE -> {
                 clearOverlay()
@@ -435,33 +450,71 @@ class FocusAccessibilityService : AccessibilityService() {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                (if (m.passThrough) WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE else 0),
             PixelFormat.OPAQUE,
         // LEFT, not START: x is an absolute screen coordinate, and START would put it on the right edge in Arabic.
         ).apply { @Suppress("RtlHardcoded") gravity = Gravity.TOP or Gravity.LEFT; x = m.left; y = m.top }
         try {
             val existing = overlay
-            if (existing != null) {
+            if (existing != null && overlayRule == m.rule) {
                 wm.updateViewLayout(existing, lp)
             } else {
-                val view = TextView(this).apply {
-                    text = localized().getString(R.string.overlay_recommendations_off)
-                    gravity = Gravity.CENTER
-                    setTextColor(NowFocusColors.text.toArgb())
-                    setBackgroundColor(NowFocusColors.bg.toArgb())
-                    isClickable = true // swallow touches so the list underneath can't be scrolled or tapped
-                }
+                clearOverlay()
+                val view = coverView(m)
                 wm.addView(view, lp)
                 overlay = view
+                overlayRule = m.rule
             }
+            muteMedia()
         } catch (_: RuntimeException) {
             overlay = null // window token gone (service being torn down): nothing to cover
         }
     }
 
+    /** Logo, what was hidden and why. Built from the localized context so the text and its direction follow the app language. */
+    private fun coverView(m: PartialMatch): View {
+        val ctx = localized()
+        val dp = ctx.resources.displayMetrics.density
+        fun label(text: String, sp: Float, color: Int, bold: Boolean, topDp: Int) = TextView(ctx).apply {
+            this.text = text; textSize = sp; setTextColor(color); gravity = Gravity.CENTER
+            if (bold) typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setPadding(0, (topDp * dp).toInt(), 0, 0)
+        }
+        return LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding((32 * dp).toInt(), 0, (32 * dp).toInt(), 0)
+            setBackgroundColor(NowFocusColors.bg.toArgb())
+            isClickable = true // swallow touches so the list underneath can't be scrolled or tapped (unless passThrough)
+            addView(ImageView(ctx).apply { setImageResource(R.drawable.ic_overlay_logo) })
+            addView(label(ctx.getString(R.string.overlay_recommendations_off), 20f, NowFocusColors.text.toArgb(), true, 20))
+            addView(label(ctx.getString(R.string.overlay_why, ctx.getString(m.rule.label)), 14f, NowFocusColors.neutral700.toArgb(), false, 10))
+        }
+    }
+
+    /** The video keeps playing under a cover, so silence it; [clearOverlay] gives the sound back. */
+    private fun muteMedia() {
+        if (mutedByCover) return
+        val audio = getSystemService(AudioManager::class.java) ?: return
+        if (audio.isStreamMute(AudioManager.STREAM_MUSIC)) return // the user's own mute: leave it alone
+        audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0)
+        mutedByCover = true
+        prefs.edit().putBoolean(KEY_MUTED, true).apply()
+    }
+
+    private fun unmuteMedia() {
+        if (!mutedByCover) return
+        mutedByCover = false
+        prefs.edit().putBoolean(KEY_MUTED, false).apply()
+        getSystemService(AudioManager::class.java)?.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
+    }
+
     private fun clearOverlay() {
+        unmuteMedia()
         val view = overlay ?: return
         overlay = null
+        overlayRule = null
         try { getSystemService(WindowManager::class.java)?.removeViewImmediate(view) } catch (_: RuntimeException) {}
     }
 

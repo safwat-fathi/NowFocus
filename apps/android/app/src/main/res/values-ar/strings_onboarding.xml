@@ -19,7 +19,7 @@
     <string name="onb_step4">الخطوة 4 من 5 · الأذونات</string>
     <string name="onb_step4_title">بضعة أذونات ليصمد الحجب فعلًا.</string>
     <string name="onb_step4_body">الحظر يعمل على هذا الهاتف. تصفحك لا يغادره. قوائم تطبيقاتك ومواقعك تتم مزامنتها فقط إذا سجّلت الدخول.</string>
-    <string name="onb_perm_blocking">يرصد فتح تطبيق محجوب. ومع تفعيل الحجب الجزئي يقرأ أيضًا شاشات YouTube وFacebook وInstagram وX أثناء الجلسة (تجريبي)، على الجهاز فقط</string>
+    <string name="onb_perm_blocking">يرصد فتح تطبيق محجوب. ومع تفعيل الحجب الجزئي يقرأ أيضًا شاشات YouTube وFacebook وInstagram وX وTikTok أثناء الجلسة (تجريبي)، على الجهاز فقط</string>
     <string name="onb_perm_filter">يحجب المواقع على الجهاز، دون توجيه أي حركة بيانات إلى أي مكان</string>
     <string name="onb_perm_dnd">يتيح لتهدئة وقت النوم تهدئة الإشعارات</string>
     <string name="onb_allowed">مسموح</string>

@@ -6,4 +6,5 @@
     <string name="notif_session_title">جلسة تركيز قيد التقدم</string>
     <string name="notif_session_text">لن تُفتح التطبيقات والمواقع المحجوبة حتى ينتهي المؤقت.</string>
     <string name="overlay_recommendations_off">التوصيات متوقفة أثناء تركيزك</string>
+    <string name="overlay_why">يخفي NowFocus هذا لأن قاعدة «%1$s» مفعّلة. سيعود عند انتهاء جلسة التركيز أو درع الالتزام.</string>
 </resources>
