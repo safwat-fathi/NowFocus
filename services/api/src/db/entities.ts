@@ -32,7 +32,18 @@ export class WaitlistEntry {
   @Column({ type: 'text', array: true, default: '{}' }) platforms!: string[];
   @Column({ type: 'text', nullable: true }) featureRequest!: string | null;
   @Column({ type: 'text', nullable: true }) githubIssueUrl!: string | null;
+  @Column({ type: 'text', default: 'en' }) locale!: 'en' | 'ar';
+  @Column({ type: 'timestamptz', nullable: true }) unsubscribedAt!: Date | null;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt!: Date;
+}
+
+/** One row per (waitlist entry, platform, version) emailed: the PK is what makes `pnpm run notify` safe to re-run. */
+@Entity('waitlist_sends')
+export class WaitlistSend {
+  @PrimaryColumn('uuid') waitlistId!: string;
+  @PrimaryColumn({ type: 'text' }) platform!: string;
+  @PrimaryColumn({ type: 'text' }) version!: string;
+  @CreateDateColumn({ type: 'timestamptz' }) sentAt!: Date;
 }
 
 

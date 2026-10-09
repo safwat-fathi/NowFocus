@@ -21,7 +21,8 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "openapi": "nest build && node dist/generate-openapi.js",
-    "migrate": "nest build && node dist/migrate.js"
+    "migrate": "nest build && node dist/migrate.js",
+    "notify": "nest build && node dist/notify-testers.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

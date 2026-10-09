@@ -34,7 +34,7 @@ describe('admin dashboard', () => {
 
       const list = await t.http.get('/v1/admin/waitlist').set(auth);
       expect(list.status).toBe(200);
-      expect(list.body.find((r: { id: string }) => r.id === id)).toMatchObject({ email, platforms: ['android'], featureRequest: 'dark mode' });
+      expect(list.body.find((r: { id: string }) => r.id === id)).toMatchObject({ email, platforms: ['android'], featureRequest: 'dark mode', locale: 'en', unsubscribedAt: null, sends: [] });
 
       expect((await t.http.delete(`/v1/admin/waitlist/${id}`).set(auth)).status).toBe(204);
       expect((await t.http.delete(`/v1/admin/waitlist/${id}`).set(auth)).status).toBe(404);

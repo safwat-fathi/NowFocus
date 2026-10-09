@@ -22,7 +22,7 @@ td.fr{max-width:420px;white-space:pre-wrap;word-break:break-word}.mute{color:var
 <label><input id="fr" type="checkbox"> Feature requests only</label>
 <button id="csv">Download CSV</button><button id="out">Sign out</button>
 <span id="count" class="mute"></span></div>
-<div class="table"><table><thead><tr><th>Date</th><th>Email</th><th>Platforms</th><th>Feature request</th><th>Issue</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="table"><table><thead><tr><th>Date</th><th>Email</th><th>Platforms</th><th>Lang</th><th>Sent</th><th>Feature request</th><th>Issue</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
 </div>
 <script>
 const $=id=>document.getElementById(id);let rows=[];
@@ -38,13 +38,13 @@ function view(){const q=$('q').value.toLowerCase(),p=$('plat').value,f=$('fr').c
 function td(tr,t){const c=tr.insertCell();if(t instanceof Node)c.append(t);else c.textContent=t;return c}
 function draw(){const v=view(),b=$('rows');b.replaceChildren();
  $('count').textContent=v.length+' of '+rows.length+' ('+rows.filter(r=>r.featureRequest).length+' with feature requests)';
- for(const r of v){const tr=b.insertRow();td(tr,r.createdAt.slice(0,10));td(tr,r.email);td(tr,r.platforms.join(', ')).className='mute';
+ for(const r of v){const tr=b.insertRow();td(tr,r.createdAt.slice(0,10));td(tr,r.email+(r.unsubscribedAt?' (unsubscribed)':''));td(tr,r.platforms.join(', ')).className='mute';td(tr,r.locale);td(tr,r.sends.map(s=>s.platform+' '+s.version).join(', ')).className='mute';
   td(tr,r.featureRequest||'').className='fr';
   let l='';if(r.githubIssueUrl&&/^https:\\/\\//.test(r.githubIssueUrl)){l=document.createElement('a');l.href=r.githubIssueUrl;l.textContent='issue';l.rel='noopener'}td(tr,l);
   const d=document.createElement('button');d.textContent='Delete';d.onclick=async()=>{if(!confirm('Delete '+r.email+'?'))return;
    await api('/v1/admin/waitlist/'+r.id,{method:'DELETE'});rows=rows.filter(x=>x!==r);draw()};td(tr,d)}}
 const esc=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
-$('csv').onclick=()=>{const t=['date,email,platforms,feature_request,issue'].concat(view().map(r=>[r.createdAt,r.email,r.platforms.join(' '),r.featureRequest,r.githubIssueUrl].map(esc).join(','))).join('\\n');
+$('csv').onclick=()=>{const t=['date,email,platforms,locale,sent,unsubscribed,feature_request,issue'].concat(view().map(r=>[r.createdAt,r.email,r.platforms.join(' '),r.locale,r.sends.map(s=>s.platform+' '+s.version).join(' '),r.unsubscribedAt,r.featureRequest,r.githubIssueUrl].map(esc).join(','))).join('\\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='waitlist.csv';a.click()};
 for(const id of['q','plat','fr'])$(id).oninput=draw;
 $('out').onclick=()=>{try{localStorage.removeItem('t')}catch{};rows=[];show(false)};

@@ -10,13 +10,14 @@ const brevo = async (config: Config, path: string, body: unknown) => {
 };
 
 /** Sends one transactional email from the configured sender. Throws on a non-2xx from Brevo. */
-export const sendMail = (config: Config, to: string, subject: string, html: string) =>
+export const sendMail = (config: Config, to: string, subject: string, html: string, headers?: Record<string, string>) =>
   brevo(config, '/smtp/email', {
     sender: { name: 'NowFocus', email: config.mailFrom },
     replyTo: { email: config.mailFrom },
     to: [{ email: to }],
     subject,
     htmlContent: html,
+    ...(headers && { headers }),
   });
 
 /** Adds (or updates) a contact on the Brevo list used for the launch email. */

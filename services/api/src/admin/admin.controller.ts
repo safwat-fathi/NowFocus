@@ -4,7 +4,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Config } from '../config.js';
-import { WaitlistEntry } from '../db/entities.js';
+import { WaitlistEntry, WaitlistSend } from '../db/entities.js';
 import { fail } from '../errors.js';
 import { AdminGuard, SESSION_MS, signSession } from './admin.guard.js';
 import { ADMIN_PAGE } from './admin.page.js';
@@ -14,7 +14,11 @@ import { ADMIN_PAGE } from './admin.page.js';
 @Controller()
 @UseGuards(ThrottlerGuard)
 export class AdminController {
-  constructor(@InjectRepository(WaitlistEntry) private repo: Repository<WaitlistEntry>, private config: Config) {}
+  constructor(
+    @InjectRepository(WaitlistEntry) private repo: Repository<WaitlistEntry>,
+    @InjectRepository(WaitlistSend) private sends: Repository<WaitlistSend>,
+    private config: Config,
+  ) {}
 
   // The page itself holds no data; the API calls it makes are guarded.
   @Get('admin')
@@ -36,8 +40,11 @@ export class AdminController {
 
   @Get('v1/admin/waitlist')
   @UseGuards(AdminGuard)
-  list() {
-    return this.repo.find({ order: { createdAt: 'DESC' } });
+  async list() {
+    const [entries, sends] = await Promise.all([this.repo.find({ order: { createdAt: 'DESC' } }), this.sends.find({ order: { sentAt: 'ASC' } })]);
+    const byId = new Map<string, { platform: string; version: string; sentAt: Date }[]>();
+    for (const { waitlistId, platform, version, sentAt } of sends) byId.set(waitlistId, [...(byId.get(waitlistId) ?? []), { platform, version, sentAt }]);
+    return entries.map((e) => ({ ...e, sends: byId.get(e.id) ?? [] }));
   }
 
   @Delete('v1/admin/waitlist/:id')

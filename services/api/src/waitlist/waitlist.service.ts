@@ -7,6 +7,7 @@ import { WaitlistEntry } from '../db/entities.js';
 import { createGithubIssue, quote } from '../github.js';
 import { addContact, sendMail } from '../mail.js';
 import { WaitlistDto } from './waitlist.dto.js';
+import { unsubscribeUrl } from './email-layout.js';
 import { Locale, welcomeEmail } from './welcome-email.js';
 
 @Injectable()
@@ -44,16 +45,17 @@ export class WaitlistService {
         platforms: existing ? [...new Set([...existing.platforms, ...platforms])] : platforms,
         featureRequest: featureRequest ?? existing?.featureRequest ?? null,
         githubIssueUrl,
+        locale: existing?.locale ?? dto.locale ?? 'en',
       }),
     );
     // not awaited: a slower response for new emails would reveal who is already on the list
-    if (!existing && this.config.brevoApiKey) void this.notify(email, dto.locale);
+    if (!existing && this.config.brevoApiKey) void this.notify(id, email, dto.locale);
     return { ok: true, id, githubIssueUrl };
   }
 
   /** Welcome email + launch-list contact. Never fails the signup. */
-  private async notify(email: string, locale?: Locale) {
-    const { subject, html } = welcomeEmail(locale);
+  private async notify(id: string, email: string, locale?: Locale) {
+    const { subject, html } = welcomeEmail(locale, unsubscribeUrl(this.config.jwtSecret, id));
     const jobs = [sendMail(this.config, email, subject, html)];
     if (this.config.brevoListId) jobs.push(addContact(this.config, email));
     for (const r of await Promise.allSettled(jobs)) {

@@ -89,4 +89,31 @@ Tick each when done on the VPS or the monitoring site (done 2026-10-04 to 2026-1
 
 ## Admin dashboard
 
-`https://api.nowfocus.online/admin` lists waitlist signups and feature requests. Enable it by adding `ADMIN_TOKEN=$(openssl rand -hex 32)` to the VPS `.env` and running `pm2 restart nowfocus-api`. Unset = the routes return 404. Rotate by changing the value and restarting.
+`https://dash.nowfocus.online` lists waitlist signups and feature requests, shows which version each person was emailed, and exports CSV. Enable it by adding `ADMIN_TOKEN=$(openssl rand -hex 32)` to the VPS `.env` and running `pm2 restart nowfocus-api`. Unset = the routes return 404. Rotate by changing the value and restarting.
+
+It is the same pm2 app as the API behind a second nginx vhost. nginx config is not deployed by CI, so on the VPS (once, and again whenever the `.conf` files change):
+
+```sh
+sudo cp services/api/deploy/dash.nowfocus.online.conf /etc/nginx/sites-available/dash.nowfocus.online   # then ln -s into sites-enabled, as for api
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d dash.nowfocus.online        # the proxied A record `dash` already exists in Cloudflare; the zone is SSL "full" with Always Use HTTPS off, so the HTTP-01 challenge passes the proxy (if that ever changes, set the record to DNS-only for the issue)
+# once https://dash.nowfocus.online works, block the old URL on the API host:
+sudo cp services/api/deploy/api.nowfocus.online.conf /etc/nginx/sites-available/api.nowfocus.online   # certbot's 443 block lives in this file: merge the two `location` lines by hand instead of overwriting
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+## Emailing testers about a new version
+
+The `waitlist_sends` table records every (person, platform, version) emailed, so a run never sends the same version twice and an interrupted run can be repeated. From `services/api` on the VPS (after the release containing the command is live):
+
+```sh
+pnpm run notify --platform android --version 0.9 --url "<Play testing opt-in link>" --notes "Fixes X|Adds Y"   # dry run: counts and first 5 addresses
+pnpm run notify ... --to you@example.com [--locale ar]                                                            # one preview, records nothing
+pnpm run notify ... --send                                                                                        # sends, records each success
+```
+
+**Before the first Android `--send`:** with Play *closed* testing the opt-in link only works for Google accounts on the tester list, and waitlist emails are not necessarily Google accounts. Export the android rows from the dashboard CSV (filter Platform = android) and add them to the testers list in Play Console, or use open testing. Otherwise people get a link that says they can't join.
+
+If a run stops on Brevo errors such as a daily sending limit, fix the cause or wait, then run the same command again: people already sent that version are skipped.
+
+Windows defaults `--url` to `https://api.nowfocus.online/v1/downloads/windows`. Recipients: picked that platform and have not unsubscribed. Every email carries a one-click unsubscribe link (`unsubscribed_at` on the waitlist row). `locale` defaults to `en` for people who signed up before it was stored; fix individuals with `update waitlist set locale='ar' where email = '...'`.
