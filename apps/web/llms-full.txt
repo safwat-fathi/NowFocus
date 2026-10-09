@@ -1,6 +1,6 @@
 # NowFocus (full text summary)
 
-Source: https://nowfocus.online/ · Last updated 2026-10-07 · Contact: safwat.rashwan@gmail.com
+Source: https://nowfocus.online/ · Last updated 2026-10-07 · Contact: hello@nowfocus.online
 
 NowFocus is a deep-work app for Android, macOS and Windows. Start a session and the apps and sites you chose go dark until the timer ends. It runs on your device, so what you block and what you try to open never reaches NowFocus. The apps need no account and have no ads, no trackers and no analytics; an optional account enables sync.
 

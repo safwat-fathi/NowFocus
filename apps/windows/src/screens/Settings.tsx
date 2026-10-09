@@ -17,7 +17,7 @@ const LINKS = [
   ["about.privacy", "https://nowfocus.online/privacy/"],
   ["about.terms", "https://nowfocus.online/terms/"],
   ["about.source", "https://github.com/safwat-fathi/NowFocus"],
-  ["about.support", "mailto:safwat.rashwan@gmail.com"],
+  ["about.support", "mailto:hello@nowfocus.online"],
 ] as const;
 
 /** App-wide settings: the language, updates, and About (version, links, license). */

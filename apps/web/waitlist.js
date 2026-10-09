@@ -47,7 +47,7 @@
               <span class="field-hint">${L("Public: a feature request is posted as an issue on our GitHub repo. Your email is never included.", "علني: يُنشر طلب الميزة كمسألة (issue) على مستودعنا في GitHub، ولا يظهر بريدك فيه أبدًا.")} <a href="${L("", "/ar")}/privacy/#waitlist">${L("Privacy", "الخصوصية")}</a></span>
             </div>
 
-            <p class="field-error" id="wl-submit-err" role="alert" hidden>${L("Couldn’t save that. Please try again in a minute, or email safwat.rashwan@gmail.com.", "تعذّر الحفظ. حاول مرة أخرى بعد دقيقة، أو راسلنا على safwat.rashwan@gmail.com.")}</p>
+            <p class="field-error" id="wl-submit-err" role="alert" hidden>${L("Couldn’t save that. Please try again in a minute, or email hello@nowfocus.online.", "تعذّر الحفظ. حاول مرة أخرى بعد دقيقة، أو راسلنا على hello@nowfocus.online.")}</p>
             <div class="waitlist-actions">
               <button type="submit" class="btn btn-primary" id="wl-submit-btn">${L("Join Waitlist", "انضم إلى القائمة")}</button>
             </div>

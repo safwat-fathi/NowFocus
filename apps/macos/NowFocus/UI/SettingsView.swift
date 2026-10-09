@@ -15,7 +15,7 @@ struct SettingsView: View {
         ("Privacy policy", "https://nowfocus.online/privacy/"),
         ("Terms", "https://nowfocus.online/terms/"),
         ("Source code", "https://github.com/safwat-fathi/NowFocus"),
-        ("Contact support", "mailto:safwat.rashwan@gmail.com"),
+        ("Contact support", "mailto:hello@nowfocus.online"),
     ]
 
     @State private var reportMessage = ""
