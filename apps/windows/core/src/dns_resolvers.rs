@@ -192,7 +192,7 @@ pub fn apply_script(servers: &[IpAddr], adapters: &[AdapterDns]) -> String {
             a.index
         ));
     }
-    script.push_str("ipconfig /flushdns | Out-Null\n");
+    script.push_str("& \"$env:SystemRoot\\System32\\ipconfig.exe\" /flushdns | Out-Null\n");
     script
 }
 
@@ -219,7 +219,7 @@ pub fn restore_script(adapters: &[AdapterDns]) -> String {
         }
         script.push_str("}\n");
     }
-    script.push_str("ipconfig /flushdns | Out-Null\n");
+    script.push_str("& \"$env:SystemRoot\\System32\\ipconfig.exe\" /flushdns | Out-Null\n");
     script
 }
 
@@ -426,7 +426,7 @@ mod tests {
             script.contains("-InterfaceIndex 12 -ServerAddresses ('94.140.14.15','94.140.15.16')")
         );
         assert!(script.contains("-InterfaceIndex 7 "));
-        assert!(script.contains("ipconfig /flushdns"));
+        assert!(script.contains("ipconfig.exe\" /flushdns"));
     }
 
     #[test]

@@ -30,8 +30,15 @@ fn backup_path() -> PathBuf {
     crate::commitment_store::state_dir().join("dns_backup.json")
 }
 
+/// Absolute path, never a PATH lookup: this runs as SYSTEM, and a bare name would let a planted `powershell.exe`
+/// (the current directory, a writable PATH entry) run with SYSTEM rights.
+fn powershell_exe() -> PathBuf {
+    let root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_string());
+    PathBuf::from(root).join(r"System32\WindowsPowerShell\v1.0\powershell.exe")
+}
+
 fn powershell(script: &str) -> Result<String, String> {
-    let mut child = Command::new("powershell")
+    let mut child = Command::new(powershell_exe())
         .args([
             "-NoProfile",
             "-NonInteractive",
