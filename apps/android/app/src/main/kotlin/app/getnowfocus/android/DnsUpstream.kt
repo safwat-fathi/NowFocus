@@ -34,7 +34,11 @@ enum class DnsProvider(val doh: String?, val bootstrap: List<String>) {
     CUSTOM(null, emptyList()),
 }
 
-data class DnsChoice(val provider: DnsProvider = DnsProvider.SYSTEM, val customHost: String = "") {
+/**
+ * The user's DNS pick. [alwaysOn] keeps the tunnel (and so this DNS) up outside focus sessions too; the blocklist
+ * still applies only while a session or the Shield is live.
+ */
+data class DnsChoice(val provider: DnsProvider = DnsProvider.SYSTEM, val customHost: String = "", val alwaysOn: Boolean = false) {
     /** What the tunnel will actually use: CUSTOM without a valid hostname is the same as SYSTEM. */
     val effective: DnsProvider get() = if (provider == DnsProvider.CUSTOM && customHost.isEmpty()) DnsProvider.SYSTEM else provider
 }
@@ -44,19 +48,21 @@ data class DnsChoice(val provider: DnsProvider = DnsProvider.SYSTEM, val customH
  * synchronously (same reason as [AppLanguage]).
  */
 object DnsSetting {
-    private const val PREFS = "nowfocus_dns"
+    const val PREFS = "nowfocus_dns"
     private const val KEY_PROVIDER = "provider"
     private const val KEY_HOST = "custom_host"
+    private const val KEY_ALWAYS_ON = "always_on"
 
     fun read(context: Context): DnsChoice {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val provider = prefs.getString(KEY_PROVIDER, null)?.let { n -> DnsProvider.entries.firstOrNull { it.name == n } } ?: DnsProvider.SYSTEM
-        return DnsChoice(provider, prefs.getString(KEY_HOST, "") ?: "")
+        return DnsChoice(provider, prefs.getString(KEY_HOST, "") ?: "", prefs.getBoolean(KEY_ALWAYS_ON, false))
     }
 
     fun write(context: Context, choice: DnsChoice) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putString(KEY_PROVIDER, choice.provider.name).putString(KEY_HOST, choice.customHost).apply()
+            .putString(KEY_PROVIDER, choice.provider.name).putString(KEY_HOST, choice.customHost)
+            .putBoolean(KEY_ALWAYS_ON, choice.alwaysOn).apply()
     }
 
     /** A DoT hostname from what the user typed: bare host only, so no path, port or scheme survives. */
@@ -68,6 +74,8 @@ object DnsSetting {
  * network. Returns null on any failure so the caller can fall back to plain DNS - a dead provider must never
  * black-hole the phone.
  */
+data class UpstreamHealth(val okAt: Long = 0L, val failAt: Long = 0L)
+
 object DnsUpstream {
     private const val TAG = "DnsUpstream"
     private const val TIMEOUT_MS = 3000
@@ -88,15 +96,25 @@ object DnsUpstream {
             .build()
     }
 
-    fun query(choice: DnsChoice, wire: ByteArray): ByteArray? = try {
-        when (choice.effective) {
-            DnsProvider.SYSTEM -> null
-            DnsProvider.CUSTOM -> dot(choice.customHost, wire)
-            else -> doh(choice.effective.doh!!, wire)
+    /** When the chosen server last answered and last failed, for the DNS screen's "can't reach it" state. */
+    @Volatile private var okAt = 0L
+    @Volatile private var failAt = 0L
+
+    fun health() = UpstreamHealth(okAt, failAt)
+
+    fun query(choice: DnsChoice, wire: ByteArray): ByteArray? {
+        if (choice.effective == DnsProvider.SYSTEM) return null
+        val answer = try {
+            when (choice.effective) {
+                DnsProvider.CUSTOM -> dot(choice.customHost, wire)
+                else -> doh(choice.effective.doh!!, wire)
+            }
+        } catch (e: IOException) {
+            Log.w(TAG, "${choice.effective} failed", e)
+            null
         }
-    } catch (e: IOException) {
-        Log.w(TAG, "${choice.effective} failed", e)
-        null
+        if (answer != null) okAt = System.currentTimeMillis() else failAt = System.currentTimeMillis()
+        return answer
     }
 
     private fun doh(url: String, wire: ByteArray): ByteArray? {

@@ -81,4 +81,25 @@
     <string name="partial_x_for_you_sub">يخفي الخط الزمني «لك»؛ ويبقى «المتابَعون» مفتوحًا</string>
     <string name="partial_tt_feed">خلاصة TikTok</string>
     <string name="partial_tt_feed_sub">يخفي الخلاصة والاستكشاف، ويخرج من الفيديوهات؛ وتبقى الرسائل وحسابي مفتوحَين</string>
+    <string name="back_groups">‹ المجموعات</string>
+    <string name="groups_title">المجموعات المحفوظة</string>
+    <string name="groups_new">+ مجموعة جديدة</string>
+    <string name="groups_new_name">مجموعة جديدة</string>
+    <string name="groups_row_empty">لا شيء بعد</string>
+    <string name="groups_note">المجموعة هي مجموعة مواقع وتطبيقات تضيفها إلى أي نمط بلمسة واحدة. تبقى المجموعات على هذا الهاتف.</string>
+    <string name="groups_remove_q">إزالة «%1$s»؟</string>
+    <string name="groups_remove_body">الأنماط التي أضفتها إليها تحتفظ بمواقعها وتطبيقاتها.</string>
+    <string name="group_name">اسم المجموعة</string>
+    <string name="group_add_to_profile">+ إضافة مجموعة محفوظة…</string>
+    <string name="group_save_as">حفظ كمجموعة</string>
+    <string name="group_saved">تم الحفظ في مجموعاتك</string>
+    <string name="group_pick_title">إضافة مجموعة</string>
+    <plurals name="n_groups">
+        <item quantity="zero">لا مجموعات</item>
+        <item quantity="one">مجموعة واحدة</item>
+        <item quantity="two">مجموعتان</item>
+        <item quantity="few">%1$d مجموعات</item>
+        <item quantity="many">%1$d مجموعة</item>
+        <item quantity="other">%1$d مجموعة</item>
+    </plurals>
 </resources>

@@ -136,10 +136,11 @@ object Enforcement {
      * they drifted apart once before (BootReceiver checked only the shield),
      * so this is the one place that decision lives now.
      */
-    suspend fun shouldRun(repo: SessionRepository, now: Long = System.currentTimeMillis()): Boolean {
+    suspend fun shouldRun(context: Context, repo: SessionRepository, now: Long = System.currentTimeMillis()): Boolean {
         val sessionActive = repo.sessionFlow.first()?.let { SessionEngine.isActive(SessionEngine.evaluateState(it, now), now) } ?: false
         val shieldActive = repo.commitmentShieldFlow.first()?.let { it.endAt > now } ?: false
-        return sessionActive || shieldActive
+        // Always-on DNS keeps the tunnel up with nothing live; it is the same rule the service itself applies.
+        return DnsPolicy.shouldKeepUp(DnsSetting.read(context), sessionActive || shieldActive)
     }
 
     fun start(context: Context) {
@@ -148,7 +149,16 @@ object Enforcement {
         val app = context.applicationContext
         CoroutineScope(Dispatchers.Default).launch { SessionNotifier.sync(app) }
         // Without VPN consent only app blocking runs; the health row says so.
-        if (isVpnPermitted(context)) context.startService(Intent(context, FocusVpnService::class.java))
+        // A background start can be refused (Android 12+); the next launch or session start tries again.
+        if (isVpnPermitted(context)) runCatching { context.startService(Intent(context, FocusVpnService::class.java)) }
+    }
+
+    /**
+     * After the DNS screen changes the pick or "always on": start the tunnel if it is now wanted. Turning it off
+     * needs nothing here - the running service watches the setting and closes itself when nothing else needs it.
+     */
+    fun syncDns(context: Context) {
+        if (DnsPolicy.shouldKeepUp(DnsSetting.read(context), hasLiveWindow = false)) start(context)
     }
 
     fun stop(context: Context) {

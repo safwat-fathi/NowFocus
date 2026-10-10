@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dns_title">DNS</string>
+    <string name="dns_lede">Choose the server NowFocus uses for lookups. Your blocklist always applies first.</string>
+    <string name="dns_status_off">Off</string>
+    <string name="dns_status_waiting">Waiting</string>
+    <string name="dns_status_active">Active</string>
+    <string name="dns_status_needs">Needs permission</string>
+    <string name="dns_status_conflict">Conflict</string>
+    <string name="dns_status_starting">Starting</string>
+    <string name="dns_status_unreachable">Not answering</string>
+    <string name="dns_sent_off">NowFocus is not changing your DNS.</string>
+    <string name="dns_sent_waiting">%1$s switches on when a focus session starts.</string>
+    <string name="dns_sent_active">Lookups go to %1$s.</string>
+    <string name="dns_sent_needs">Android needs your OK to run the DNS filter, or another VPN app took over.</string>
+    <string name="dns_sent_conflict">Your phone\'s Private DNS is set to %1$s, and Android sends every lookup there, past NowFocus. Keep it here, then set Private DNS to Automatic or Off.</string>
+    <string name="dns_sent_starting">Starting…</string>
+    <string name="dns_sent_unreachable">%1$s isn\'t answering, so lookups use your network\'s DNS for now.</string>
+    <string name="dns_fix_permission">Allow</string>
+    <string name="dns_keep">Keep using %1$s</string>
+    <string name="dns_open_network">Open network settings</string>
+    <string name="dns_server">Server</string>
+    <string name="dns_system">My network\'s DNS</string>
+    <string name="dns_system_sub">NowFocus changes nothing.</string>
+    <string name="dns_adguard">AdGuard Family</string>
+    <string name="dns_adguard_sub">Blocks adult sites, ads and malware</string>
+    <string name="dns_cloudflare">Cloudflare Family</string>
+    <string name="dns_cloudflare_sub">Blocks adult sites and malware</string>
+    <string name="dns_cleanbrowsing">CleanBrowsing Family</string>
+    <string name="dns_cleanbrowsing_sub">Blocks adult sites</string>
+    <string name="dns_quad9">Quad9</string>
+    <string name="dns_quad9_sub">Blocks malware</string>
+    <string name="dns_custom">Other server</string>
+    <string name="dns_custom_sub">Any DNS-over-TLS server you type</string>
+    <string name="dns_custom_host">Server name, like dns.example.com</string>
+    <string name="dns_when">When it runs</string>
+    <string name="dns_when_session">Only during sessions</string>
+    <string name="dns_when_always">Always on</string>
+    <string name="dns_when_note_session">The server is used while a session or the Shield is live.</string>
+    <string name="dns_when_note_always">NowFocus keeps this DNS running all the time. Only one VPN app can run at once, and Private DNS must be Automatic or Off.</string>
+    <string name="dns_limits">Browsers with their own secure DNS ignore this. Ad and adult filtering is done by the server you pick, not by NowFocus.</string>
+    <string name="dns_row_always">%1$s, always on</string>
+    <string name="dns_row_session">%1$s, during sessions</string>
+</resources>

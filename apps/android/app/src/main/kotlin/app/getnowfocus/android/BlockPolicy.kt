@@ -28,6 +28,15 @@ data class BlockPolicy(
      */
     val enforcesHere: Boolean get() = mode == PolicyMode.BLOCKLIST || apps.isNotEmpty()
 
+    /**
+     * Adds a saved group's sites and apps (a group is a blocklist-shaped policy kept in its own list), skipping
+     * what is already here. An allowlist has no site list, so only the group's apps come across.
+     */
+    fun withGroup(group: BlockPolicy): BlockPolicy = copy(
+        domains = if (mode == PolicyMode.BLOCKLIST) (domains + group.domains).distinct() else domains,
+        apps = (apps + group.apps).distinctBy { it.packageName },
+    )
+
     companion object {
         val DEFAULT = BlockPolicy(
             name = "Deep Work",

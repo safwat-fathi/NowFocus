@@ -76,4 +76,21 @@
     <string name="partial_x_for_you_sub">Hides the For you timeline; Following stays open</string>
     <string name="partial_tt_feed">TikTok feed</string>
     <string name="partial_tt_feed_sub">Hides the feed and Explore, backs out of videos; Inbox and Me stay open</string>
+    <string name="back_groups">‹ Groups</string>
+    <string name="groups_title">Saved groups</string>
+    <string name="groups_new">+ New group</string>
+    <string name="groups_new_name">New group</string>
+    <string name="groups_row_empty">None yet</string>
+    <string name="groups_note">A group is a set of sites and apps you can add to any profile in one tap. Groups stay on this phone.</string>
+    <string name="groups_remove_q">Remove “%1$s”?</string>
+    <string name="groups_remove_body">Profiles you already added it to keep their sites and apps.</string>
+    <string name="group_name">Group name</string>
+    <string name="group_add_to_profile">+ Add a saved group…</string>
+    <string name="group_save_as">Save as group</string>
+    <string name="group_saved">Saved to your groups</string>
+    <string name="group_pick_title">Add a group</string>
+    <plurals name="n_groups">
+        <item quantity="one">%1$d group</item>
+        <item quantity="other">%1$d groups</item>
+    </plurals>
 </resources>

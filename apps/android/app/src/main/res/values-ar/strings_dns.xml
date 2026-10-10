@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dns_title">DNS</string>
+    <string name="dns_lede">اختر الخادم الذي يستخدمه NowFocus لطلبات DNS. قائمة الحجب تُطبَّق دائمًا أولًا.</string>
+    <string name="dns_status_off">متوقف</string>
+    <string name="dns_status_waiting">في الانتظار</string>
+    <string name="dns_status_active">يعمل</string>
+    <string name="dns_status_needs">يحتاج إذنًا</string>
+    <string name="dns_status_conflict">تعارض</string>
+    <string name="dns_status_starting">يبدأ</string>
+    <string name="dns_status_unreachable">لا يستجيب</string>
+    <string name="dns_sent_off">لا يغيّر NowFocus إعدادات DNS لديك.</string>
+    <string name="dns_sent_waiting">يعمل %1$s عند بدء جلسة تركيز.</string>
+    <string name="dns_sent_active">تذهب الطلبات إلى %1$s.</string>
+    <string name="dns_sent_needs">يحتاج أندرويد إلى موافقتك لتشغيل مُصفّي DNS، أو أن تطبيق VPN آخر استولى عليه.</string>
+    <string name="dns_sent_conflict">إعداد Private DNS في هاتفك مضبوط على %1$s، وأندرويد يرسل كل الطلبات إليه متجاوزًا NowFocus. احتفظ به هنا ثم اجعل Private DNS تلقائيًا أو متوقفًا.</string>
+    <string name="dns_sent_starting">جارٍ التشغيل…</string>
+    <string name="dns_sent_unreachable">%1$s لا يستجيب، فتُستخدم الآن شبكتك الحالية لطلبات DNS.</string>
+    <string name="dns_fix_permission">السماح</string>
+    <string name="dns_keep">استمر في استخدام %1$s</string>
+    <string name="dns_open_network">افتح إعدادات الشبكة</string>
+    <string name="dns_server">الخادم</string>
+    <string name="dns_system">DNS الخاص بشبكتي</string>
+    <string name="dns_system_sub">لا يغيّر NowFocus شيئًا.</string>
+    <string name="dns_adguard">AdGuard Family</string>
+    <string name="dns_adguard_sub">يحجب المواقع الجنسية والإعلانات والبرمجيات الخبيثة</string>
+    <string name="dns_cloudflare">Cloudflare Family</string>
+    <string name="dns_cloudflare_sub">يحجب المواقع الجنسية والبرمجيات الخبيثة</string>
+    <string name="dns_cleanbrowsing">CleanBrowsing Family</string>
+    <string name="dns_cleanbrowsing_sub">يحجب المواقع الجنسية</string>
+    <string name="dns_quad9">Quad9</string>
+    <string name="dns_quad9_sub">يحجب البرمجيات الخبيثة</string>
+    <string name="dns_custom">خادم آخر</string>
+    <string name="dns_custom_sub">أي خادم DNS عبر TLS تكتبه</string>
+    <string name="dns_custom_host">اسم الخادم، مثل dns.example.com</string>
+    <string name="dns_when">متى يعمل</string>
+    <string name="dns_when_session">أثناء الجلسات فقط</string>
+    <string name="dns_when_always">دائمًا</string>
+    <string name="dns_when_note_session">يُستخدم الخادم ما دامت جلسة أو الدرع نشطًا.</string>
+    <string name="dns_when_note_always">يُبقي NowFocus هذا الـ DNS شغّالًا طوال الوقت. يعمل VPN واحد فقط في كل مرة، ويجب أن يكون Private DNS تلقائيًا أو متوقفًا.</string>
+    <string name="dns_limits">المتصفحات التي لها DNS آمن خاص بها تتجاهل هذا. تصفية الإعلانات والمحتوى الجنسي يقوم بها الخادم الذي تختاره، لا NowFocus.</string>
+    <string name="dns_row_always">%1$s، دائمًا</string>
+    <string name="dns_row_session">%1$s، أثناء الجلسات</string>
+</resources>

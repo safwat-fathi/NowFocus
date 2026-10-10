@@ -47,6 +47,8 @@ fun PolicyListScreen(
     onAdd: (PolicyMode) -> Unit,
     onDelete: (String) -> Unit,
     onBack: () -> Unit,
+    groupsCount: Int,
+    onOpenGroups: () -> Unit,
     onOpenCommitment: () -> Unit,
     onOpenBedtime: () -> Unit,
     peopleCount: Int,
@@ -92,6 +94,19 @@ fun PolicyListScreen(
             SectionRule()
         }
         item {
+            Row(
+                Modifier.fillMaxWidth().clickable(onClick = onOpenGroups).padding(vertical = NowFocusSpace.s3),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.groups_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(
+                        if (groupsCount == 0) stringResource(R.string.groups_row_empty) else pluralStringResource(R.plurals.n_groups, groupsCount, groupsCount),
+                        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
+                    )
+                }
+            }
+            SectionRule()
             Text(stringResource(R.string.protections_kicker), style = kickerStyle(NowFocusColors.neutral700), modifier = Modifier.padding(top = NowFocusSpace.s6, bottom = NowFocusSpace.s1))
             SectionRule()
             val active = shield != null && shield.endAt > now
@@ -202,11 +217,19 @@ private fun ModeChoice(@StringRes title: Int, @StringRes sub: Int, onClick: () -
 }
 
 @Composable
-fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, onBack: () -> Unit) {
+fun PolicyEditorScreen(
+    policy: BlockPolicy,
+    onSave: (BlockPolicy) -> Boolean,
+    onBack: () -> Unit,
+    groups: List<BlockPolicy> = emptyList(),
+    onSaveAsGroup: ((BlockPolicy) -> Unit)? = null,
+    isGroup: Boolean = false,
+) {
     val context = LocalContext.current
     var name by remember(policy.id) { mutableStateOf(policy.name) }
     var newDomain by remember { mutableStateOf("") }
     var pickingApp by remember { mutableStateOf(false) }
+    var pickingGroup by remember { mutableStateOf(false) }
 
     fun saveOrToast(newPolicy: BlockPolicy) {
         if (!onSave(newPolicy)) {
@@ -224,11 +247,11 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
-            GhostButton(stringResource(R.string.back_rules), onClick = onBack)
+            GhostButton(stringResource(if (isGroup) R.string.back_groups else R.string.back_rules), onClick = onBack)
             NowFocusTextField(
                 value = name,
                 onValueChange = { name = it; saveOrToast(policy.copy(name = it)) },
-                label = stringResource(R.string.policy_name),
+                label = stringResource(if (isGroup) R.string.group_name else R.string.policy_name),
                 modifier = Modifier.fillMaxWidth().padding(top = NowFocusSpace.s2),
             )
         }
@@ -276,11 +299,26 @@ fun PolicyEditorScreen(policy: BlockPolicy, onSave: (BlockPolicy) -> Boolean, on
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
             GhostButton(stringResource(R.string.policy_add_app)) { pickingApp = true }
+            if (!isGroup && groups.isNotEmpty()) GhostButton(stringResource(R.string.group_add_to_profile)) { pickingGroup = true }
+            if (!isGroup && onSaveAsGroup != null && (policy.domains.isNotEmpty() || policy.apps.isNotEmpty())) {
+                GhostButton(stringResource(R.string.group_save_as)) {
+                    onSaveAsGroup(policy)
+                    android.widget.Toast.makeText(context, context.localized().getString(R.string.group_saved), android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
         }
         item {
-            PartialRulesSection(policy.partial) { saveOrToast(policy.copy(partial = it)) }
+            if (!isGroup) PartialRulesSection(policy.partial) { saveOrToast(policy.copy(partial = it)) }
             Spacer(Modifier.height(NowFocusSpace.s4))
         }
+    }
+
+    if (pickingGroup) {
+        GroupPickerDialog(
+            groups = groups,
+            onPick = { saveOrToast(policy.withGroup(it)); pickingGroup = false },
+            onDismiss = { pickingGroup = false },
+        )
     }
 
     if (pickingApp) {
@@ -372,4 +410,65 @@ internal fun filterApps(apps: List<AppRule>, query: String): List<AppRule> {
     val q = query.trim()
     if (q.isEmpty()) return apps
     return apps.filter { it.label.contains(q, ignoreCase = true) || it.packageName.contains(q, ignoreCase = true) }
+}
+
+@Composable
+private fun GroupPickerDialog(groups: List<BlockPolicy>, onPick: (BlockPolicy) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.group_pick_title), style = headingStyle(20.sp)) },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 400.dp)) {
+                items(groups, key = { it.id }) { group ->
+                    Column(Modifier.fillMaxWidth().clickable { onPick(group) }.padding(vertical = 10.dp)) {
+                        Text(group.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 16.sp))
+                        Text(profileSummary(group), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { GhostButton(stringResource(R.string.cancel), onClick = onDismiss) },
+    )
+}
+
+/** Saved site/app groups, added into any profile from its editor. Opening one reuses the profile editor. */
+@Composable
+fun GroupsScreen(groups: List<BlockPolicy>, onOpen: (String) -> Unit, onAdd: () -> Unit, onDelete: (String) -> Unit, onBack: () -> Unit) {
+    var removing by remember { mutableStateOf<BlockPolicy?>(null) }
+    removing?.let { group ->
+        ConfirmDialog(
+            title = stringResource(R.string.groups_remove_q, group.name),
+            message = stringResource(R.string.groups_remove_body),
+            confirmLabel = stringResource(R.string.remove),
+            onConfirm = { onDelete(group.id); removing = null },
+            onDismiss = { removing = null },
+        )
+    }
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+        item {
+            Spacer(Modifier.height(NowFocusSpace.s2))
+            GhostButton(stringResource(R.string.back_rules), onClick = onBack)
+            Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s2), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.groups_title), style = headingStyle(28.sp), modifier = Modifier.weight(1f))
+                SecondaryButton(stringResource(R.string.groups_new), onClick = onAdd)
+            }
+            Text(
+                stringResource(R.string.groups_note),
+                style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700),
+                modifier = Modifier.padding(bottom = NowFocusSpace.s2),
+            )
+            SectionRule()
+        }
+        items(groups, key = { it.id }) { group ->
+            Row(Modifier.fillMaxWidth().clickable { onOpen(group.id) }.padding(vertical = NowFocusSpace.s3), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(group.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+                    Text(profileSummary(group), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
+                }
+                GhostButton(stringResource(R.string.remove)) { removing = group }
+            }
+            SectionRule()
+        }
+    }
 }

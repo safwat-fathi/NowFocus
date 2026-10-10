@@ -1,6 +1,7 @@
 package app.getnowfocus.android
 
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
@@ -52,6 +53,10 @@ class FocusVpnService : VpnService() {
         private const val VPN_ADDRESS = "10.111.0.1"
         private const val VPN_DNS = "10.111.0.2"
         private val FALLBACK_DNS: InetAddress = InetAddress.getByAddress(byteArrayOf(1, 1, 1, 1))
+
+        /** True while the tunnel is established. Read by the DNS screen; the service is the only writer. */
+        @Volatile var tunnelUp = false
+            private set
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -67,6 +72,11 @@ class FocusVpnService : VpnService() {
     private var loop: TunLoop? = null
     private var collecting: Job? = null
     private var netCallback: ConnectivityManager.NetworkCallback? = null
+    // Held in a field: SharedPreferences keeps its listeners weakly.
+    private val dnsPrefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> handler.post { apply(rules) } }
+
+    private fun keepUp(now: Long = System.currentTimeMillis()) =
+        DnsPolicy.shouldKeepUp(DnsSetting.read(this), rules.nextExpiryAfter(now) != null)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
@@ -74,6 +84,7 @@ class FocusVpnService : VpnService() {
             return START_NOT_STICKY
         }
         watchPrivateDns()
+        getSharedPreferences(DnsSetting.PREFS, MODE_PRIVATE).registerOnSharedPreferenceChangeListener(dnsPrefsListener)
         if (collecting == null) {
             collecting = scope.launch {
                 Enforcement.activeRulesFlow(SessionRepository(this@FocusVpnService)).collect { apply(it) }
@@ -89,21 +100,22 @@ class FocusVpnService : VpnService() {
         handler.removeCallbacks(expire)
         val now = System.currentTimeMillis()
         val nextExpiry = newRules.nextExpiryAfter(now)
-        if (nextExpiry == null) {
+        // Nothing live to block and no always-on DNS to keep: done. (Also reached when the DNS setting changes.)
+        if (!keepUp(now)) {
             shutdown()
             return
         }
         // Handler time pauses in deep sleep, so this can fire late; that's fine
         // because every query re-checks liveness before blocking.
-        handler.postDelayed(expire, nextExpiry - now)
+        if (nextExpiry != null) handler.postDelayed(expire, nextExpiry - now)
         if (loop == null) establish()
     }
 
     /**
      * Private DNS can be switched while a session runs: close the tunnel when strict turns on (else every
      * lookup fails), bring it back when it turns off. Also fires once on registration, before the rules
-     * flow has emitted, so it only re-establishes when [rules] are live - never apply() on empty rules,
-     * that would shut the service down.
+     * flow has emitted, so it only re-establishes when the tunnel is wanted ([keepUp]) - never apply() on
+     * empty rules without always-on DNS, that would shut the service down.
      */
     private fun watchPrivateDns() {
         if (netCallback != null) return
@@ -112,7 +124,7 @@ class FocusVpnService : VpnService() {
             override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
                 handler.post {
                     if (Enforcement.strictPrivateDns(this@FocusVpnService) != null) closeTunnel()
-                    else if (loop == null && rules.nextExpiryAfter(System.currentTimeMillis()) != null) establish()
+                    else if (loop == null && keepUp()) establish()
                 }
             }
         }
@@ -138,11 +150,13 @@ class FocusVpnService : VpnService() {
         if (Build.VERSION.SDK_INT >= 29) builder.setMetered(false)
         val fd = builder.establish() ?: run { stopSelf(); return } // VPN consent not granted
         loop = TunLoop(fd).also { thread(name = "FocusVpn") { it.run() } }
+        tunnelUp = true
     }
 
     private fun closeTunnel() {
         loop?.running = false
         loop = null
+        tunnelUp = false
     }
 
     private fun shutdown() {
@@ -160,6 +174,7 @@ class FocusVpnService : VpnService() {
     override fun onDestroy() {
         shutdown()
         netCallback?.let { cb -> getSystemService(ConnectivityManager::class.java)?.let { runCatching { it.unregisterNetworkCallback(cb) } } }
+        getSharedPreferences(DnsSetting.PREFS, MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(dnsPrefsListener)
         scope.cancel()
         forwarder.shutdownNow()
         super.onDestroy()

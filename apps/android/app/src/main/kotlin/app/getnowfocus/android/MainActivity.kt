@@ -113,9 +113,12 @@ private sealed interface Screen {
     data object Unlock : Screen
     data object Policies : Screen
     data class EditPolicy(val id: String) : Screen
+    data object Groups : Screen
+    data class EditGroup(val id: String) : Screen
     data object Stats : Screen
     data object Commitment : Screen
     data object Bedtime : Screen
+    data object Dns : Screen
     data object Devices : Screen
     data object Account : Screen
     data object Onboarding : Screen
@@ -144,6 +147,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
     // Commitment and Bedtime open from both Home and Rules; Back returns to whichever opened them.
     var backTo by remember { mutableStateOf<Screen>(Screen.Home) }
     val policies by viewModel.policies.collectAsStateWithLifecycle()
+    val groups by viewModel.groups.collectAsStateWithLifecycle()
     val session by viewModel.session.collectAsStateWithLifecycle()
     val sessionLoaded by viewModel.sessionLoaded.collectAsStateWithLifecycle()
     val shield by viewModel.commitmentShield.collectAsStateWithLifecycle()
@@ -224,7 +228,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
         if (!onboardingDone && screen == Screen.Home) screen = Screen.Onboarding
     }
 
-    val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy ||
+    val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy || screen is Screen.Groups || screen is Screen.EditGroup ||
         screen is Screen.Stats || screen is Screen.Devices || screen is Screen.Active || screen is Screen.Settings
 
     Column(Modifier.fillMaxSize()) {
@@ -241,6 +245,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                     onPrimaryCta = { screen = if (running) Screen.Active else Screen.Setup },
                     onOpenCommitment = { backTo = Screen.Home; screen = Screen.Commitment },
                     onOpenBedtime = { backTo = Screen.Home; screen = Screen.Bedtime },
+                    dnsAlwaysOn = DnsSetting.read(context).let { it.alwaysOn && it.effective != DnsProvider.SYSTEM },
+                    onOpenDns = { backTo = Screen.Home; screen = Screen.Dns },
                 )
                 Screen.Setup -> SetupScreen(
                     policies = policies,
@@ -278,6 +284,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                         onAdd = { mode -> screen = Screen.EditPolicy(viewModel.addPolicy(mode)) },
                         onDelete = viewModel::deletePolicy,
                         onBack = { screen = Screen.Home },
+                        groupsCount = groups.size,
+                        onOpenGroups = { screen = Screen.Groups },
                         onOpenCommitment = { backTo = Screen.Policies; screen = Screen.Commitment },
                         onOpenBedtime = { backTo = Screen.Policies; screen = Screen.Bedtime },
                         peopleCount = people.size,
@@ -285,6 +293,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                         goalsCount = goals.size,
                         onOpenGoals = { screen = Screen.Goals },
                         extraRows = listOf(
+                            dnsEntry(context) { backTo = Screen.Policies; screen = Screen.Dns },
                             ProtectionEntry(
                                 stringResource(R.string.sched_title),
                                 if (schedules.isEmpty()) stringResource(R.string.not_set_up) else stringResource(R.string.sched_on_count, schedules.count { it.enabled }),
@@ -317,8 +326,27 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                     BackHandler { screen = Screen.Policies }
                     val policy = policies.find { it.id == s.id }
                     if (policy != null) {
-                        PolicyEditorScreen(policy, onSave = viewModel::savePolicy, onBack = { screen = Screen.Policies })
+                        PolicyEditorScreen(
+                            policy, onSave = viewModel::savePolicy, onBack = { screen = Screen.Policies },
+                            groups = groups,
+                            onSaveAsGroup = { viewModel.addGroup(it.name, it.domains, it.apps) },
+                        )
                     }
+                }
+                Screen.Groups -> {
+                    BackHandler { screen = Screen.Policies }
+                    GroupsScreen(
+                        groups = groups,
+                        onOpen = { screen = Screen.EditGroup(it) },
+                        onAdd = { screen = Screen.EditGroup(viewModel.addGroup(context.localized().getString(R.string.groups_new_name))) },
+                        onDelete = viewModel::deleteGroup,
+                        onBack = { screen = Screen.Policies },
+                    )
+                }
+                is Screen.EditGroup -> {
+                    BackHandler { screen = Screen.Groups }
+                    val group = groups.find { it.id == s.id }
+                    if (group != null) PolicyEditorScreen(group, onSave = viewModel::saveGroup, onBack = { screen = Screen.Groups }, isGroup = true)
                 }
                 Screen.Stats -> StatsScreen { app, hour -> schedulePrefill = viewModel.scheduleBlockFor(app, hour); screen = Screen.Schedules }
                 Screen.Commitment -> CommitmentScreen(
@@ -331,6 +359,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                     onBack = { screen = backTo },
                 )
                 Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, onSave = viewModel::saveBedtimeSettings, onBack = { screen = backTo })
+                Screen.Dns -> DnsScreen(sessionLive = running, resumeKey = resumeCount, onBack = { screen = backTo })
                 Screen.Devices -> DevicesScreen(resumeKey = resumeCount, account = syncStatus, onOpenAccount = { screen = Screen.Account }, onVpnResult = viewModel::restartEnforcementIfRunning)
                 Screen.Account -> when {
                     accountLock == null -> Unit
@@ -428,7 +457,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
 
 @Composable
 private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onDevices: () -> Unit, onStats: () -> Unit, onSettings: () -> Unit, selected: Screen) {
-    val rulesSelected = selected is Screen.Policies || selected is Screen.EditPolicy
+    val rulesSelected = selected is Screen.Policies || selected is Screen.EditPolicy || selected is Screen.Groups || selected is Screen.EditGroup
     val devicesSelected = selected is Screen.Devices || selected is Screen.Account
     val statsSelected = selected is Screen.Stats
     val settingsSelected = selected is Screen.Settings
@@ -479,6 +508,8 @@ private fun HomeScreen(
     onPrimaryCta: () -> Unit,
     onOpenCommitment: () -> Unit,
     onOpenBedtime: () -> Unit,
+    dnsAlwaysOn: Boolean,
+    onOpenDns: () -> Unit,
 ) {
     val context = LocalContext.current
     val locale = context.appLocale()
@@ -537,7 +568,7 @@ private fun HomeScreen(
             Spacer(Modifier.height(NowFocusSpace.s4))
             Text(stringResource(R.string.home_cheat_paused), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.accent700))
         }
-        if (showShieldRow || bedtime.enabled) {
+        if (showShieldRow || bedtime.enabled || dnsAlwaysOn) {
             Spacer(Modifier.height(NowFocusSpace.s6))
             Text(stringResource(R.string.home_always_on), style = kickerStyle(NowFocusColors.neutral700))
             if (showShieldRow) {
@@ -548,6 +579,16 @@ private fun HomeScreen(
                 ) {
                     Text(stringResource(R.string.shield_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
                     TagPill(pluralStringResource(R.plurals.home_days_left, daysLeft, daysLeft))
+                }
+                SectionRule()
+            }
+            if (dnsAlwaysOn) {
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onOpenDns).padding(vertical = NowFocusSpace.s3),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.dns_title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp), modifier = Modifier.weight(1f))
+                    TagPill(stringResource(R.string.on), accent = false)
                 }
                 SectionRule()
             }

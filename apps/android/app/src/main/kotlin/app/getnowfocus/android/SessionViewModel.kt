@@ -45,6 +45,9 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val policies: StateFlow<List<BlockPolicy>> =
         repository.policiesFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val groups: StateFlow<List<BlockPolicy>> =
+        repository.groupsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     val commitmentShield: StateFlow<CommitmentShield?> =
         repository.commitmentShieldFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -159,10 +162,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Re-arms the VPN and notification when a session or Shield is live: on launch, and after VPN consent is granted mid-session. */
+    /** Re-arms the VPN and notification when a session, the Shield or always-on DNS needs them: on launch, and after VPN consent is granted. */
     fun restartEnforcementIfRunning() {
         viewModelScope.launch {
-            if (Enforcement.shouldRun(repository)) Enforcement.start(getApplication())
+            if (Enforcement.shouldRun(getApplication(), repository)) Enforcement.start(getApplication())
         }
     }
 
@@ -324,6 +327,22 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             if (!newPackages.containsAll(oldPackages)) return true
         }
         return !new.partial.containsAll(old.partial)
+    }
+
+    /** Groups are never enforced, so editing one has no session to protect: always saved. */
+    fun addGroup(name: String, domains: List<String> = emptyList(), apps: List<AppRule> = emptyList()): String {
+        val group = BlockPolicy(name = name, domains = domains, apps = apps)
+        viewModelScope.launch { repository.updateGroups { it + group } }
+        return group.id
+    }
+
+    fun saveGroup(group: BlockPolicy): Boolean {
+        viewModelScope.launch { repository.updateGroups { list -> list.map { if (it.id == group.id) group else it } } }
+        return true
+    }
+
+    fun deleteGroup(id: String) {
+        viewModelScope.launch { repository.updateGroups { list -> list.filterNot { it.id == id } } }
     }
 
     fun deletePolicy(id: String) {

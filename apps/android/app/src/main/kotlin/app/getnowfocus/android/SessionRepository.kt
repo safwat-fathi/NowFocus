@@ -40,6 +40,7 @@ class SessionRepository(context: Context) {
         val PACKAGES = stringSetPreferencesKey("packages")
         val PARTIAL = stringSetPreferencesKey("partial")
         val POLICIES = stringPreferencesKey("policies")
+        val GROUPS = stringPreferencesKey("rule_groups")
         val ENFORCEMENT_MODE = stringPreferencesKey("enforcementMode")
         val SESSION_TYPE = stringPreferencesKey("sessionType")
         val CANCELLED_AT = longPreferencesKey("cancelledAt")
@@ -231,6 +232,10 @@ class SessionRepository(context: Context) {
         p[Keys.POLICIES]?.let { BlockPolicy.listFromJson(it) } ?: emptyList()
     }
 
+    val groupsFlow: Flow<List<BlockPolicy>> = store.data.map { p ->
+        p[Keys.GROUPS]?.let { BlockPolicy.listFromJson(it) } ?: emptyList()
+    }
+
     /** Null once there's never been a shield, or its row was cleared by cancelling within the grace period. */
     val commitmentShieldFlow: Flow<CommitmentShield?> = store.data.map { p ->
         CommitmentShield(
@@ -347,6 +352,13 @@ class SessionRepository(context: Context) {
             p[Keys.POLICIES] = BlockPolicy.listToJson(next)
             // The only place a profile is created, edited or deleted: record it for sync in this same edit.
             stampSync(p) { SyncLogic.stampPolicies(it, current, next, System.currentTimeMillis()) }
+        }
+    }
+
+    /** Saved site/app groups: stored like policies, but local to this phone, so no sync stamp. */
+    suspend fun updateGroups(transform: (List<BlockPolicy>) -> List<BlockPolicy>) {
+        store.edit { p ->
+            p[Keys.GROUPS] = BlockPolicy.listToJson(transform(p[Keys.GROUPS]?.let { BlockPolicy.listFromJson(it) } ?: emptyList()))
         }
     }
 
