@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="notif_session_text_allowlist">تبقى تطبيقاتك المسموح بها فقط مفتوحة حتى ينتهي المؤقت.</string>
-    <string name="policies_new_title">ملف جديد</string>
+    <string name="policies_new_title">نمط جديد</string>
     <string name="policies_new_block">احجب هذه</string>
     <string name="policies_new_block_sub">أغلق التطبيقات والمواقع التي تختارها.</string>
     <string name="policies_new_allow">اسمح بهذه فقط</string>
     <string name="policies_new_allow_sub">أغلق كل شيء عدا التطبيقات التي تختارها.</string>
-    <string name="setup_allow_empty">اسمح بتطبيق واحد على الأقل على هذا الهاتف قبل أن تبدأ بهذا الملف.</string>
+    <string name="setup_allow_empty">اسمح بتطبيق واحد على الأقل على هذا الهاتف قبل أن تبدأ بهذا النمط.</string>
     <string name="policies_none_allowed">لا توجد تطبيقات مسموح بها على هذا الهاتف بعد</string>
     <plurals name="policies_apps_allowed">
         <item quantity="zero">لا تطبيقات مسموح بها</item>

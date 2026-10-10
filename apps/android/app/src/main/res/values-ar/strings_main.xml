@@ -50,9 +50,9 @@
     <string name="health_enable">التفعيل في إعدادات إمكانية الوصول</string>
 
     <string name="setup_title">جلسة تركيز جديدة</string>
-    <string name="setup_no_profiles">لا توجد ملفات بعد.</string>
-    <string name="setup_manage">إدارة الملفات</string>
-    <string name="setup_profile">الملف</string>
+    <string name="setup_no_profiles">لا توجد أنماط بعد.</string>
+    <string name="setup_manage">إدارة الأنماط</string>
+    <string name="setup_profile">النمط</string>
     <string name="setup_duration">المدة</string>
     <string name="setup_mode_normal">يمكنك الإنهاء في أي وقت. مناسب للأيام الخفيفة.</string>
     <string name="setup_mode_strict">للخروج مبكرًا ستكتب جملة قصيرة ثم تنتظر 30 ثانية.</string>
@@ -150,14 +150,14 @@
     <string name="shield_caveat">إيقاف إمكانية الوصول أو سحب إذن VPN أو حذف التطبيق ما زال يوقف هذا الدرع — لا سبيل إلى تجاوز ذلك في تطبيق عادي. وأثناء عمله لا يمكن لتطبيق VPN آخر أن يعمل في الوقت نفسه (يسمح Android بواحد فقط).</string>
 
     <string name="bedtime_hero">مساؤك، أخفّ وأهدأ.</string>
-    <string name="bedtime_intro">كل ليلة من وقت التهدئة حتى الاستيقاظ، يُحجب الملف الذي اخترته كجلسة مقفلة لا يمكنك إنهاؤها مبكرًا. المس وقتًا لتغييره.</string>
+    <string name="bedtime_intro">كل ليلة من وقت التهدئة حتى الاستيقاظ، يُحجب النمط الذي اخترته كجلسة مقفلة لا يمكنك إنهاؤها مبكرًا. المس وقتًا لتغييره.</string>
     <string name="bedtime_on">مفعّل كل ليلة</string>
     <string name="bedtime_on_sub">يُطبَّق تلقائيًا، دون حاجة إلى بدئه</string>
     <string name="bedtime_winddown">التهدئة</string>
     <string name="bedtime_sleep">النوم</string>
     <string name="bedtime_wake">الاستيقاظ</string>
-    <string name="bedtime_no_profiles">لا توجد ملفات بعد — أنشئ واحدًا في «القواعد» أولًا، وإلا فلن يُحجب شيء وقت النوم.</string>
-    <string name="bedtime_pick">اختر ملفًا أعلاه، وإلا فلن يُحجب شيء وقت النوم.</string>
+    <string name="bedtime_no_profiles">لا توجد أنماط بعد — أنشئ واحدًا في «القواعد» أولًا، وإلا فلن يُحجب شيء وقت النوم.</string>
+    <string name="bedtime_pick">اختر نمطًا أعلاه، وإلا فلن يُحجب شيء وقت النوم.</string>
     <string name="bedtime_during">أثناء التهدئة</string>
     <string name="bedtime_quiet">إشعارات هادئة</string>
     <string name="bedtime_quiet_sub">لا تصل إلا الإشعارات ذات الأولوية</string>

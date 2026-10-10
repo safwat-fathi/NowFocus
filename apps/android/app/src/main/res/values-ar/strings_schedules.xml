@@ -3,8 +3,8 @@
     <string name="sched_title">الجداول</string>
     <string name="sched_intro">جلسات تبدأ من تلقاء نفسها، مثل الاثنين–الجمعة من 9 إلى 12. لا تبدأ في يوم استراحة، ولا أثناء جلسة أخرى.</string>
     <string name="sched_row">%1$s · %2$s-%3$s · %4$s · %5$s</string>
-    <string name="sched_no_profile">بلا ملف</string>
-    <string name="sched_need_profile">أنشئ ملف تركيز في «القواعد» أولًا: يحتاج الجدول إلى ملف ليحجبه.</string>
+    <string name="sched_no_profile">بلا نمط</string>
+    <string name="sched_need_profile">أنشئ نمط تركيز في «القواعد» أولًا: يحتاج الجدول إلى نمط ليحجبه.</string>
     <string name="sched_new">+ جدول جديد</string>
     <string name="sched_default_name">العمل</string>
     <string name="sched_new_title">جدول جديد</string>
@@ -13,7 +13,7 @@
     <string name="sched_starts">يبدأ</string>
     <string name="sched_ends">ينتهي</string>
     <string name="sched_next_day">ينتهي في اليوم التالي.</string>
-    <string name="sched_block_profile">ملف الحجب</string>
+    <string name="sched_block_profile">نمط الحجب</string>
     <string name="sched_stop_early">إذا أردت التوقف مبكرًا</string>
     <string name="sched_locked_note">الوضع المقفل بلا خروج مبكر، وهذا الجدول يبدأ من تلقاء نفسه.</string>
     <string name="sched_on_sub">يبدأ من تلقاء نفسه في الأوقات أعلاه</string>

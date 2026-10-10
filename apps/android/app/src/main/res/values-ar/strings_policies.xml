@@ -2,10 +2,10 @@
 <resources>
     <string name="rules_title">القواعد</string>
     <string name="policies_kicker">أنماط التركيز</string>
-    <string name="policies_new">+ ملف جديد</string>
+    <string name="policies_new">+ نمط جديد</string>
     <string name="policies_remove_q">إزالة %1$s؟</string>
-    <string name="policies_remove_body">سيُحذف هذا الملف.</string>
-    <string name="policies_remove_bedtime">سيُحذف هذا الملف. تستخدمه تهدئة وقت النوم وستتوقف عن الحجب حتى تختار ملفًا آخر.</string>
+    <string name="policies_remove_body">سيُحذف هذا النمط.</string>
+    <string name="policies_remove_bedtime">سيُحذف هذا النمط. تستخدمه تهدئة وقت النوم وستتوقف عن الحجب حتى تختار نمطًا آخر.</string>
     <string name="protections_kicker">الحمايات</string>
     <string name="not_set_up">غير مُعدّ</string>
     <string name="shield_title">درع الالتزام</string>
@@ -54,8 +54,8 @@
     </plurals>
     <string name="sites_apps">%1$s · %2$s</string>
 
-    <string name="policy_cant_remove">لا يمكنك إزالة الحجب أثناء جلسة تركيز تعمل على هذا الملف.</string>
-    <string name="policy_name">اسم الملف</string>
+    <string name="policy_cant_remove">لا يمكنك إزالة الحجب أثناء جلسة تركيز تعمل على هذا النمط.</string>
+    <string name="policy_name">اسم النمط</string>
     <string name="policy_websites">المواقع المحجوبة</string>
     <string name="policy_subdomains">+ النطاقات الفرعية</string>
     <string name="policy_add_site_hint">أضف موقعًا، مثل youtube.com</string>

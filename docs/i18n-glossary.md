@@ -19,7 +19,7 @@ Everything marked **proposed** has no precedent on the site and needs a native r
 | partial blocking | الحجب الجزئي |
 | Pages to close | صفحات تُغلق |
 | Browser address check | فحص عنوان المتصفح |
-| focus profile | ملف تركيز |
+| focus profile | نمط تركيز |
 | Normal / Strict / Locked | عادي / صارم / مقفل |
 | Commitment Shield | درع الالتزام |
 | bedtime wind-down | تهدئة وقت النوم |
