@@ -5,7 +5,8 @@ use rusqlite::{params, Connection};
 
 use crate::bedtime_schedule::BedtimeSettings;
 use crate::block_policy::{
-    ApplicationRule, BlockPolicy, DomainRule, FeedRule, NotificationMode, PolicyMode, Profile, RuleGroup,
+    ApplicationRule, BlockPolicy, DomainRule, FeedRule, NotificationMode, PolicyMode, Profile,
+    RuleGroup,
 };
 use crate::cheat_day::CheatDay;
 use crate::daily_limit::DailyLimit;
