@@ -2757,7 +2757,7 @@ mod tests {
 
         state.set_dns("adguard_family", "", true).unwrap();
         assert!(state.dns_always_on());
-        assert_eq!(state.snapshot().unwrap().dns_always_on, true);
+        assert!(state.snapshot().unwrap().dns_always_on);
         assert_eq!(keeps.lock().unwrap().last().unwrap(), &adguard);
 
         state.set_dns("adguard_family", "", false).unwrap();
