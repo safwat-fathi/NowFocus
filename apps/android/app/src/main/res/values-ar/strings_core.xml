@@ -38,7 +38,6 @@
     <string name="sync_err_network">تعذّر الوصول إلى NowFocus. تحقق من اتصالك وحاول مرة أخرى.</string>
     <string name="sync_err_session_ended">انتهت صلاحية جلسة الدخول. سجّل الدخول مجددًا.</string>
     <string name="sync_err_invalid_credentials">البريد الإلكتروني أو كلمة المرور غير صحيحة.</string>
-    <string name="sync_err_email_taken">يوجد حساب بهذا البريد الإلكتروني بالفعل. سجّل الدخول بدلًا من ذلك.</string>
     <string name="sync_err_wrong_password">كلمة المرور غير صحيحة.</string>
     <string name="sync_err_rate_limited">محاولات كثيرة. انتظر دقيقة ثم حاول مجددًا.</string>
     <string name="sync_err_server">يواجه NowFocus مشكلة حاليًا. حاول بعد قليل.</string>

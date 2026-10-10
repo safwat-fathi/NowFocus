@@ -9,6 +9,7 @@
     <string name="account_password">Password (8+ characters)</string>
     <string name="account_sign_in">Sign in</string>
     <string name="account_create">Create account</string>
+    <string name="account_check_inbox">Check your inbox and confirm your email, then sign in here. If you already have an account, sign in instead.</string>
     <string name="account_signed_in">SIGNED IN</string>
     <string name="account_syncing">Syncing…</string>
     <string name="account_synced">Synced %1$s</string>

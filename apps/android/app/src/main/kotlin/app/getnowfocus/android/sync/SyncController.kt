@@ -103,12 +103,18 @@ class SyncController(
     fun setForeground(on: Boolean) { foreground.value = on }
 
     /** Returns an error message for the user, or null on success. */
-    suspend fun signIn(email: String, password: String, createAccount: Boolean): UiText? = try {
-        val s = if (createAccount) api.register(email, password, deviceName) else api.login(email, password, deviceName)
+    suspend fun signIn(email: String, password: String): UiText? = try {
+        val s = api.login(email, password, deviceName)
         // A different account than before starts clean; the same one resumes where it left off.
         store.transact { l -> l.copy(state = SyncLogic.link(l.state, s.userId)) to Unit }
         _status.update { it.copy(loaded = true, signedIn = true, email = s.email, problem = null) }
         begin()
+        null
+    } catch (e: CancellationException) { throw e } catch (e: Exception) { friendly(e) }
+
+    /** Asks the server to email a confirm link. Same outcome for a new and a taken address. Returns an error message or null. */
+    suspend fun createAccount(email: String, password: String): UiText? = try {
+        api.register(email, password, deviceName)
         null
     } catch (e: CancellationException) { throw e } catch (e: Exception) { friendly(e) }
 
@@ -216,7 +222,6 @@ class SyncController(
         e is NetworkException -> uiText(R.string.sync_err_network)
         e is AuthExpired -> uiText(R.string.sync_err_session_ended)
         e is ApiException && e.code == "invalid_credentials" -> uiText(R.string.sync_err_invalid_credentials)
-        e is ApiException && e.code == "email_taken" -> uiText(R.string.sync_err_email_taken)
         e is ApiException && e.code == "wrong_password" -> uiText(R.string.sync_err_wrong_password)
         e is ApiException && e.status == 429 -> uiText(R.string.sync_err_rate_limited)
         e is ApiException && e.status in 500..599 -> uiText(R.string.sync_err_server)

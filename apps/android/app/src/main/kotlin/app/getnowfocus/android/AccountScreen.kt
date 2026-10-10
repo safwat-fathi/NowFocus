@@ -74,14 +74,15 @@ private fun SignedOut(sync: SyncController, status: SyncStatus) {
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<UiText?>(null) }
+    var checkInbox by remember { mutableStateOf(false) }
 
     fun submit(create: Boolean) {
         credentialsProblem(email.trim(), password)?.let { error = it; return }
-        busy = true; error = null
+        busy = true; error = null; checkInbox = false
         scope.launch {
-            error = sync.signIn(email, password, create)
+            error = if (create) sync.createAccount(email, password) else sync.signIn(email, password)
             busy = false
-            if (error == null) password = ""
+            if (error == null) { password = ""; checkInbox = create }
         }
     }
 
@@ -97,6 +98,7 @@ private fun SignedOut(sync: SyncController, status: SyncStatus) {
         modifier = Modifier.fillMaxWidth().padding(top = NowFocusSpace.s2),
     )
     error?.let { Text(it.text(), style = body.copy(color = NowFocusColors.accent700), modifier = Modifier.padding(top = NowFocusSpace.s2)) }
+    if (checkInbox) Text(stringResource(R.string.account_check_inbox), style = body, modifier = Modifier.padding(top = NowFocusSpace.s2))
     Spacer(Modifier.height(NowFocusSpace.s4))
     PrimaryButton(stringResource(if (busy) R.string.please_wait else R.string.account_sign_in), enabled = !busy, modifier = Modifier.fillMaxWidth()) { submit(create = false) }
     Spacer(Modifier.height(NowFocusSpace.s2))

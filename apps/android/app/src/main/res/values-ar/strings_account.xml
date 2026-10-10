@@ -9,6 +9,7 @@
     <string name="account_password">كلمة المرور (8 أحرف على الأقل)</string>
     <string name="account_sign_in">تسجيل الدخول</string>
     <string name="account_create">إنشاء حساب</string>
+    <string name="account_check_inbox">تحقق من بريدك وأكّد عنوانك، ثم سجّل الدخول هنا. إذا كان لديك حساب بالفعل، فسجّل الدخول بدلًا من ذلك.</string>
     <string name="account_signed_in">تم تسجيل الدخول</string>
     <string name="account_syncing">جارٍ المزامنة…</string>
     <string name="account_synced">تمت المزامنة %1$s</string>

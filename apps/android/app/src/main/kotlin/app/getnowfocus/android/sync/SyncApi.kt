@@ -64,19 +64,21 @@ class SyncApi(
 
     // ---- account
 
-    suspend fun register(email: String, password: String, deviceName: String): AccountSession = open("/v1/auth/register", email, password, deviceName)
-    suspend fun login(email: String, password: String, deviceName: String): AccountSession = open("/v1/auth/login", email, password, deviceName)
+    /** No session yet: the server emails a confirm link (the same answer for a taken address), then the user logs in. */
+    suspend fun register(email: String, password: String, deviceName: String) { send(Request.Builder().url("$base/v1/auth/register").post(credentials(email, password, deviceName))) }
 
-    private suspend fun open(path: String, email: String, password: String, deviceName: String): AccountSession {
-        val body = JSONObject().put("email", email.trim()).put("password", password)
-            .put("device", JSONObject().put("name", deviceName).put("platform", "android"))
-        val res = send(Request.Builder().url(base + path).post(body.toRequestBody(JSON)))
+    suspend fun login(email: String, password: String, deviceName: String): AccountSession {
+        val res = send(Request.Builder().url("$base/v1/auth/login").post(credentials(email, password, deviceName)))
         val user = res.getJSONObject("user")
         val stored = StoredAuth(user.getString("id"), user.getString("email"), res.getJSONObject("device").getString("id"), res.getString("refreshToken"))
         auth.save(stored)
         accessToken = res.getString("accessToken")
         return AccountSession(stored.userId, stored.email, stored.deviceId)
     }
+
+    private fun credentials(email: String, password: String, deviceName: String) =
+        JSONObject().put("email", email.trim()).put("password", password)
+            .put("device", JSONObject().put("name", deviceName).put("platform", "android")).toRequestBody(JSON)
 
     /** Best effort: whatever the network says, this device forgets its tokens. */
     suspend fun logout() {

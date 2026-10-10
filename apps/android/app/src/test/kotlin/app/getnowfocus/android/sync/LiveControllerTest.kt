@@ -52,7 +52,7 @@ class LiveControllerTest {
             val authB = MemoryAuth(); val apiB = SyncApi(url, "NowFocus-Android/it", authB)
             val email = "ws-${System.currentTimeMillis()}@example.com"
             try {
-                api.register(email, "pw-pw-pw-pw", "A"); apiB.login(email, "pw-pw-pw-pw", "B")
+                api.registerConfirmed(email, "pw-pw-pw-pw", "A"); apiB.login(email, "pw-pw-pw-pw", "B")
                 withTimeout(15_000) {
                     val events = SyncSocket(url, "NowFocus-Android/it").connect(api.accessTokenForSocket())
                     val hello = events.first()
@@ -93,7 +93,7 @@ class LiveControllerTest {
         runBlocking {
             val auth = MemoryAuth(); val api = SyncApi(url!!, "NowFocus-Android/it", auth)
             try {
-                api.register("rf-${System.currentTimeMillis()}@example.com", "pw-pw-pw-pw", "A")
+                api.registerConfirmed("rf-${System.currentTimeMillis()}@example.com", "pw-pw-pw-pw", "A")
                 val first = api.accessTokenForSocket(); val refreshBefore = auth.stored!!.refreshToken
                 delay(1_100)                                            // a JWT issued in the same second would be identical
                 val second = api.refreshedAccessToken(first)
@@ -118,10 +118,12 @@ class LiveControllerTest {
                 until(what = "controllers loaded") { a.controller.status.value.loaded && b.controller.status.value.loaded }
 
                 // Wrong password is a friendly message, not an exception.
-                assertEquals(uiText(R.string.sync_err_invalid_credentials), a.controller.signIn(email, "pw-pw-pw-pw", false))
-                assertNull(a.controller.signIn(email, "pw-pw-pw-pw", true))                       // creates the account
-                assertNull(b.controller.signIn(email, "pw-pw-pw-pw", false))
-                assertEquals(uiText(R.string.sync_err_email_taken), a.controller.signIn(email, "pw-pw-pw-pw", true))
+                assertEquals(uiText(R.string.sync_err_invalid_credentials), a.controller.signIn(email, "pw-pw-pw-pw"))
+                assertNull(a.controller.createAccount(email, "pw-pw-pw-pw"))                      // asks for the email link
+                confirmSignUp(email)
+                assertNull(a.controller.createAccount(email, "pw-pw-pw-pw"))                      // a taken address looks the same
+                assertNull(a.controller.signIn(email, "pw-pw-pw-pw"))
+                assertNull(b.controller.signIn(email, "pw-pw-pw-pw"))
                 until(what = "both signed in and idle") { a.controller.status.value.lastSyncedAt != null && b.controller.status.value.lastSyncedAt != null }
 
                 // A edits: B must get it without anyone pressing anything (edit -> debounce -> push -> websocket -> pull).

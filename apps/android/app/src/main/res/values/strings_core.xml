@@ -38,7 +38,6 @@
     <string name="sync_err_network">Can\'t reach NowFocus. Check your connection and try again.</string>
     <string name="sync_err_session_ended">Your session ended. Sign in again.</string>
     <string name="sync_err_invalid_credentials">Wrong email or password.</string>
-    <string name="sync_err_email_taken">An account with this email already exists. Sign in instead.</string>
     <string name="sync_err_wrong_password">Wrong password.</string>
     <string name="sync_err_rate_limited">Too many attempts. Wait a minute and try again.</string>
     <string name="sync_err_server">NowFocus is having trouble right now. Try again shortly.</string>

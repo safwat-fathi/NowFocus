@@ -50,7 +50,7 @@ class LiveSyncTest {
             val password = "pw-pw-pw-pw"
             val a = Phone(url!!, Clock()); val b = Phone(url, Clock())
             try {
-                a.link(a.api.register(email, password, "Test phone A"))
+                a.link(a.api.registerConfirmed(email, password, "Test phone A"))
                 b.link(b.api.login(email, password, "Test phone B"))
                 assertEquals(2, a.api.devices().count { !it.revoked })
 
