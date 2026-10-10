@@ -81,14 +81,21 @@ public final class SyncController: ObservableObject {
     public func syncNow() { trigger?.yield() }
 
     /// Returns an error message for the user, or nil on success.
-    public func signIn(email: String, password: String, createAccount: Bool) async -> String? {
+    public func signIn(email: String, password: String) async -> String? {
         do {
-            let s = createAccount ? try await api.register(email: email, password: password, deviceName: deviceName)
-                                  : try await api.login(email: email, password: password, deviceName: deviceName)
+            let s = try await api.login(email: email, password: password, deviceName: deviceName)
             // A different account than before starts clean; the same one resumes where it left off.
             try store.transact { l in var l = l; l.state = SyncLogic.link(l.state, userId: s.userId); return (l, ()) }
             status = SyncStatus(loaded: true, signedIn: true, email: s.email)
             begin()
+            return nil
+        } catch is CancellationError { return nil } catch { return friendly(error) }
+    }
+
+    /// Asks the server to email a confirm link. Same outcome for a new and a taken address. Returns an error message or nil.
+    public func createAccount(email: String, password: String) async -> String? {
+        do {
+            try await api.register(email: email, password: password, deviceName: deviceName)
             return nil
         } catch is CancellationError { return nil } catch { return friendly(error) }
     }
@@ -217,7 +224,6 @@ public final class SyncController: ObservableObject {
         case let e as ApiError:
             switch (e.code, e.status) {
             case ("invalid_credentials", _): return String(localized: "Wrong email or password.", bundle: .nowFocusCore, locale: .nowFocusUI)
-            case ("email_taken", _): return String(localized: "An account with this email already exists. Sign in instead.", bundle: .nowFocusCore, locale: .nowFocusUI)
             case ("wrong_password", _): return String(localized: "Wrong password.", bundle: .nowFocusCore, locale: .nowFocusUI)
             case (_, 429): return String(localized: "Too many attempts. Wait a minute and try again.", bundle: .nowFocusCore, locale: .nowFocusUI)
             case (_, 500...599): return String(localized: "NowFocus is having trouble right now. Try again shortly.", bundle: .nowFocusCore, locale: .nowFocusUI)

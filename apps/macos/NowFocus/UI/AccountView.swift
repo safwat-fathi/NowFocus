@@ -10,6 +10,7 @@ struct AccountView: View {
     @State private var password = ""
     @State private var busy = false
     @State private var error: String?
+    @State private var notice: String?
     @State private var devices: [DeviceInfo] = []
     @State private var confirmingDelete = false
     @State private var deletePassword = ""
@@ -48,6 +49,9 @@ struct AccountView: View {
                 .onSubmit { submit(create: false) }
 
             if let error { errorText(error) }
+            if let notice {
+                Text(notice).font(NowFocusFonts.body(13)).foregroundColor(NowFocusColors.neutral800).fixedSize(horizontal: false, vertical: true)
+            }
 
             NowFocusPrimaryButton(title: busy ? "Please wait\u{2026}" : "Sign in", enabled: !busy && canSubmit) { submit(create: false) }
             NowFocusSecondaryButton(title: "Create account") { if !busy && canSubmit { submit(create: true) } }
@@ -59,11 +63,11 @@ struct AccountView: View {
 
     private func submit(create: Bool) {
         guard !busy, canSubmit else { return }
-        busy = true; error = nil
+        busy = true; error = nil; notice = nil
         Task {
-            error = await sync.signIn(email: email, password: password, createAccount: create)
+            error = create ? await sync.createAccount(email: email, password: password) : await sync.signIn(email: email, password: password)
             busy = false
-            if error == nil { password = "" }
+            if error == nil { password = ""; if create { notice = loc("Check your inbox and confirm your email, then sign in here. If you already have an account, sign in instead.") } }
         }
     }
 

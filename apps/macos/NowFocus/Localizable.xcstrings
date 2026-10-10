@@ -876,6 +876,17 @@
         }
       }
     },
+    "Check your inbox and confirm your email, then sign in here. If you already have an account, sign in instead.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تحقق من بريدك وأكّد عنوانك، ثم سجّل الدخول هنا. إذا كان لديك حساب بالفعل، فسجّل الدخول بدلًا من ذلك."
+          }
+        }
+      }
+    },
     "Create account": {
       "extractionState": "manual",
       "localizations": {

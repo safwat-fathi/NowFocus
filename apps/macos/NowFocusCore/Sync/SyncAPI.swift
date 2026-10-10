@@ -62,13 +62,14 @@ final class SyncAPI: SyncAPIPort, @unchecked Sendable {
 
     // MARK: account
 
-    func register(email: String, password: String, deviceName: String) async throws -> AccountSession { try await open("/v1/auth/register", email, password, deviceName) }
-    func login(email: String, password: String, deviceName: String) async throws -> AccountSession { try await open("/v1/auth/login", email, password, deviceName) }
+    /// No session yet: the server emails a confirm link (the same answer for a taken address, so it can't be used to
+    /// probe), and the user signs in once they've confirmed.
+    func register(email: String, password: String, deviceName: String) async throws {
+        _ = try await sendJSON(request("/v1/auth/register", method: "POST", body: credentials(email, password, deviceName)))
+    }
 
-    private func open(_ path: String, _ email: String, _ password: String, _ deviceName: String) async throws -> AccountSession {
-        let body: JSONObject = ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password,
-                                "device": ["name": deviceName, "platform": "macos"]]
-        let res = try await sendJSON(request(path, method: "POST", body: body))
+    func login(email: String, password: String, deviceName: String) async throws -> AccountSession {
+        let res = try await sendJSON(request("/v1/auth/login", method: "POST", body: credentials(email, password, deviceName)))
         guard let user = res["user"] as? JSONObject, let userId = JSONKit.string(user, "id"), let email = JSONKit.string(user, "email"),
               let deviceId = (res["device"] as? JSONObject).flatMap({ JSONKit.string($0, "id") }),
               let refresh = JSONKit.string(res, "refreshToken"), let access = JSONKit.string(res, "accessToken") else {
@@ -77,6 +78,10 @@ final class SyncAPI: SyncAPIPort, @unchecked Sendable {
         try auth.save(StoredAuth(userId: userId, email: email, deviceId: deviceId, refreshToken: refresh))
         accessToken = access
         return AccountSession(userId: userId, email: email, deviceId: deviceId)
+    }
+
+    private func credentials(_ email: String, _ password: String, _ deviceName: String) -> JSONObject {
+        ["email": email.trimmingCharacters(in: .whitespacesAndNewlines), "password": password, "device": ["name": deviceName, "platform": "macos"]]
     }
 
     /// Best effort: whatever the network says, this device forgets its tokens.

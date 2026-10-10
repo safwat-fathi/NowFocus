@@ -23,6 +23,6 @@ swiftc -F "$P" -I "$P" -Xcc -fmodule-map-file="$DD/SourcePackages/checkouts/GRDB
   -Xlinker -rpath -Xlinker "$P" -framework NowFocusCore -o "$DD/live-sync" scripts/LiveSync/main.swift
 
 code=0
-SYNC_IT_URL="$URL" perl -e 'alarm 300; exec @ARGV' "$DD/live-sync" > "$DD/out.txt" 2>&1 || code=$?
+SYNC_IT_URL="$URL" SYNC_IT_DATABASE_URL="${SYNC_IT_DATABASE_URL:?set SYNC_IT_DATABASE_URL (the scratch DB behind URL)}" perl -e 'alarm 300; exec @ARGV' "$DD/live-sync" > "$DD/out.txt" 2>&1 || code=$?
 grep -E '^(PASS|FAIL|==|DONE|   \()' "$DD/out.txt" || true
 exit $code

@@ -88,6 +88,21 @@ func waitFor(_ seconds: Double, _ condition: @MainActor () -> Bool) async -> Boo
     return await condition()
 }
 
+/// Sign-up is confirmed by an emailed link a script can't open, so promote the pending sign-up in the database
+/// (SYNC_IT_DATABASE_URL, needs `psql`): the same row the server's verify step uses.
+func confirmSignUp(_ email: String) {
+    guard let db = ProcessInfo.processInfo.environment["SYNC_IT_DATABASE_URL"] else { fatalError("set SYNC_IT_DATABASE_URL") }
+    let e = email.lowercased()
+    let sql = "insert into users (id, email, password_hash) select gen_random_uuid(), email, password_hash from pending_signups where email = '\(e)'; delete from pending_signups where email = '\(e)'"
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    p.arguments = ["psql", db, "-v", "ON_ERROR_STOP=1", "-c", sql]
+    let out = Pipe(); p.standardOutput = out; p.standardError = out
+    try? p.run(); p.waitUntilExit()
+    let text = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+    if p.terminationStatus != 0 || !text.contains("INSERT 0 1") { fatalError("could not confirm the sign-up: \(text)") }
+}
+
 let policyId = "11111111-1111-4111-8111-111111111111"
 let stamp = Int(Date().timeIntervalSince1970)
 
@@ -98,7 +113,9 @@ func runSync() async {
         let email = "it-mac-\(stamp)@example.com"
         let a = Phone("A"), b = Phone("B")
         cleanup.append(a)
-        try a.link(try await a.api.register(email: email, password: Cfg.password, deviceName: "Test Mac A"))
+        try await a.api.register(email: email, password: Cfg.password, deviceName: "Test Mac A")
+        confirmSignUp(email)
+        try a.link(try await a.api.login(email: email, password: Cfg.password, deviceName: "Test Mac A"))
         try b.link(try await b.api.login(email: email, password: Cfg.password, deviceName: "Test Mac B"))
 
         // ---------------------------------------------------------------------------------------- 1. two Macs converge
@@ -269,11 +286,14 @@ func runController() async {
         cleanup.append(c)
         let ctlC = SyncController(api: c.api, engine: c.engine, auth: c.auth, store: c.store, socket: c.socket, deviceName: "Controller C", debounce: .milliseconds(100))
         let ctlD = SyncController(api: d.api, engine: d.engine, auth: d.auth, store: d.store, socket: d.socket, deviceName: "Controller D", debounce: .milliseconds(100))
-        await checkAsync("C creates an account") { await ctlC.signIn(email: emailY, password: Cfg.password, createAccount: true) == nil }
-        await checkAsync("D signs in") { await ctlD.signIn(email: emailY, password: Cfg.password, createAccount: false) == nil }
+        await checkAsync("C asks for the email link") { await ctlC.createAccount(email: emailY, password: Cfg.password) == nil }
+        confirmSignUp(emailY)
+        await checkAsync("a taken address looks the same") { await ctlC.createAccount(email: emailY, password: Cfg.password) == nil }
+        await checkAsync("C signs in") { await ctlC.signIn(email: emailY, password: Cfg.password) == nil }
+        await checkAsync("D signs in") { await ctlD.signIn(email: emailY, password: Cfg.password) == nil }
         check(ctlC.status.signedIn && ctlC.status.email == emailY, "status shows the account")
         await checkAsync("a report is accepted") { await ctlC.reportIssue(message: "live check", contact: "") == nil }
-        await checkAsync("a wrong password is reported in plain words") { await ctlC.signIn(email: emailY, password: "wrong-wrong", createAccount: false) == "Wrong email or password." }
+        await checkAsync("a wrong password is reported in plain words") { await ctlC.signIn(email: emailY, password: "wrong-wrong") == "Wrong email or password." }
         try c.manager.savePolicy(BlockPolicy(name: "From C", domains: [DomainRule(domain: "example.org")]))
         await checkWait(10, "a profile made on C appears on D by itself (socket nudge)") { d.policies.contains { $0.name == "From C" } }
         c.setBedtime({ var s = BedtimeSettings(); s.enabled = true; s.wakeMinute = 400; return s }())

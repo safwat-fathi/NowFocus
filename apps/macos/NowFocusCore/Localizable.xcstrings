@@ -218,17 +218,6 @@
         }
       }
     },
-    "An account with this email already exists. Sign in instead.": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يوجد حساب بهذا البريد الإلكتروني بالفعل. سجّل الدخول بدلًا من ذلك."
-          }
-        }
-      }
-    },
     "Back in": {
       "extractionState": "manual",
       "localizations": {
