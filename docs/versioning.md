@@ -44,11 +44,11 @@ Platform versions are tracked independently while adhering to the 3-part SemVer 
 
 | Platform | Current Version | Next Release | Config / Manifest Location |
 | :--- | :--- | :--- | :--- |
-| **Windows** | `0.4.3` | `0.4.4` | `apps/windows/src-tauri/tauri.conf.json`, `apps/windows/src-tauri/Cargo.toml`, `apps/windows/package.json` |
-| **Android** | `0.8.1` | `0.8.2` | `apps/android/app/build.gradle.kts` (`versionName`, bump `versionCode`) |
-| **macOS** | `0.3.1` | `0.3.2` | `apps/macos/project.yml` (`MARKETING_VERSION`, bump `CURRENT_PROJECT_VERSION`) |
+| **Windows** | `0.4.4` | `0.4.5` | `apps/windows/src-tauri/tauri.conf.json`, `apps/windows/src-tauri/Cargo.toml`, `apps/windows/package.json` |
+| **Android** | `0.8.3` | `0.8.4` | `apps/android/app/build.gradle.kts` (`versionName`, bump `versionCode`) |
+| **macOS** | `0.3.2` | `0.3.3` | `apps/macos/project.yml` (`MARKETING_VERSION`, bump `CURRENT_PROJECT_VERSION`) |
 | **iOS** | `0.1.0` | `0.1.1` | `apps/ios/project.yml` (`MARKETING_VERSION`, bump `CURRENT_PROJECT_VERSION`) |
-| **API** | `0.0.1` | `0.0.2` | `services/api/package.json` |
+| **API** | `0.0.2` | `0.0.3` | `services/api/package.json` |
 
 ---
 
