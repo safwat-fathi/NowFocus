@@ -1,0 +1,12 @@
+[
+  { "id": "hook", "text": "What's new on Android. Version zero point nine." },
+  { "id": "dns", "text": "Choose the D N S server your phone uses, like AdGuard Family." },
+  { "id": "dnson", "text": "Set it to always on, and it shows right on your Focus screen." },
+  { "id": "groups", "text": "Save sites and apps as a group, then add the whole group to any profile in one tap." },
+  { "id": "allow", "text": "Or flip a profile around. Allow only these apps, and everything else closes." },
+  { "id": "partial", "text": "Partial blocking now covers seven feeds, including the TikTok feed." },
+  { "id": "block", "text": "When NowFocus closes an app, it tells you which rule did it. Hit a daily limit, and your streak earns you a longer pass." },
+  { "id": "bedtime", "text": "Bedtime Wind-Down has a calmer, darker look for the evening." },
+  { "id": "arabic", "text": "And the whole app now speaks Arabic, right to left. Switch any time in Settings." },
+  { "id": "cta", "text": "NowFocus for Android, version zero point nine. Try it at nowfocus dot online." }
+]
