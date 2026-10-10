@@ -556,6 +556,16 @@ On the phone turn on YouTube Shorts and TikTok feed. On the PC or Mac open the s
 **Result:** [ ] pass  [ ] fail  [ ] skipped
 **Notes:**
 
+## J1 — DNS screen and always-on DNS (Android, Windows, macOS)
+The DNS screen: Android Rules → Protections → DNS; Windows and macOS sidebar → DNS (under Always on / Protections). Pick **AdGuard Family**, leave it on "Only during sessions", start a 10-minute session on a profile with one site, and from a terminal run `nslookup doubleclick.net` (Windows: also `ipconfig /all`; macOS: `networksetup -getdnsservers Wi-Fi`; Android: open `https://d3ward.github.io/toolz/adblock.html`). End the session and run the same again.
+
+**Expect (sessions only):** the status reads Waiting before the session and Active during it; during the session the adapter/service lists `94.140.14.15` and `94.140.15.16` and `doubleclick.net` does not resolve; afterwards your original DNS is back (automatic stays automatic, static returns exactly). Changing the pick mid-session just applies the new one. A hosts-file block on the profile's site still works. On a Mac whose Wi-Fi uses an encrypted-DNS profile, nothing changes and the status says Not applied.
+
+**Always on:** switch "When it runs" to *Always on* (Android asks for the VPN permission). With no session running, the same checks show the filtered DNS. Then: reboot (Android: without opening the app; Windows/macOS: before logging in if you can), sleep and wake, and switch Wi-Fi to Ethernet (desktop picks it up within about 2 minutes). Run a session and end it: the DNS must stay. Switch back to *Only during sessions*: the original DNS returns (desktop) / the key icon goes away (Android). Android: with Private DNS set to a hostname the status shows Conflict and "Keep using" plus Automatic fixes it; another VPN app taking over shows Needs permission. Killing the app mid-session and relaunching changes nothing; Windows uninstall restores the original DNS.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
 ---
 
 # Things I know are rough (you don't need to report these as bugs)
@@ -564,6 +574,7 @@ On the phone turn on YouTube Shorts and TikTok feed. On the PC or Mac open the s
 - **Windows passes and sessions' pass counts reset if NowFocus restarts.** Pass only covers apps, not sites.
 - **Windows enforcement is weaker than Android's:** Task Manager ends app blocking; hosts-file blocking has no URL paths, ignores DNS-over-HTTPS in some browsers, and an administrator can stop the service.
 - **Whitelist mode (Windows):** everything under the Windows folder is always allowed, so Notepad, cmd and PowerShell are never closed, and Store (UWP) apps show up as one host process, so they can't be allowed or closed individually. **Whitelist mode (Android):** Camera and Chrome (Custom Tabs) are closed unless you allow them. Sites are not filtered in a whitelist, only apps.
+- **Desktop DNS during a session is unverified on real machines** (PowerShell on Windows, `networksetup` as root on macOS). It uses IPv4 presets only, only adapters that are up when the session starts or on the 30s check, and browsers with their own secure DNS ignore it.
 - **Windows has no autostart**, so schedules, Bedtime and sync only work while the app is running.
 - **Windows and macOS in-app blocking is address-only and unverified.** It closes the tab on Shorts / Reels pages (Windows: Chrome, Edge, Brave, Firefox; macOS: Safari, Chrome, Brave, Edge, Arc). It can't hide parts of a page, so X For you, TikTok and YouTube Home/Related stay Android-only. Another browser, or turning Automation off on a Mac, gets around it. Closing the last tab closes the window.
 - **Android background sync is every ~15 minutes and inexact.** Samsung's battery manager may delay it; the session joins sooner if you open the app.

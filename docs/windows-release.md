@@ -21,7 +21,7 @@ Back up the private key and its password off this machine (password manager). **
 
 ## Each release
 
-1. Bump the patch version in `apps/windows/src-tauri/tauri.conf.json`, `apps/windows/src-tauri/Cargo.toml` and `apps/windows/package.json` (e.g. `0.4.2` &rarr; `0.4.3`). Per [Versioning Policy](file:///Users/safwat/Coding/Projects/side-projects/now-focus/docs/versioning.md), only bump the patch number during Alpha; do not change the minor version. The release job fails if the tag and `tauri.conf.json` disagree.
+1. Bump the patch version in `apps/windows/src-tauri/tauri.conf.json`, `apps/windows/src-tauri/Cargo.toml` and `apps/windows/package.json` (e.g. `0.5.0` &rarr; `0.5.1`). Per [Versioning Policy](file:///Users/safwat/Coding/Projects/side-projects/now-focus/docs/versioning.md), routine releases bump only the patch; minor bumps follow the policy's milestone rule. The release job fails if the tag and `tauri.conf.json` disagree.
 2. Merge to main (the API must already be deployed once, so the endpoints exist).
 3. `git tag windows-v<version> && git push origin windows-v<version>`
 4. The **Windows** workflow's `release` job builds and publishes the GitHub Release. Check it has the `.exe`, the `.exe.sig` and `latest.json`.

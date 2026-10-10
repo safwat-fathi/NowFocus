@@ -28,6 +28,8 @@ Everything marked **proposed** has no precedent on the site and needs a native r
 | streak grace day | يوم سماح |
 | stats | الإحصاءات (not إحصائيات) |
 | goals | الأهداف |
+| DNS (keep the Latin letters) | DNS |
+| family filter (a DNS that blocks adult content) | DNS مُصفّي (proposed, needs a native read) |
 | people who matter | الأشخاص المهمّون |
 | devices / this device | الأجهزة / هذا الجهاز |
 | sync | المزامنة |

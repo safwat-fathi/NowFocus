@@ -1065,7 +1065,11 @@ A local VPN/DNS blocker can be bypassed or weakened by:
 - alternate network paths;
 - VPN conflicts.
 
-Android as built: strict Private DNS (a hostname) cannot be filtered at all, so the tunnel stays down while it is set. Settings > DNS lets the user hand that provider (or a family-filter preset) to NowFocus, which forwards allowed lookups to it over DoH/DoT, and the accessibility service closes blocked domains it reads from browser address bars as a backstop for DoH, other VPNs and the strict case.
+Android as built: strict Private DNS (a hostname) cannot be filtered at all, so the tunnel stays down while it is set. The DNS screen (Rules > Protections) lets the user hand that provider (or a family-filter preset) to NowFocus, which forwards allowed lookups to it over DoH/DoT, and the accessibility service closes blocked domains it reads from browser address bars as a backstop for DoH, other VPNs and the strict case.
+
+Desktop as built: Windows and macOS have no tunnel, so the DNS screen (under the protections) points the physical adapters (Windows, via PowerShell run by the SYSTEM service) or network services (macOS, via `networksetup` run by the root daemon) at the chosen plain-DNS family-filter servers for the length of a session, and restores the originals afterwards. The originals are saved once to `dns_backup.json` before the first change, restored on the end of a session, at service/daemon start and at uninstall (Windows), and a macOS service whose DNS is an encrypted-DNS profile (a URL, not an address) is never touched. Browsers with their own DoH ignore it; the hosts file still blocks.
+
+Always-on DNS (all three): a per-device `alwaysOn` flag, with a dedicated DNS screen under the protections. Android keeps the tunnel up whenever `DnsPolicy.shouldKeepUp` (live window, or always-on with a real pick) and forwards upstream; blocking still applies only while rules are live. On desktop the privileged side owns the intent (`dns_state.json` beside the adapter backup): `ClearDns` restores unless kept, a kept DNS is re-applied at service/daemon start (no app or login needed), is re-asserted every 120s, and uninstall restores unconditionally. The transitions are pure functions (`core/src/dns_resolvers.rs`, `DNSRules` in NowFocusCore) with tests.
 
 Therefore the architecture must treat the VPN as a practical blocker, not an impossible-to-bypass firewall.
 

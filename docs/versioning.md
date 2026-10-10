@@ -21,8 +21,8 @@ $$0 . \text{MINOR} . \text{PATCH}$$
 
 ## Version Bump Rules
 
-### 1. Routine Releases & Updates Bump the PATCH Version Only
-During the Alpha stage, **routine updates, bug fixes, UI improvements, and new features must ONLY increment the `PATCH` number**. The `MINOR` version number must remain unchanged.
+### 1. Routine Releases & Updates Bump the PATCH Version
+During the Alpha stage, **routine updates, bug fixes and UI improvements increment the `PATCH` number**. The `MINOR` version number stays unchanged.
 
 Examples:
 - If current version is `0.2.0`, the next release is `0.2.1`, followed by `0.2.2`, `0.2.3`, etc.
@@ -30,11 +30,12 @@ Examples:
 - If current version is `0.8.1`, the next release is `0.8.2`.
 
 > [!IMPORTANT]
-> Do NOT bump the minor semantic version for regular releases during Alpha. Bumps such as `0.2` $\rightarrow$ `0.3` or `0.7` $\rightarrow$ `0.8` are forbidden for routine releases.
+> Do NOT bump the minor semantic version for regular releases during Alpha. Minor bumps are for notable feature releases only (rule 2).
 
-### 2. Minor Bumps Reserved for Major Milestones
-The **MINOR** version component is frozen and reserved strictly for major milestone transitions (such as advancing to Beta, significant cross-platform architectural migrations, or fundamental protocol overhauls).
-A minor version bump requires explicit maintainer consensus.
+### 2. Minor Bumps for Notable Feature Releases
+The **MINOR** version is bumped (and PATCH reset to `0`) for a notable user-facing feature release or a major milestone (advancing to Beta, architectural migrations, protocol overhauls). A minor bump requires explicit maintainer consensus.
+
+Example: `0.9.0` (Android), `0.5.0` (Windows) and `0.4.0` (macOS) shipped profile group save and the DNS screen with always-on DNS.
 
 ---
 
@@ -44,9 +45,9 @@ Platform versions are tracked independently while adhering to the 3-part SemVer 
 
 | Platform | Current Version | Next Release | Config / Manifest Location |
 | :--- | :--- | :--- | :--- |
-| **Windows** | `0.4.4` | `0.4.5` | `apps/windows/src-tauri/tauri.conf.json`, `apps/windows/src-tauri/Cargo.toml`, `apps/windows/package.json` |
-| **Android** | `0.8.3` | `0.8.4` | `apps/android/app/build.gradle.kts` (`versionName`, bump `versionCode`) |
-| **macOS** | `0.3.2` | `0.3.3` | `apps/macos/project.yml` (`MARKETING_VERSION`, bump `CURRENT_PROJECT_VERSION`) |
+| **Windows** | `0.5.0` | `0.5.1` | `apps/windows/src-tauri/tauri.conf.json`, `apps/windows/src-tauri/Cargo.toml`, `apps/windows/package.json` |
+| **Android** | `0.9.0` | `0.9.1` | `apps/android/app/build.gradle.kts` (`versionName`, bump `versionCode`) |
+| **macOS** | `0.4.0` | `0.4.1` | `apps/macos/project.yml` (`MARKETING_VERSION`, bump `CURRENT_PROJECT_VERSION`) |
 | **iOS** | `0.1.0` | `0.1.1` | `apps/ios/project.yml` (`MARKETING_VERSION`, bump `CURRENT_PROJECT_VERSION`) |
 | **API** | `0.0.2` | `0.0.3` | `services/api/package.json` |
 
@@ -56,9 +57,9 @@ Platform versions are tracked independently while adhering to the 3-part SemVer 
 
 Releases are tagged individually per platform using platform prefixes and the standard `v0.minor.patch` format:
 
-- **Windows**: `windows-v0.4.x` (e.g., `windows-v0.4.3`)
-- **Android**: `android-v0.8.x` (e.g., `android-v0.8.1`)
-- **macOS**: `macos-v0.3.x` (e.g., `macos-v0.3.1`)
+- **Windows**: `windows-v0.5.x` (e.g., `windows-v0.5.0`)
+- **Android**: `android-v0.9.x` (e.g., `android-v0.9.0`)
+- **macOS**: `macos-v0.4.x` (e.g., `macos-v0.4.0`)
 - **iOS**: `ios-v0.1.x` (e.g., `ios-v0.1.1`)
 - **API**: `api-v0.0.x` (e.g., `api-v0.0.2`)
 

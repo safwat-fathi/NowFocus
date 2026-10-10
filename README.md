@@ -27,7 +27,7 @@ The product is designed around:
 > **NowFocus is currently in Alpha (pre-Beta).**  
 > All client applications and backend services are under active daily development. Features, local data schemas, and synchronization protocols may change rapidly.
 >
-> **Versioning Policy:** Routine releases bump **only the patch version** (e.g., `0.2` &rarr; `0.2.1` &rarr; `0.2.2`). The minor semantic version is frozen during Alpha and reserved strictly for major milestone transitions (such as Beta). See [Versioning Policy](file:///Users/safwat/Coding/Projects/side-projects/now-focus/docs/versioning.md) for full details.
+> **Versioning Policy:** Routine releases bump the patch version (e.g., `0.9.0` &rarr; `0.9.1`). The minor version is bumped for notable feature releases (e.g., Android `0.9.0`) and major milestones such as Beta. See [Versioning Policy](file:///Users/safwat/Coding/Projects/side-projects/now-focus/docs/versioning.md) for full details.
 
 ---
 
@@ -37,6 +37,8 @@ The product is designed around:
 
 - Website blocking
 - Application blocking
+- DNS screen: pick a family-filter DNS (AdGuard, Cloudflare, CleanBrowsing, Quad9 or your own) for focus sessions, or keep it on all the time (Android, Windows, macOS)
+- Profile groups: save a profile's websites & apps as a group and reuse it in other profiles
 - Focus sessions
 - Scheduled focus sessions
 - Recurring focus routines
