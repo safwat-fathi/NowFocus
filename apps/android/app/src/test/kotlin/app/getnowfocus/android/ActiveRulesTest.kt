@@ -139,4 +139,14 @@ class ActiveRulesTest {
         assertEquals(setOf("adult.com"), rules.liveDomains(now = 1000))
         assertEquals(setOf("com.adult"), rules.livePackages(now = 1000))
     }
+
+    @Test
+    fun `windowBlockingDomain prefers the Shield and matches subdomains only`() {
+        val session = RuleWindow(endAt = 2000, domains = setOf("x.com"), packages = emptySet())
+        val shield = RuleWindow(endAt = 3000, domains = setOf("x.com"), packages = emptySet(), source = BlockSource.COMMITMENT_SHIELD)
+        val rules = ActiveRules(listOf(session, shield))
+        assertEquals(BlockSource.COMMITMENT_SHIELD, rules.windowBlockingDomain("m.x.com", now = 1000)?.source)
+        assertNull(rules.windowBlockingDomain("notx.com", now = 1000))
+        assertNull(rules.windowBlockingDomain("x.com", now = 3000))
+    }
 }

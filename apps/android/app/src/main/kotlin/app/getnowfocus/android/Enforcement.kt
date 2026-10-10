@@ -87,10 +87,13 @@ data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
     fun windowsBlocking(pkg: String, now: Long, exempt: (String) -> Boolean = { false }): List<RuleWindow> =
         blocking(now).filter { it.closes(pkg, exempt) && !it.passed(pkg, now) }
 
-    /** Why [host] is blocked: the Shield if it blocks it too (the stricter source), else the session; null if no window does. */
-    fun reasonForDomain(host: String, now: Long): BlockReason? =
+    /** The live window blocking [host]: the Shield if it blocks it too (the stricter source), else the session; null if none does. */
+    fun windowBlockingDomain(host: String, now: Long): RuleWindow? =
         blocking(now).filter { !it.allowlist && DomainValidation.matches(host, it.domains) }
-            .maxByOrNull { it.source == BlockSource.COMMITMENT_SHIELD }?.reason
+            .maxByOrNull { it.source == BlockSource.COMMITMENT_SHIELD }
+
+    /** Why [host] is blocked; null if no window blocks it. */
+    fun reasonForDomain(host: String, now: Long): BlockReason? = windowBlockingDomain(host, now)?.reason
 }
 
 /**

@@ -141,7 +141,8 @@ class FocusAccessibilityService : AccessibilityService() {
      */
     private fun syncServiceInfo() {
         val partialLive = rules.livePartial(System.currentTimeMillis()).isNotEmpty()
-        val wantIds = partialLive || limits.any { SiteLimits.isSite(it) } // site limits need view ids to find the address bar
+        // Site limits and blocked domains both need view ids to find the address bar.
+        val wantIds = partialLive || limits.any { SiteLimits.isSite(it) } || rules.liveDomains(System.currentTimeMillis()).isNotEmpty()
         if (partialLive == contentEventsOn && wantIds == viewIdsOn) return
         serviceInfo = serviceInfo?.apply {
             eventTypes = if (partialLive) eventTypes or AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
@@ -159,6 +160,8 @@ class FocusAccessibilityService : AccessibilityService() {
         val partialLive = r.livePartial(now).isNotEmpty()
         if (!partialLive) { clearOverlay(); matchLog.clear() }
         syncServiceInfo()
+        // A session that starts while a browser is already open: no window event will announce it.
+        rootInActiveWindow?.packageName?.toString()?.let { watchSites(it) }
         expiryJob?.cancel()
         r.nextExpiryAfter(now)?.let { end ->
             expiryJob = scope.launch {
@@ -277,10 +280,13 @@ class FocusAccessibilityService : AccessibilityService() {
         }
     }
 
-    /** Starts the address-bar heartbeat when a listed browser comes to the front and a site limit exists. */
+    /** The address bar is worth reading while a site limit exists or a session blocks domains. */
+    private fun watchingSites() = limits.any { SiteLimits.isSite(it) } || rules.liveDomains(System.currentTimeMillis()).isNotEmpty()
+
+    /** Starts the address-bar heartbeat when a listed browser comes to the front and there is something to watch for. */
     private fun watchSites(pkg: String) {
         val barId = BROWSER_BARS[pkg] ?: return
-        if (limits.none { SiteLimits.isSite(it) }) return
+        if (!watchingSites()) return
         if (siteJob?.isActive == true && siteBrowser == pkg) return
         siteJob?.cancel()
         siteBrowser = pkg
@@ -306,10 +312,41 @@ class FocusAccessibilityService : AccessibilityService() {
         return host?.let { SiteLimits.keyFor(it, limits) }
     }
 
+    /**
+     * The backstop for DNS blocking: a blocked domain in the address bar is closed even when the tunnel can't
+     * see the lookup (strict Private DNS, a browser's own DoH, another VPN app, no VPN consent). Same exit as a
+     * used-up site limit: BACK so the tab isn't left parked on the page, then HOME. True when it bounced.
+     */
+    private suspend fun bounceBlockedSite(pkg: String, barId: String, now: Long): Boolean {
+        val host = SiteLimits.hostOf(barText(barId)) ?: return false
+        val window = rules.windowBlockingDomain(host, now) ?: return false
+        logBlock(pkg, now)
+        for (i in 0 until 3) {
+            if (SiteLimits.hostOf(barText(barId)) != host) break
+            performGlobalAction(if (i < 2) GLOBAL_ACTION_BACK else GLOBAL_ACTION_HOME)
+            delay(700)
+        }
+        startActivity(
+            Intent(this, BlockedActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(BlockedActivity.EXTRA_END_AT, window.endAt)
+                .putExtra(BlockedActivity.EXTRA_SOURCE, window.source.name)
+                .putExtra(BlockedActivity.EXTRA_BEDTIME, window.bedtime)
+                .putExtra(BlockedActivity.EXTRA_SITE, host)
+        )
+        return true
+    }
+
+    /** The address bar's text, or null when it isn't on screen or is being typed in (a half-typed name is not a visit). */
+    private fun barText(barId: String): String? {
+        val bar = rootInActiveWindow?.findAccessibilityNodeInfosByViewId(barId)?.firstOrNull() ?: return null
+        return if (bar.isFocused) null else bar.text?.toString()
+    }
+
     /** One heartbeat: credits the time since the last one, then bounces if the day's budget is spent. Null ends the loop. */
     private suspend fun siteTick(pkg: String, barId: String, prev: SiteTick?): SiteTick? {
         val now = System.currentTimeMillis()
-        if (limits.none { SiteLimits.isSite(it) }) return null
+        if (!watchingSites()) return null
         val awake = getSystemService(android.os.PowerManager::class.java)?.isInteractive == true
         if (!awake || rootInActiveWindow?.packageName?.toString() != pkg) {
             // Not in front right now: credit nothing, but keep polling a while, since coming back may send no window event.
@@ -321,6 +358,7 @@ class FocusAccessibilityService : AccessibilityService() {
         if (credit > 0) pendingSite.merge(prev!!.key!!, credit, Long::plus)
         if (now - lastSiteFlush > SITE_FLUSH_MS) flushSites()
 
+        if (bounceBlockedSite(pkg, barId, now)) return null
         val key = siteKeyInFront(barId, prev?.key)
         val limit = key?.let { k -> limits.find { it.packageName == k } }
         if (limit == null || cheat?.isActive(now) == true || limit.minutesAt(now) == 0) return SiteTick(key, now)

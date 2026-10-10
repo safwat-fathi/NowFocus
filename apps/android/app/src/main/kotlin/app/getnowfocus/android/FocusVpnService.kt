@@ -37,11 +37,12 @@ import kotlin.concurrent.thread
  * are forwarded (or the tunnel closes) — never a black-holed network.
  *
  * ponytail: DNS-level only. Apps using DoH/hard-coded resolvers bypass it (arch
- * doc §12.3). Private DNS set to a hostname ("strict") can't be filtered either:
- * it only uses DoT servers reachable through the tunnel, which has none, and never
- * falls back to plain DNS, so every lookup would fail. The tunnel stays down while
- * it's on (Enforcement.strictPrivateDns). Upgrade path: route all traffic and
- * filter by SNI, if that bypass ever matters.
+ * doc §12.3); the accessibility service's address-bar check is the backstop. Private
+ * DNS set to a hostname ("strict") can't be filtered: it only uses DoT servers
+ * reachable through the tunnel, which has none, and never falls back to plain DNS,
+ * so every lookup would fail. The tunnel stays down while it's on
+ * (Enforcement.strictPrivateDns); Settings > DNS lets the user hand that provider to
+ * NowFocus instead (DnsUpstream). Upgrade path: route all traffic and filter by SNI.
  */
 class FocusVpnService : VpnService() {
 
@@ -211,6 +212,8 @@ class FocusVpnService : VpnService() {
         }
 
         private fun forward(query: DnsPacket.Query) {
+            // The resolver the user picked in Settings, else (or if it is unreachable) the network's own.
+            DnsUpstream.query(DnsSetting.read(this@FocusVpnService), query.dns)?.let { write(DnsPacket.wrapReply(query, it)); return }
             for (server in listOfNotNull(upstreamDns(), FALLBACK_DNS).distinct()) {
                 try {
                     DatagramSocket().use { socket ->

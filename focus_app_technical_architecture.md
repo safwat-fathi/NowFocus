@@ -1065,6 +1065,8 @@ A local VPN/DNS blocker can be bypassed or weakened by:
 - alternate network paths;
 - VPN conflicts.
 
+Android as built: strict Private DNS (a hostname) cannot be filtered at all, so the tunnel stays down while it is set. Settings > DNS lets the user hand that provider (or a family-filter preset) to NowFocus, which forwards allowed lookups to it over DoH/DoT, and the accessibility service closes blocked domains it reads from browser address bars as a backstop for DoH, other VPNs and the strict case.
+
 Therefore the architecture must treat the VPN as a practical blocker, not an impossible-to-bypass firewall.
 
 ## 12.4 Android application blocking

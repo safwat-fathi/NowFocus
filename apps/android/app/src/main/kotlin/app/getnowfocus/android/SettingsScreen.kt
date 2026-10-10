@@ -1,6 +1,8 @@
 package app.getnowfocus.android
 
 import android.app.Activity
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -62,6 +64,9 @@ fun SettingsScreen(sync: SyncController, onOpenAbout: () -> Unit) {
         )
 
         Spacer(Modifier.height(NowFocusSpace.s6))
+        DnsSection()
+
+        Spacer(Modifier.height(NowFocusSpace.s6))
         SectionRule()
         Row(
             Modifier.fillMaxWidth().clickable(onClick = onOpenAbout).padding(vertical = NowFocusSpace.s3),
@@ -94,6 +99,68 @@ fun SettingsScreen(sync: SyncController, onOpenAbout: () -> Unit) {
 }
 
 private val body = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700)
+
+private val dnsLabels = listOf(
+    DnsProvider.SYSTEM to R.string.dns_system,
+    DnsProvider.CLOUDFLARE_FAMILY to R.string.dns_cloudflare,
+    DnsProvider.ADGUARD_FAMILY to R.string.dns_adguard,
+    DnsProvider.CLEANBROWSING_FAMILY to R.string.dns_cleanbrowsing,
+    DnsProvider.QUAD9 to R.string.dns_quad9,
+    DnsProvider.CUSTOM to R.string.dns_custom,
+)
+
+/**
+ * The DNS NowFocus asks while a session runs. A strict Private DNS hostname can't be filtered by any app, so
+ * when one is set this offers to keep using that provider (over DoT) and sends the user to switch it off.
+ */
+@Composable
+private fun DnsSection() {
+    val context = LocalContext.current
+    var choice by remember { mutableStateOf(DnsSetting.read(context)) }
+    var host by remember { mutableStateOf(choice.customHost) }
+    val strict = Enforcement.strictPrivateDns(context)
+    fun save(next: DnsChoice) { choice = next; DnsSetting.write(context, next) }
+
+    Text(stringResource(R.string.settings_dns), style = kickerStyle(NowFocusColors.neutral700))
+    Text(stringResource(R.string.dns_body), style = body, modifier = Modifier.padding(top = NowFocusSpace.s1))
+    Spacer(Modifier.height(NowFocusSpace.s2))
+    dnsLabels.forEach { (provider, label) ->
+        Row(
+            Modifier.fillMaxWidth().clickable { save(choice.copy(provider = provider)) }.padding(vertical = NowFocusSpace.s2),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(if (choice.provider == provider) "●" else "○", style = body.copy(color = NowFocusColors.text), modifier = Modifier.padding(end = NowFocusSpace.s3))
+            Text(stringResource(label), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.text))
+        }
+    }
+    if (choice.provider == DnsProvider.CUSTOM) {
+        NowFocusTextField(
+            value = host,
+            onValueChange = { raw ->
+                host = raw.take(253)
+                save(choice.copy(customHost = DnsSetting.hostOrNull(raw) ?: ""))
+            },
+            label = stringResource(R.string.dns_custom_host),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(top = NowFocusSpace.s2),
+        )
+    }
+    if (strict != null) {
+        Spacer(Modifier.height(NowFocusSpace.s3))
+        Text(stringResource(R.string.dns_strict_body, strict), style = body.copy(color = NowFocusColors.accent700))
+        Spacer(Modifier.height(NowFocusSpace.s2))
+        if (choice.customHost != strict || choice.provider != DnsProvider.CUSTOM) {
+            PrimaryButton(stringResource(R.string.dns_keep, strict)) {
+                host = strict
+                save(DnsChoice(DnsProvider.CUSTOM, DnsSetting.hostOrNull(strict) ?: ""))
+            }
+            Spacer(Modifier.height(NowFocusSpace.s2))
+        }
+        GhostButton(stringResource(R.string.dns_open_network)) {
+            context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
+}
 
 @Composable
 private fun ReportIssueDialog(sync: SyncController, onDone: (sent: Boolean) -> Unit) {
