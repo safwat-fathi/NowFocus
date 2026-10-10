@@ -18,7 +18,8 @@ Production base URL: **`https://api.nowfocus.online`** (one build constant per c
 
 | | |
 |---|---|
-| Register / sign in | `POST /v1/auth/register` or `/login` with `{email, password, device: {name, platform}}` → `{user, device, accessToken, refreshToken, expiresIn}`. **Every sign-in creates a new device row.** Never sign in again just to get new tokens; refresh. |
+| Register | `POST /v1/auth/register` with `{email, password, device: {name, platform}}` → `202 {status: "verification_sent"}`, **identical for a new and an already-registered email** (so it can't be used to probe for accounts). No tokens: the user confirms the emailed link (valid 24 h), then signs in. Show "check your inbox", not an error. |
+| Sign in | `POST /v1/auth/login` with the same body → `{user, device, accessToken, refreshToken, expiresIn}`. **Every sign-in creates a new device row.** Never sign in again just to get new tokens; refresh. |
 | Access token | JWT, 15 min. `Authorization: Bearer …`. |
 | Refresh token | `"<deviceId>.<secret>"`, 60 days, **single use**: `POST /v1/auth/refresh {refreshToken}` returns a new pair and the old one dies. Run refresh **single-flight** (one at a time per device), and **persist the new refresh token before using the new access token**. If the process dies in between, the account is signed out and a new device row is created on the next login. |
 | Storage | Platform secure storage only: Android Keystore, Keychain, Credential Manager. Exclude it from OS backups (Android `allowBackup` is on). |

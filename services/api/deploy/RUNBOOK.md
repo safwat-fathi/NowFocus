@@ -22,7 +22,7 @@ pm2 restart nowfocus-api --update-env && pm2 save
 curl -s http://127.0.0.1:3000/healthz  # "sha" must be the commit you just pulled
 ```
 
-From anywhere, afterwards: `node services/api/deploy/smoke.mjs https://api.nowfocus.online --idle=150` (creates and deletes one throwaway account; the idle period is what exercises the nginx and Cloudflare timeouts).
+From anywhere, afterwards: `node services/api/deploy/smoke.mjs https://api.nowfocus.online --idle=150` (creates and deletes one throwaway account, needs `SMOKE_DATABASE_URL` so it can confirm the sign-up; the idle period is what exercises the nginx and Cloudflare timeouts).
 
 **Rollback:** migrations are additive, so the previous build still runs against a migrated database. `git switch --detach <previous sha>`, repeat the block above from `pnpm install`, and check `/healthz`.
 

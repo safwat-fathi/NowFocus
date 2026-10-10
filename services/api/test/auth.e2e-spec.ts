@@ -1,4 +1,4 @@
-import { bearer, createTestApp, logIn, signUp, type TestApp } from './helpers/app.js';
+import { bearer, createTestApp, logIn, register, signUp, verifyToken, type TestApp } from './helpers/app.js';
 
 describe('auth + devices', () => {
   let t: TestApp;
@@ -7,14 +7,42 @@ describe('auth + devices', () => {
   });
   afterEach(() => t.close());
 
-  it('register returns a device-bound session and rejects a duplicate email case-insensitively', async () => {
-    const s = await signUp(t, 'Ann@Example.com');
+  it('register answers identically for a new and a taken email, and only verify creates the account', async () => {
+    const fresh = await register(t, 'Ann@Example.com');
+    expect(fresh.status).toBe(202);
+    expect(fresh.body).toEqual({ status: 'verification_sent' });
+    expect((await t.http.post('/v1/auth/login').send({ email: 'ann@example.com', password: 'pw-pw-pw-pw', device: { name: 'x', platform: 'macos' } })).status).toBe(401);
+
+    const token = verifyToken(t, 'ann@example.com')!;
+    expect((await t.http.get(`/v1/auth/verify?token=${token}`)).status).toBe(200); // a prefetch must not create it
+    expect((await t.http.post('/v1/auth/login').send({ email: 'ann@example.com', password: 'pw-pw-pw-pw', device: { name: 'x', platform: 'macos' } })).status).toBe(401);
+    expect((await t.http.post(`/v1/auth/verify?token=${token}`)).status).toBe(200);
+    const s = await logIn(t, 'ann@example.com', 'macos');
     expect(s.user.email).toBe('ann@example.com');
-    expect(s.device.platform).toBe('macos');
-    expect(s.accessToken).toBeTruthy();
-    expect(s.refreshToken.startsWith(`${s.device.id}.`)).toBe(true);
-    const dup = await t.http.post('/v1/auth/register').send({ email: 'ANN@example.com', password: 'pw-pw-pw-pw', device: { name: 'x', platform: 'windows' } });
-    expect(dup.status).toBe(409);
+    expect((await t.http.post(`/v1/auth/verify?token=${token}`)).status).toBe(404); // single use
+
+    const dup = await register(t, 'ANN@example.com', 'windows');
+    expect(dup.status).toBe(fresh.status);
+    expect(dup.body).toEqual(fresh.body);
+    expect(t.mailer.sent.at(-1)!.subject).toMatch(/already have/);
+  });
+
+  it('an expired verification link is rejected', async () => {
+    await register(t, 'ann@example.com');
+    const token = verifyToken(t, 'ann@example.com');
+    t.clock.advance(25 * 3600 * 1000);
+    expect((await t.http.post(`/v1/auth/verify?token=${token}`)).status).toBe(404);
+  });
+
+  it('a second register within a minute sends no second mail, and a later one replaces the link', async () => {
+    await register(t, 'ann@example.com');
+    const first = verifyToken(t, 'ann@example.com');
+    await register(t, 'ann@example.com');
+    expect(t.mailer.sent).toHaveLength(1);
+    t.clock.advance(61_000);
+    await register(t, 'ann@example.com');
+    expect(t.mailer.sent).toHaveLength(2);
+    expect(verifyToken(t, 'ann@example.com')).not.toBe(first);
   });
 
   it('login gives a wrong password and an unknown email the same 401, and registers a new device', async () => {

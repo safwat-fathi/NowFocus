@@ -8,7 +8,7 @@ import { WaitlistEntry } from '../db/entities.js';
 import { fail } from '../errors.js';
 import { validUnsubscribe } from './email-layout.js';
 
-const page = (body: string) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>NowFocus</title>
+export const page = (body: string) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>NowFocus</title>
 <style>body{margin:0;padding:48px 16px;background:#f3f2f2;color:#201e1d;font:16px/26px Archivo,Arial,sans-serif;text-align:center}main{max-width:420px;margin:0 auto;background:#fff;border:1px solid #e2e0df;padding:32px}
 button{font:inherit;font-weight:700;color:#fff;background:#ec3013;border:0;padding:12px 24px;cursor:pointer}</style></head><body><main>${body}</main></body></html>`;
 

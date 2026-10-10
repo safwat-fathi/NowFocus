@@ -68,7 +68,7 @@ Android, macOS and Windows are three single-device, local-first apps. None has a
 - On WebSocket connect the server sends `{"type":"changes","cursor":N}` after registering the socket, closing the window in which a commit could land between a client's pull and its registration.
 
 **Stable machine-readable codes**
-- HTTP `code`: `invalid_credentials`, `email_taken`, `invalid_refresh_token`, `unauthorized`, `device_not_found`, `item_not_found`, `locked` (403), `grace_expired` (409), `still_locked` (409).
+- HTTP `code`: `invalid_credentials`, `invalid_refresh_token`, `unauthorized`, `device_not_found`, `item_not_found`, `locked` (403), `grace_expired` (409), `still_locked` (409).
 - Per-change push `code`: `unknown_type`, `read_only`, `invalid_change`, `invalid_id`, `invalid_data`, `not_deletable`, `policy_in_use`, `invalid_transition`, `immutable_field`, `end_shortened`, `session_locked`, `too_early`.
 - WebSocket close codes: `4401` unauthenticated, `4403` device revoked.
 

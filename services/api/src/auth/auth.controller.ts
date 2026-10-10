@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiDefaultResponse, ApiTags } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { ApiError, type AuthSession, type DeviceView, type TokenPair } from '../responses.dto.js';
+import { ApiError, type AuthSession, type DeviceView, type TokenPair, type VerificationSent } from '../responses.dto.js';
 import { AuthGuard, Me } from './auth.guard.js';
 import { AuthService, type AuthContext } from './auth.service.js';
 import { CredentialsDto, RefreshDto } from './auth.dto.js';
@@ -12,9 +12,13 @@ import { CredentialsDto, RefreshDto } from './auth.dto.js';
 export class AuthController {
   constructor(private auth: AuthService) {}
 
-  /** Create an account and register the calling device. 10 requests/minute per client on the auth routes. */
-  @Post('register')
-  register(@Body() dto: CredentialsDto): Promise<AuthSession> {
+  /**
+   * Start creating an account. Always answers 202 `verification_sent`, whether or not the email is already registered
+   * (so it can't be used to find out who has an account). The account is created when the emailed link is confirmed;
+   * then sign in with `/login`. 10 requests/minute per client on the auth routes.
+   */
+  @Post('register') @HttpCode(202)
+  register(@Body() dto: CredentialsDto): Promise<VerificationSent> {
     return this.auth.register(dto);
   }
 

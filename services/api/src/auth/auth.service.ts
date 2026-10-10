@@ -1,16 +1,20 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Subject } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { Clock } from '../clock.js';
-import { Device, User } from '../db/entities.js';
+import { Device, PendingSignup, User } from '../db/entities.js';
+import { Mailer } from '../mail.js';
+import { alreadyRegisteredEmail, verifyEmail } from './auth-emails.js';
 import { fail } from '../errors.js';
 import type { CredentialsDto, DeviceInfoDto } from './auth.dto.js';
 import { hashPassword, verifyPassword } from './password.js';
 
 export const ACCESS_TTL_S = 15 * 60;
+const VERIFY_TTL_MS = 24 * 3600 * 1000;
+const RESEND_AFTER_MS = 60 * 1000;
 const REFRESH_TTL_MS = 60 * 24 * 3600 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -25,6 +29,7 @@ const invalidRefresh = () => fail(401, 'invalid_refresh_token', 'Refresh token i
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private dummyHash?: Promise<string>;
   /** Emits a deviceId once its access has been revoked (the realtime gateway drops its socket). */
   readonly revoked = new Subject<string>();
@@ -32,20 +37,50 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private users: Repository<User>,
     @InjectRepository(Device) private devices: Repository<Device>,
+    @InjectRepository(PendingSignup) private pending: Repository<PendingSignup>,
+    private mailer: Mailer,
     private jwt: JwtService,
     private clock: Clock,
   ) {}
 
+  /**
+   * Same answer for a new and a taken email, so the endpoint can't be used to probe who has an account. The account
+   * is created by `verify`, once the owner of the inbox confirms. Mail is fire-and-forget so timing doesn't leak either.
+   */
   async register(dto: CredentialsDto) {
     const email = dto.email.trim().toLowerCase();
-    const user = this.users.create({ id: randomUUID(), email, passwordHash: await hashPassword(dto.password) });
-    try {
-      await this.users.insert(user);
-    } catch (e: any) {
-      if (e?.driverError?.code === '23505') throw fail(409, 'email_taken', 'An account with this email already exists');
-      throw e;
+    const passwordHash = await hashPassword(dto.password); // same cost whether or not the email exists
+    if (await this.users.existsBy({ email })) {
+      this.send(email, alreadyRegisteredEmail());
+    } else {
+      const now = this.clock.now();
+      const row = await this.pending.findOneBy({ email });
+      if (!row || now.getTime() - row.createdAt.getTime() >= RESEND_AFTER_MS) {
+        const token = randomBytes(32).toString('base64url');
+        await this.pending.upsert(
+          { email, passwordHash, tokenHash: sha256(token), expiresAt: new Date(now.getTime() + VERIFY_TTL_MS), createdAt: now },
+          ['email'],
+        );
+        this.send(email, verifyEmail(`https://api.nowfocus.online/v1/auth/verify?token=${token}`));
+      }
     }
-    return this.openSession(user, dto.device);
+    return { status: 'verification_sent' as const };
+  }
+
+  /** Turns a confirmed sign-up into an account. The user then signs in normally. */
+  async verify(token: string) {
+    const row = await this.pending.findOneBy({ tokenHash: sha256(token) });
+    if (!row || row.expiresAt <= this.clock.now()) throw fail(404, 'not_found', 'This link is invalid or has expired');
+    try {
+      await this.users.insert({ id: randomUUID(), email: row.email, passwordHash: row.passwordHash });
+    } catch (e: any) {
+      if (e?.driverError?.code !== '23505') throw e; // already created (link clicked twice, or a race): same outcome
+    }
+    await this.pending.delete({ email: row.email });
+  }
+
+  private send(to: string, m: { subject: string; html: string }) {
+    this.mailer.send(to, m.subject, m.html).catch((e) => this.logger.error(`auth mail to ${to} failed: ${e}`));
   }
 
   async login(dto: CredentialsDto) {

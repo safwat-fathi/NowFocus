@@ -36,7 +36,7 @@ pnpm run openapi     # regenerate openapi.json (CI fails if it is stale)
 
 ## Protocol in one screen
 
-- `POST /v1/auth/register|login` → per-device tokens; `POST /v1/auth/refresh` rotates; `DELETE /v1/devices/:id` revokes instantly.
+- `POST /v1/auth/register` always answers 202 `verification_sent` (new or taken email alike) and emails a confirm link; the account exists once the link is confirmed, then `POST /v1/auth/login` → per-device tokens; `POST /v1/auth/refresh` rotates; `DELETE /v1/devices/:id` revokes instantly.
 - `GET /v1/me`; `POST /v1/me/delete {password}` deletes the account and everything synced (403 `wrong_password` if the password is wrong). `GET /healthz` is the ops probe (not in the contract).
 - `GET /v1/sync/pull?cursor=N` returns changes with `seq > N` (tombstones included) plus `serverTime`.
 - `POST /v1/sync/push` applies each change independently: `applied` | `stale` (adopt the returned record) | `rejected` (with a `code`).

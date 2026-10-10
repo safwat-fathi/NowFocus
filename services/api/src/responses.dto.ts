@@ -6,7 +6,7 @@ const INT = { type: 'integer' } as const;
 /** Error body for every 4xx: `code` is stable and machine-readable, `message` is for humans. */
 export class ApiError {
   @ApiProperty(INT) statusCode!: number;
-  /** e.g. invalid_credentials, email_taken, unauthorized, wrong_password, invalid_domain, item_not_found, locked, grace_expired, still_locked */
+  /** e.g. invalid_credentials, unauthorized, wrong_password, invalid_domain, item_not_found, locked, grace_expired, still_locked */
   code?: string;
   /** A string, or a list of strings for request-validation failures (400). */
   @ApiProperty({ oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] }) message!: string | string[];
@@ -78,6 +78,11 @@ export class MeView {
   id!: string;
   email!: string;
   createdAt!: Date;
+}
+
+export class VerificationSent {
+  /** Always `verification_sent`. */
+  @ApiProperty({ enum: ['verification_sent'] }) status!: 'verification_sent';
 }
 
 export class AuthSession {

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 // Two-device smoke test against a running API: node deploy/smoke.mjs [baseUrl] [--idle=SECONDS]
-// register -> second device logs in -> WS nudge -> pull -> idle keepalive -> revoke closes the socket -> delete account.
+// register (needs SMOKE_DATABASE_URL, see below) -> device A logs in -> second device logs in -> WS nudge -> pull -> idle keepalive -> revoke closes the socket -> delete account.
 // Creates one throwaway account and always deletes it. Exits non-zero on the first failed check.
+// Sign-up is confirmed by an emailed link, which a smoke test can't open, so run this where it can reach the database:
+// SMOKE_DATABASE_URL=postgres://... promotes the pending sign-up to an account (the same row verify would use).
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import pg from 'pg';
 import WebSocket from 'ws';
 
 const args = process.argv.slice(2);
@@ -47,9 +50,22 @@ try {
   assert.equal(health.ok, true);
   step(`healthz ${health.sha} (up ${health.uptime}s)`);
 
-  a = await call('POST', '/v1/auth/register', { body: { email, password, device: { name: 'smoke macos', platform: 'macos' } }, expect: 201 });
+  const dbUrl = process.env.SMOKE_DATABASE_URL;
+  assert.ok(dbUrl, 'set SMOKE_DATABASE_URL (sign-up needs email confirmation)');
+  const reg = await call('POST', '/v1/auth/register', { body: { email, password, device: { name: 'smoke macos', platform: 'macos' } }, expect: 202 });
+  assert.deepEqual(reg, { status: 'verification_sent' });
+  const db = new pg.Client({ connectionString: dbUrl });
+  await db.connect();
+  try {
+    const made = await db.query('insert into users (id, email, password_hash) select gen_random_uuid(), email, password_hash from pending_signups where email = $1', [email]);
+    assert.equal(made.rowCount, 1, 'pending sign-up row exists');
+    await db.query('delete from pending_signups where email = $1', [email]);
+  } finally {
+    await db.end();
+  }
+  a = await call('POST', '/v1/auth/login', { body: { email, password, device: { name: 'smoke macos', platform: 'macos' } }, expect: 200 });
   const b = await call('POST', '/v1/auth/login', { body: { email, password, device: { name: 'smoke android', platform: 'android' } }, expect: 200 });
-  step('registered device A, logged in device B');
+  step('registered, confirmed, logged in devices A and B');
 
   const sock = socket(b.accessToken);
   await sock.opened;

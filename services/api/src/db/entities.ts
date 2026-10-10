@@ -12,6 +12,16 @@ export class User {
   @CreateDateColumn({ type: 'timestamptz' }) createdAt!: Date;
 }
 
+/** A sign-up waiting for its email link. The account (and its first session) only exists once the link is confirmed. */
+@Entity('pending_signups')
+export class PendingSignup {
+  @PrimaryColumn('text') email!: string;
+  @Column({ type: 'text' }) passwordHash!: string;
+  @Column({ type: 'text' }) tokenHash!: string;
+  @Column({ type: 'timestamptz' }) expiresAt!: Date;
+  @Column({ type: 'timestamptz' }) createdAt!: Date;
+}
+
 @Entity('devices')
 export class Device {
   @PrimaryColumn('uuid') id!: string;

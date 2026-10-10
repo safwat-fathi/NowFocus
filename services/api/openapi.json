@@ -16,12 +16,12 @@
           }
         },
         "responses": {
-          "201": {
+          "202": {
             "description": "",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AuthSession"
+                  "$ref": "#/components/schemas/VerificationSent"
                 }
               }
             }
@@ -37,7 +37,7 @@
             }
           }
         },
-        "summary": "Create an account and register the calling device. 10 requests/minute per client on the auth routes.",
+        "summary": "Start creating an account. Always answers 202 `verification_sent`, whether or not the email is already registered\n(so it can't be used to find out who has an account). The account is created when the emailed link is confirmed;\nthen sign in with `/login`. 10 requests/minute per client on the auth routes.",
         "tags": [
           "auth"
         ]
@@ -685,7 +685,7 @@
           },
           "code": {
             "type": "string",
-            "description": "e.g. invalid_credentials, email_taken, unauthorized, wrong_password, invalid_domain, item_not_found, locked, grace_expired, still_locked"
+            "description": "e.g. invalid_credentials, unauthorized, wrong_password, invalid_domain, item_not_found, locked, grace_expired, still_locked"
           }
         },
         "required": [
@@ -737,6 +737,21 @@
           "email",
           "password",
           "device"
+        ]
+      },
+      "VerificationSent": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "Always `verification_sent`.",
+            "enum": [
+              "verification_sent"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
         ]
       },
       "AuthUser": {

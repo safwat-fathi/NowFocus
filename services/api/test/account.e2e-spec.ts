@@ -47,7 +47,7 @@ describe('account', () => {
     );
     expect(counts).toEqual({ u: '1', d: '1', r: '0' }); // only bob remains
     // the email can be registered again as a fresh account
-    expect((await t.http.post('/v1/auth/register').send({ email: 'ann@example.com', password: 'pw-pw-pw-pw', device: { name: 'x', platform: 'macos' } })).status).toBe(201);
+    expect((await t.http.post('/v1/auth/register').send({ email: 'ann@example.com', password: 'pw-pw-pw-pw', device: { name: 'x', platform: 'macos' } })).status).toBe(202);
   });
 
   it('delete tells every connected device and closes its socket with 4403', async () => {
