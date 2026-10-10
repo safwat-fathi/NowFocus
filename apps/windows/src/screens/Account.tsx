@@ -23,6 +23,7 @@ export function Account({ state, onState }: { state: AppState; onState: (s: AppS
   const [error, setError] = useState("");
   const [devices, setDevices] = useState<DeviceInfo[] | null>(null);
   const [reload, setReload] = useState(0);
+  const [notice, setNotice] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
 
@@ -39,8 +40,14 @@ export function Account({ state, onState }: { state: AppState; onState: (s: AppS
     if (password.length < 8) return setError(t("acct.shortPassword"));
     setBusy(true);
     setError("");
+    setNotice("");
     try {
-      onState(await api.syncSignIn(email, password, create));
+      if (create) {
+        await api.syncCreateAccount(email, password);
+        setNotice(t("acct.checkInbox"));
+      } else {
+        onState(await api.syncSignIn(email, password));
+      }
       setPassword("");
     } catch (e) {
       setError(errorText(e, t));
@@ -86,6 +93,7 @@ export function Account({ state, onState }: { state: AppState; onState: (s: AppS
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           {error && <div className="error-line">{error}</div>}
+          {notice && <p style={{ fontSize: 14, color: "var(--color-neutral-800)" }}>{notice}</p>}
           <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
             <button className="btn btn-primary" disabled={busy} onClick={() => submit(false)} style={{ minHeight: 48 }}>
               {busy ? t("common.wait") : t("acct.signIn")}

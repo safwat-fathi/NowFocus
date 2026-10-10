@@ -851,6 +851,31 @@ mod tests {
         }
     }
 
+    /// Sign-up is confirmed by an emailed link a test can't open, so live tests promote the pending sign-up in the
+    /// database (SYNC_IT_DATABASE_URL, needs `psql`), then log in: the same row the server's verify step uses.
+    fn register_confirmed(
+        api: &crate::api::Api,
+        email: &str,
+        pw: &str,
+        device: &str,
+    ) -> crate::api::AccountSession {
+        api.register(email, pw, device).expect("register");
+        let db = std::env::var("SYNC_IT_DATABASE_URL").expect("set SYNC_IT_DATABASE_URL");
+        let e = email.to_lowercase();
+        let sql = format!(
+            "insert into users (id, email, password_hash) select gen_random_uuid(), email, password_hash from pending_signups where email = '{e}'; delete from pending_signups where email = '{e}'"
+        );
+        let out = std::process::Command::new("psql")
+            .args([db.as_str(), "-v", "ON_ERROR_STOP=1", "-c", sql.as_str()])
+            .output()
+            .expect("psql");
+        assert!(
+            out.status.success() && String::from_utf8_lossy(&out.stdout).contains("INSERT 0 1"),
+            "could not confirm the sign-up"
+        );
+        api.login(email, pw, device).expect("login")
+    }
+
     #[test]
     fn live_two_pcs_converge_through_the_real_api() {
         let Ok(url) = std::env::var("SYNC_IT_URL") else {
@@ -870,7 +895,7 @@ mod tests {
         let (ha, _) = FakeHost::new("a");
         let (hb, _) = FakeHost::new("b");
         let (api_a, api_b) = (api("a"), api("b"));
-        let acct = api_a.register(&email, pw, "PC A").expect("register");
+        let acct = register_confirmed(&api_a, &email, pw, "PC A");
         api_b.login(&email, pw, "PC B").expect("login");
         ha.signed_in(&acct.user_id);
         hb.signed_in(&acct.user_id);
@@ -948,7 +973,7 @@ mod tests {
             )
         };
         let (phone, api_pc) = (api(), api());
-        let acct = phone.register(&email, pw, "Phone").expect("register");
+        let acct = register_confirmed(&phone, &email, pw, "Phone");
         api_pc.login(&email, pw, "PC").expect("login");
 
         let pid = uuid::Uuid::new_v4().to_string();

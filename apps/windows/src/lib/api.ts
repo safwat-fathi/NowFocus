@@ -40,7 +40,8 @@ export const api = {
     invoke<AppState>("simulate_block", { targetKind, targetName }),
   dismissShield: () => invoke<AppState>("dismiss_shield"),
 
-  syncSignIn: (email: string, password: string, create: boolean) => invoke<AppState>("sync_sign_in", { email, password, create }),
+  syncSignIn: (email: string, password: string) => invoke<AppState>("sync_sign_in", { email, password }),
+  syncCreateAccount: (email: string, password: string) => invoke<void>("sync_create_account", { email, password }),
   syncSignOut: () => invoke<AppState>("sync_sign_out"),
   syncNow: () => invoke<AppState>("sync_now"),
   syncDeleteAccount: (password: string) => invoke<AppState>("sync_delete_account", { password }),

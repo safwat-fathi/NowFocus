@@ -374,11 +374,20 @@ pub async fn sync_sign_in(
     sync: State<'_, Arc<SyncController>>,
     email: String,
     password: String,
-    create: bool,
 ) -> Result<AppStateDto, String> {
     let ctl = sync.inner().clone();
-    blocking(move || ctl.sign_in(&email, &password, create)).await?;
+    blocking(move || ctl.sign_in(&email, &password)).await?;
     snapshot(&state)
+}
+
+#[tauri::command]
+pub async fn sync_create_account(
+    sync: State<'_, Arc<SyncController>>,
+    email: String,
+    password: String,
+) -> Result<(), String> {
+    let ctl = sync.inner().clone();
+    blocking(move || ctl.create_account(&email, &password)).await
 }
 
 #[tauri::command]

@@ -47,7 +47,6 @@ impl ApiError {
             ApiError::Http { code: Some(c), .. } if c == "invalid_credentials" => {
                 "credentials".into()
             }
-            ApiError::Http { code: Some(c), .. } if c == "email_taken" => "emailTaken".into(),
             ApiError::Http { code: Some(c), .. } if c == "wrong_password" => "wrongPassword".into(),
             ApiError::Http { status: 429, .. } => "rate".into(),
             ApiError::Http { status, .. } if *status >= 500 => "server".into(),
@@ -101,6 +100,10 @@ pub struct Api {
     refresh_lock: Mutex<()>,
 }
 
+fn credentials(email: &str, password: &str, device_name: &str) -> Value {
+    json!({ "email": email.trim(), "password": password, "device": { "name": device_name, "platform": "windows" } })
+}
+
 fn s(v: &Value, key: &str) -> Option<String> {
     v.get(key).and_then(Value::as_str).map(String::from)
 }
@@ -149,13 +152,12 @@ impl Api {
 
     // ---- account
 
-    pub fn register(
-        &self,
-        email: &str,
-        password: &str,
-        device_name: &str,
-    ) -> Result<AccountSession, ApiError> {
-        self.open("/v1/auth/register", email, password, device_name)
+    /// No session yet: the server emails a confirm link (the same answer for an address that already has an
+    /// account, so this can't be used to probe), and the user signs in once they've confirmed.
+    pub fn register(&self, email: &str, password: &str, device_name: &str) -> Result<(), ApiError> {
+        let body = credentials(email, password, device_name);
+        self.send("POST", "/v1/auth/register", Some(body), None)
+            .map(|_| ())
     }
 
     pub fn login(
@@ -164,18 +166,8 @@ impl Api {
         password: &str,
         device_name: &str,
     ) -> Result<AccountSession, ApiError> {
-        self.open("/v1/auth/login", email, password, device_name)
-    }
-
-    fn open(
-        &self,
-        path: &str,
-        email: &str,
-        password: &str,
-        device_name: &str,
-    ) -> Result<AccountSession, ApiError> {
-        let body = json!({ "email": email.trim(), "password": password, "device": { "name": device_name, "platform": "windows" } });
-        let res = self.send("POST", path, Some(body), None)?;
+        let body = credentials(email, password, device_name);
+        let res = self.send("POST", "/v1/auth/login", Some(body), None)?;
         let user = res.get("user").cloned().unwrap_or_default();
         let stored = StoredAuth {
             user_id: s(&user, "id").unwrap_or_default(),

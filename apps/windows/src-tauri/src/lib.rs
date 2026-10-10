@@ -186,6 +186,7 @@ pub fn run() {
             commands::delete_schedule,
             commands::set_limit,
             commands::sync_sign_in,
+            commands::sync_create_account,
             commands::sync_sign_out,
             commands::sync_now,
             commands::sync_delete_account,

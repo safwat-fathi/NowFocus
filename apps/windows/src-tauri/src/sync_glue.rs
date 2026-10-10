@@ -201,15 +201,11 @@ impl SyncController {
     }
 
     /// Returns an error message for the user, or `Ok`.
-    pub fn sign_in(&self, email: &str, password: &str, create: bool) -> Result<(), String> {
-        let session: AccountSession = if create {
-            self.api
-                .register(email, password, &self.engine.host().device_name())
-        } else {
-            self.api
-                .login(email, password, &self.engine.host().device_name())
-        }
-        .map_err(|e| e.friendly())?;
+    pub fn sign_in(&self, email: &str, password: &str) -> Result<(), String> {
+        let session: AccountSession = self
+            .api
+            .login(email, password, &self.engine.host().device_name())
+            .map_err(|e| e.friendly())?;
         // A different account than before starts clean; the same one resumes where it left off.
         self.engine.host().transact(&mut |mut l| {
             l.state = logic::link(&l.state, &session.user_id);
@@ -218,6 +214,13 @@ impl SyncController {
         self.publish(|s| s.problem = None);
         self.nudge();
         Ok(())
+    }
+
+    /// Asks the server to email a confirm link. Same outcome for a new and a taken address.
+    pub fn create_account(&self, email: &str, password: &str) -> Result<(), String> {
+        self.api
+            .register(email, password, &self.engine.host().device_name())
+            .map_err(|e| e.friendly())
     }
 
     /// Local data and the Commitment are never touched: signing out only forgets the tokens.
