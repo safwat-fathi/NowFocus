@@ -47,6 +47,9 @@ enum SessionController {
     @MainActor
     static func startEnforcement(policy: BlockPolicy, sessionId: String, endAt: Date? = nil, sessionType: SessionType = .focus) {
         DaemonClient.shared.apply(policy: policy)
+        // The resolver picked in Settings; empty (System) leaves the network services alone.
+        let dnsServers = DNSChoice.load().servers
+        if !dnsServers.isEmpty { DaemonClient.shared.applyDNS(servers: dnsServers) }
         AppBlocker.shared.updatePolicy(
             sessionId: sessionId,
             isSessionActive: true,
@@ -63,6 +66,9 @@ enum SessionController {
     @MainActor
     static func stopEnforcement() {
         DaemonClient.shared.clear()
+        // Always, even with no DNS chosen now: the daemon only acts if it saved an original, so this also undoes a
+        // choice that was changed since. Idempotent.
+        DaemonClient.shared.clearDNS()
         AppBlocker.shared.updatePolicy(sessionId: nil, isSessionActive: false, blockedApps: [])
         BrowserGuard.shared.update(sessionId: nil, rules: [])
         status.isActive = false

@@ -5,6 +5,48 @@ class DaemonXPCDelegate: NSObject, NSXPCListenerDelegate, NowFocusDaemonProtocol
 
     private let enforcer = NetworkEnforcer()
     private let commitmentStore = CommitmentStore()
+    private let dnsEnforcer = DNSEnforcer()
+
+    /// A kept (always-on) DNS is re-applied now, with no app running. Any other override left by a crash or a reboot
+    /// is undone; a session that is still running is re-applied by the app when it relaunches (recoverSession).
+    func restoreDNSOnLaunch() {
+        do { try dnsEnforcer.onStart() } catch { print("DNS start-up failed: \(error)") }
+    }
+
+    func reassertDNS() { dnsEnforcer.reassert() }
+
+    func keepDNS(jsonPayload: Data, withReply reply: @escaping (Bool, String?) -> Void) {
+        do {
+            let request = try JSONDecoder().decode(DNSKeepRequest.self, from: jsonPayload)
+            try dnsEnforcer.setKeep(servers: request.servers)
+            reply(true, nil)
+        } catch {
+            reply(false, "\(error)")
+        }
+    }
+
+    func dnsStatus(withReply reply: @escaping (Data?) -> Void) {
+        reply(dnsEnforcer.state.flatMap { try? JSONEncoder().encode($0) })
+    }
+
+    func applyDNS(jsonPayload: Data, withReply reply: @escaping (Bool, String?) -> Void) {
+        do {
+            let request = try JSONDecoder().decode(DNSApplyRequest.self, from: jsonPayload)
+            try dnsEnforcer.apply(servers: request.servers)
+            reply(true, nil)
+        } catch {
+            reply(false, "\(error)")
+        }
+    }
+
+    func clearDNS(withReply reply: @escaping (Bool, String?) -> Void) {
+        do {
+            try dnsEnforcer.clear()
+            reply(true, nil)
+        } catch {
+            reply(false, "\(error)")
+        }
+    }
 
     /// Called once at process startup — re-applies any commitment that
     /// survived a daemon restart (or clears one whose 14 days elapsed while

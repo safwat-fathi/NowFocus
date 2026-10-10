@@ -484,6 +484,58 @@ check(BlockCopy.reason(.commitmentShield, until: "Oct 9", appName: "YouTube") ==
 check(BlockCopy.reason(.dailyLimit, until: "ignored", appName: "YouTube", limitMinutes: 30) == "You've used your 30 minutes of YouTube today. It's back at midnight.", "daily limit reason")
 check(BlockCopy.timeLabel(.bedtime) == "Left in bedtime" && BlockCopy.timeLabel(.focusSession) == "Left in session", "countdown labels")
 
+// MARK: DNS during a session (core/src/dns_resolvers.rs on Windows, DnsUpstream.kt on Android)
+
+check(DNSChoice().servers.isEmpty && DNSChoice(provider: .custom, custom: "").servers.isEmpty && DNSChoice(provider: .custom, custom: "1.2.3").servers.isEmpty, "System, and a custom list that is empty or not valid, touch nothing")
+check(DNSChoice(provider: .adguardFamily).servers == ["94.140.14.15", "94.140.15.16"], "AdGuard Family preset")
+check(DNSChoice(provider: .cloudflareFamily).servers == ["1.1.1.3", "1.0.0.3"], "Cloudflare Family preset")
+check(DNSChoice(provider: .cleanbrowsingFamily).servers == ["185.228.168.168", "185.228.169.168"], "CleanBrowsing Family preset")
+check(DNSChoice(provider: .quad9).servers == ["9.9.9.9", "149.112.112.112"], "Quad9 preset")
+check(DNSChoice(provider: .custom, custom: "192.168.1.2 , 1.1.1.1;1.1.1.1  2606:4700:4700::1111").servers == ["192.168.1.2", "1.1.1.1", "2606:4700:4700::1111"], "custom list is split, deduplicated and kept in order")
+check(DNSResolvers.parse("1.1.1.1 1.0.0.1 8.8.8.8 8.8.4.4 9.9.9.9") == nil, "more than four servers is refused")
+for bad in ["0.0.0.0", "255.255.255.255", "224.0.0.1", "::", "ff02::1", "fe80::1", "dns.example.com", "1.1.1.1/24", "1.1.1.1; rm -rf /"] {
+    check(DNSResolvers.parse(bad) == nil, "\(bad) must be refused")
+}
+check(DNSResolvers.parse("127.0.0.1") == ["127.0.0.1"], "a local resolver is fine")
+check(DNSResolvers.validate(["1.1.1.3", "1.0.0.3"]) != nil && DNSResolvers.validate([]) == nil && DNSResolvers.validate(["$(reboot)"]) == nil, "the daemon revalidates what arrives over XPC")
+do {
+    let defaults = UserDefaults(suiteName: "nowfocus.corechecks.dns")!
+    defaults.removePersistentDomain(forName: "nowfocus.corechecks.dns")
+    check(DNSChoice.load(defaults) == DNSChoice(), "default is System")
+    DNSChoice(provider: .quad9, custom: "10.0.0.2").save(defaults)
+    check(DNSChoice.load(defaults) == DNSChoice(provider: .quad9, custom: "10.0.0.2"), "the choice and the typed addresses are remembered")
+    defaults.removePersistentDomain(forName: "nowfocus.corechecks.dns")
+}
+
+// Always-on DNS (core/src/dns_resolvers.rs: the same transitions)
+do {
+    let v = ["9.9.9.9"]
+    check(DNSRules.afterSessionApply(nil, v).keep == false && DNSRules.afterSessionApply(DNSState(servers: ["1.1.1.3"], keep: false), v).keep == false, "a session does not turn always-on on")
+    let kept = DNSRules.afterSessionApply(DNSState(servers: ["1.1.1.3"], keep: true), v)
+    check(kept.keep && kept.servers == v, "a session keeps always-on, and a new pick replaces the servers")
+    let session = DNSState(servers: v, keep: false), keeping = DNSState(servers: v, keep: true)
+    check(DNSRules.onClear(nil) == .restore && DNSRules.onClear(session) == .restore && DNSRules.onClear(keeping) == .nothing, "ending a session restores unless kept")
+    check(DNSRules.onRelease(nil) == .nothing && DNSRules.onRelease(session) == .nothing && DNSRules.onRelease(keeping) == .restore, "turning always-on off restores only when it was on")
+    check(DNSRules.onStart(keeping) == .apply(v) && DNSRules.onStart(session) == .restore && DNSRules.onStart(nil) == .restore, "daemon start re-applies a kept DNS and undoes the rest")
+    let want = ["94.140.14.15", "94.140.15.16"]
+    check(DNSRules.status(expected: [], alwaysOn: true, sessionLive: true, serviceUp: true, applied: nil) == "off", "status: off")
+    check(DNSRules.status(expected: want, alwaysOn: false, sessionLive: false, serviceUp: true, applied: nil) == "waiting", "status: waiting")
+    check(DNSRules.status(expected: want, alwaysOn: true, sessionLive: false, serviceUp: false, applied: nil) == "unavailable", "status: daemon down")
+    check(DNSRules.status(expected: want, alwaysOn: true, sessionLive: false, serviceUp: true, applied: nil) == "notApplied", "status: nothing applied")
+    check(DNSRules.status(expected: want, alwaysOn: true, sessionLive: false, serviceUp: true, applied: DNSState(servers: ["8.8.8.8"], keep: true)) == "notApplied", "status: another server applied")
+    check(DNSRules.status(expected: want, alwaysOn: false, sessionLive: true, serviceUp: true, applied: DNSState(servers: want, keep: false)) == "active", "status: a live session counts")
+    // A choice saved before always-on existed still loads, as off.
+    let old = try! JSONDecoder().decode(DNSChoice.self, from: Data("{\"provider\":\"quad9\",\"custom\":\"\"}".utf8))
+    check(old == DNSChoice(provider: .quad9, custom: "", alwaysOn: false), "an older saved choice decodes with always-on off")
+}
+
+// Reading networksetup (real shapes, including this Mac's encrypted-DNS profile, which reports a URL)
+check(NetworkSetupOutput.services("An asterisk (*) denotes that a network service is disabled.\nThunderbolt Bridge\n*USB 10/100 LAN\nWi-Fi\n") == ["Thunderbolt Bridge", "Wi-Fi"], "services: header and disabled ones are dropped")
+check(NetworkSetupOutput.dnsServers("There aren't any DNS Servers set on Wi-Fi.\n") == [], "automatic DNS reads as empty")
+check(NetworkSetupOutput.dnsServers("192.168.1.1\n8.8.8.8\n") == ["192.168.1.1", "8.8.8.8"], "static servers")
+check(NetworkSetupOutput.dnsServers("https://family.adguard-dns.com/dns-query\n") == nil, "an encrypted-DNS profile is left alone, never overwritten or restored from")
+check(NetworkSetupOutput.dnsServers("2606:4700:4700::1111\n") == ["2606:4700:4700::1111"], "IPv6 servers are kept")
+
 // MARK: Existing self-checks
 
 HistoryStats.runSelfCheck()

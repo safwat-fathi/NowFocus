@@ -10,6 +10,7 @@ struct PolicyDetailView: View {
     let onSave: (BlockPolicy) -> Void
 
     @State private var newDomain: String = ""
+    @State private var groups: [RuleGroup] = RuleGroup.load()
     @FocusState private var nameFieldFocused: Bool
     @ObservedObject private var browserGuard = BrowserGuard.shared
 
@@ -104,6 +105,48 @@ struct PolicyDetailView: View {
 
                     NowFocusSecondaryButton(title: "Add Application…") { pickApplication() }
                         .padding(.top, NowFocusSpace.s2)
+                }
+
+                section("Saved Groups") {
+                    Text("A group is a set of sites and apps you can add to any profile. Groups stay on this Mac.")
+                        .font(NowFocusFonts.body(12))
+                        .foregroundColor(NowFocusColors.neutral700)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(groups) { group in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(group.name)
+                                    .font(NowFocusFonts.body(14))
+                                    .foregroundColor(NowFocusColors.ink)
+                                Text(verbatim: sitesAppsSummary(sites: group.domains.count, apps: group.applications.count))
+                                    .font(NowFocusFonts.body(12))
+                                    .foregroundColor(NowFocusColors.neutral700)
+                            }
+                            Spacer()
+                            Button("Add to this profile") {
+                                policy.add(group)
+                                save()
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundColor(NowFocusColors.accent700)
+                            Button {
+                                groups.removeAll { $0.id == group.id }
+                                RuleGroup.save(groups)
+                            } label: {
+                                Image(systemName: "trash").foregroundColor(NowFocusColors.accent700)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.vertical, NowFocusSpace.s2)
+                        .overlay(alignment: .bottom) { NowFocusRule() }
+                    }
+                    if !policy.domains.isEmpty || !policy.applications.isEmpty {
+                        NowFocusSecondaryButton(title: "Save as Group") {
+                            groups.append(RuleGroup(from: policy))
+                            RuleGroup.save(groups)
+                        }
+                        .padding(.top, NowFocusSpace.s2)
+                    }
                 }
 
                 section("Pages to Close") {

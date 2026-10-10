@@ -73,6 +73,62 @@ public class DaemonClient {
         _ = semaphore.wait(timeout: .now() + 2.0)
     }
 
+    /// Points the network services at `servers` for the session. Fire-and-forget like `apply(policy:)`: DNS is a bonus
+    /// layer next to the hosts file, so a failure is logged, never a reason to refuse the session.
+    public func applyDNS(servers: [String]) {
+        guard let daemon = remoteDaemon(onError: { error in
+            print("Daemon XPC error while applying DNS: \(error)")
+        }) else { return }
+        guard let data = try? JSONEncoder().encode(DNSApplyRequest(servers: servers)) else { return }
+        daemon.applyDNS(jsonPayload: data) { success, message in
+            if !success { print("Failed to apply DNS: \(message ?? "unknown error")") }
+        }
+    }
+
+    /// Like `clearDNS()` without the wait, for a change made on screen (XPC calls on one connection keep their order).
+    public func clearDNSAsync() {
+        guard let daemon = remoteDaemon(onError: { print("Daemon XPC error while restoring DNS: \($0)") }) else { return }
+        daemon.clearDNS { success, message in
+            if !success { print("Failed to restore DNS: \(message ?? "unknown error")") }
+        }
+    }
+
+    /// "Always on": keep `servers` applied outside sessions, or (nil) stop keeping. Fire-and-forget.
+    public func keepDNS(servers: [String]?) {
+        guard let daemon = remoteDaemon(onError: { error in
+            print("Daemon XPC error while changing always-on DNS: \(error)")
+        }) else { return }
+        guard let data = try? JSONEncoder().encode(DNSKeepRequest(servers: servers)) else { return }
+        daemon.keepDNS(jsonPayload: data) { success, message in
+            if !success { print("Failed to change always-on DNS: \(message ?? "unknown error")") }
+        }
+    }
+
+    /// What the daemon applied (nil: nothing). `reachable` is false when it did not answer.
+    public func fetchDNSState(completion: @escaping (_ reachable: Bool, _ state: DNSState?) -> Void) {
+        guard let daemon = remoteDaemon(onError: { _ in completion(false, nil) }) else {
+            completion(false, nil)
+            return
+        }
+        daemon.dnsStatus { data in
+            completion(true, data.flatMap { try? JSONDecoder().decode(DNSState.self, from: $0) })
+        }
+    }
+
+    /// Puts the original DNS back. Waits for the reply (2s at most, like `clear()`) so a quit right after still delivers it.
+    public func clearDNS() {
+        let semaphore = DispatchSemaphore(value: 0)
+        guard let daemon = remoteDaemon(onError: { error in
+            print("Daemon XPC error while restoring DNS: \(error)")
+            semaphore.signal()
+        }) else { return }
+        daemon.clearDNS { success, message in
+            if !success { print("Failed to restore DNS: \(message ?? "unknown error")") }
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .now() + 2.0)
+    }
+
     /// A hung LaunchDaemon (e.g. never spawned by launchd — see the ad-hoc
     /// signing / BTM-staleness issue this timeout was added for) never calls
     /// its reply block *and* never triggers the connection's error/invalidation

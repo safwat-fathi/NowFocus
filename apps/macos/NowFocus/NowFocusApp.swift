@@ -70,6 +70,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Session Recovery
         recoverSession()
+        DNSController.reconcile()
 
         // Keep enforcement in sync with session expiry even if the menu is
         // never reopened — see SessionController's doc comment.

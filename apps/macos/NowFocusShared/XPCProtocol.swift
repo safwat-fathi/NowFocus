@@ -32,6 +32,42 @@ import Foundation
 
     /// - Parameter reply: A JSON-encoded `CommitmentStatusDTO`, or nil if no commitment is active.
     func commitmentStatus(withReply reply: @escaping (Data?) -> Void)
+
+    /// Points the network services' DNS at the resolver the user chose in Settings for the length of a session.
+    /// The daemon validates the addresses itself (any local process can call this), saves the originals once, and
+    /// puts them back on `clearDNS`.
+    /// - Parameter jsonPayload: A JSON-encoded `DNSApplyRequest`.
+    func applyDNS(jsonPayload: Data, withReply reply: @escaping (Bool, String?) -> Void)
+
+    /// A session ended: puts the network services' original DNS back, unless the user keeps this DNS on outside
+    /// sessions (then the daemon leaves it). A no-op when nothing was changed.
+    func clearDNS(withReply reply: @escaping (Bool, String?) -> Void)
+
+    /// "Always on". A `DNSKeepRequest` with servers keeps them applied outside sessions - across reboots, with the
+    /// app not running - and applies them now. Without servers it turns that off (and restores, if it was the thing
+    /// holding the DNS).
+    func keepDNS(jsonPayload: Data, withReply reply: @escaping (Bool, String?) -> Void)
+
+    /// - Parameter reply: A JSON-encoded `DNSState`, or nil when the daemon has not changed any DNS.
+    func dnsStatus(withReply reply: @escaping (Data?) -> Void)
+}
+
+/// Request payload for `keepDNS`: plain IP addresses, or nil to stop keeping.
+public struct DNSKeepRequest: Codable {
+    public let servers: [String]?
+
+    public init(servers: [String]?) {
+        self.servers = servers
+    }
+}
+
+/// Request payload for `applyDNS`: plain IP addresses only.
+public struct DNSApplyRequest: Codable {
+    public let servers: [String]
+
+    public init(servers: [String]) {
+        self.servers = servers
+    }
 }
 
 /// Request payload for `applyCommitment` — domains only. The daemon stamps its

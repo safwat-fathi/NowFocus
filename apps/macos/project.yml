@@ -44,8 +44,8 @@ targets:
       INFOPLIST_KEY_NSAppleEventsUsageDescription: "While a session runs, NowFocus asks your browser for the address of the tab in front, so it can close Shorts and Reels pages you chose to block. The address is checked and forgotten; it is never saved or sent."
       CODE_SIGN_ENTITLEMENTS: NowFocus/NowFocus.entitlements
       GENERATE_INFOPLIST_FILE: YES
-      MARKETING_VERSION: "0.3.2"
-      CURRENT_PROJECT_VERSION: "6"
+      MARKETING_VERSION: "0.4.0"
+      CURRENT_PROJECT_VERSION: "7"
     postBuildScripts:
       - name: "Embed Daemon"
         script: |

@@ -18,6 +18,7 @@ struct MainWindowView: View {
         case stats = "Stats"
         case commitment = "Commitment Shield"
         case bedtime = "Bedtime Wind-Down"
+        case dns = "DNS"
         case people = "People who matter"
         case goals = "Your goals"
         case settings = "Settings"
@@ -32,6 +33,7 @@ struct MainWindowView: View {
             case .stats: return "Stats"
             case .commitment: return "Commitment Shield"
             case .bedtime: return "Bedtime Wind-Down"
+            case .dns: return "DNS"
             case .people: return "People who matter"
             case .goals: return "Your goals"
             case .settings: return "Settings"
@@ -91,6 +93,7 @@ struct MainWindowView: View {
 
             navRow(.commitment, systemImage: "lock.shield")
             navRow(.bedtime, systemImage: "moon.stars")
+            navRow(.dns, systemImage: "globe")
             navRow(.people, systemImage: "person.2")
             navRow(.goals, systemImage: "target")
 
@@ -138,6 +141,7 @@ struct MainWindowView: View {
         case .stats:      StatsView()
         case .commitment: CommitmentView()
         case .bedtime:    BedtimeView()
+        case .dns:        DNSView()
         case .people:     PeopleView()
         case .goals:      GoalsView()
         case .settings:   SettingsView(updaterController: updaterController)

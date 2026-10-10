@@ -502,6 +502,50 @@
         }
       }
     },
+    "Saved Groups": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المجموعات المحفوظة"
+          }
+        }
+      }
+    },
+    "A group is a set of sites and apps you can add to any profile. Groups stay on this Mac.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المجموعة هي مجموعة مواقع وتطبيقات تضيفها إلى أي نمط. تبقى المجموعات على هذا الجهاز."
+          }
+        }
+      }
+    },
+    "Add to this profile": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إضافة إلى هذا النمط"
+          }
+        }
+      }
+    },
+    "Save as Group": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حفظ كمجموعة"
+          }
+        }
+      }
+    },
     "Add Application…": {
       "extractionState": "manual",
       "localizations": {
@@ -3061,6 +3105,347 @@
           "stringUnit": {
             "state": "translated",
             "value": "فتح إعدادات الأتمتة"
+          }
+        }
+      }
+    },
+    "My network's DNS": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DNS الخاص بشبكتي"
+          }
+        }
+      }
+    },
+    "Cloudflare Family": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cloudflare Family"
+          }
+        }
+      }
+    },
+    "CleanBrowsing Family": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CleanBrowsing Family"
+          }
+        }
+      }
+    },
+    "Other server": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "خادم آخر"
+          }
+        }
+      }
+    },
+    "Server addresses, like 192.168.1.2, 1.1.1.1": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "عناوين الخوادم، مثل 192.168.1.2, 1.1.1.1"
+          }
+        }
+      }
+    },
+    "Enter one to four DNS server addresses, like 94.140.14.15.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أدخل من عنوان إلى أربعة عناوين لخوادم DNS، مثل 94.140.14.15."
+          }
+        }
+      }
+    },
+    "DNS": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DNS"
+          }
+        }
+      }
+    },
+    "Choose the server NowFocus uses for lookups. Your blocklist always applies first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اختر الخادم الذي يستخدمه NowFocus لطلبات DNS. قائمة الحجب تُطبَّق دائمًا أولًا."
+          }
+        }
+      }
+    },
+    "Waiting": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "في الانتظار"
+          }
+        }
+      }
+    },
+    "Not applied": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "غير مطبّق"
+          }
+        }
+      }
+    },
+    "Helper not running": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المساعد لا يعمل"
+          }
+        }
+      }
+    },
+    "NowFocus is not changing this Mac's DNS.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يغيّر NowFocus إعدادات DNS في هذا الـ Mac."
+          }
+        }
+      }
+    },
+    "%@ switches on when a focus session starts.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يعمل %@ عند بدء جلسة تركيز."
+          }
+        }
+      }
+    },
+    "This Mac asks %@.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يسأل هذا الـ Mac الخادم %@."
+          }
+        }
+      }
+    },
+    "%@ is chosen but not applied yet. NowFocus retries every couple of minutes. A network that uses an encrypted-DNS profile can't be changed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم اختيار %@ لكنه لم يُطبَّق بعد. يعيد NowFocus المحاولة كل دقيقتين تقريبًا. ولا يمكن تغيير شبكة تستخدم ملف DNS مشفّرًا."
+          }
+        }
+      }
+    },
+    "The NowFocus helper is not answering, so the DNS cannot be changed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "مساعد NowFocus لا يستجيب، فلا يمكن تغيير DNS."
+          }
+        }
+      }
+    },
+    "Server": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الخادم"
+          }
+        }
+      }
+    },
+    "AdGuard Family": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AdGuard Family"
+          }
+        }
+      }
+    },
+    "Quad9": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quad9"
+          }
+        }
+      }
+    },
+    "NowFocus changes nothing.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يغيّر NowFocus شيئًا."
+          }
+        }
+      }
+    },
+    "Blocks adult sites, ads and malware": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحجب المواقع الجنسية والإعلانات والبرمجيات الخبيثة"
+          }
+        }
+      }
+    },
+    "Blocks adult sites and malware": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحجب المواقع الجنسية والبرمجيات الخبيثة"
+          }
+        }
+      }
+    },
+    "Blocks adult sites": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحجب المواقع الجنسية"
+          }
+        }
+      }
+    },
+    "Blocks malware": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يحجب البرمجيات الخبيثة"
+          }
+        }
+      }
+    },
+    "One to four addresses you type": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "من عنوان إلى أربعة عناوين تكتبها"
+          }
+        }
+      }
+    },
+    "When it runs": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "متى يعمل"
+          }
+        }
+      }
+    },
+    "Only during sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "أثناء الجلسات فقط"
+          }
+        }
+      }
+    },
+    "Always on": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "دائمًا"
+          }
+        }
+      }
+    },
+    "The server is used while a focus session is running; your own DNS comes back afterwards.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُستخدم الخادم أثناء جلسة التركيز، ثم يعود DNS الخاص بك بعدها."
+          }
+        }
+      }
+    },
+    "NowFocus keeps this Mac on this DNS until you switch back, and restores your original DNS when you do.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يُبقي NowFocus هذا الـ Mac على هذا الـ DNS حتى تعود عنه، ثم يستعيد DNS الأصلي حين تفعل."
+          }
+        }
+      }
+    },
+    "Browsers with their own secure DNS ignore this. Ad and adult filtering is done by the server you pick, not by NowFocus.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "المتصفحات التي لها DNS آمن خاص بها تتجاهل هذا. تصفية الإعلانات والمحتوى الجنسي يقوم بها الخادم الذي تختاره، لا NowFocus."
           }
         }
       }
