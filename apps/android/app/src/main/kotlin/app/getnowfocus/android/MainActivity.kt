@@ -331,7 +331,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                     onBack = { screen = backTo },
                 )
                 Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, onSave = viewModel::saveBedtimeSettings, onBack = { screen = backTo })
-                Screen.Devices -> DevicesScreen(resumeKey = resumeCount, account = syncStatus, onOpenAccount = { screen = Screen.Account })
+                Screen.Devices -> DevicesScreen(resumeKey = resumeCount, account = syncStatus, onOpenAccount = { screen = Screen.Account }, onVpnResult = viewModel::restartEnforcementIfRunning)
                 Screen.Account -> when {
                     accountLock == null -> Unit
                     accountLocked(accountLock == true, lockAvailable, syncStatus.signedIn, accountUnlocked) ->

@@ -148,9 +148,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
         }
         // Recovery, like macOS recoverSession(): a force-stop kills the VPN
         // and cancels Bedtime's alarms, so re-arm both.
-        viewModelScope.launch {
-            if (Enforcement.shouldRun(repository)) Enforcement.start(getApplication())
-        }
+        restartEnforcementIfRunning()
         viewModelScope.launch {
             val settings = repository.bedtimeSettingsFlow.first()
             BedtimeScheduler.scheduleAll(getApplication(), settings)
@@ -158,6 +156,13 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             // Recovery: if the app opens mid-window with bedtime configured and
             // nothing running, start the nightly locked session now.
             reconcileBedtimeSession(getApplication(), settings)
+        }
+    }
+
+    /** Re-arms the VPN and notification when a session or Shield is live: on launch, and after VPN consent is granted mid-session. */
+    fun restartEnforcementIfRunning() {
+        viewModelScope.launch {
+            if (Enforcement.shouldRun(repository)) Enforcement.start(getApplication())
         }
     }
 
