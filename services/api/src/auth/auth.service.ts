@@ -15,6 +15,7 @@ import { hashPassword, verifyPassword } from './password.js';
 export const ACCESS_TTL_S = 15 * 60;
 const VERIFY_TTL_MS = 24 * 3600 * 1000;
 const RESEND_AFTER_MS = 60 * 1000;
+const MAIL_LIMIT = 3;
 const REFRESH_TTL_MS = 60 * 24 * 3600 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -30,6 +31,7 @@ const invalidRefresh = () => fail(401, 'invalid_refresh_token', 'Refresh token i
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly jobs = new Set<Promise<unknown>>();
   private dummyHash?: Promise<string>;
   /** Emits a deviceId once its access has been revoked (the realtime gateway drops its socket). */
   readonly revoked = new Subject<string>();
@@ -44,33 +46,60 @@ export class AuthService {
   ) {}
 
   /**
-   * Same answer for a new and a taken email, so the endpoint can't be used to probe who has an account. The account
-   * is created by `verify`, once the owner of the inbox confirms. Mail is fire-and-forget so timing doesn't leak either.
+   * Same answer for a new and a taken email, so the endpoint can't be used to probe who has an account. Everything
+   * past the password hash runs after the response, so response time can't tell the two apart either. The account is
+   * created by `verify`, once the owner of the inbox confirms.
    */
   async register(dto: CredentialsDto) {
     const email = dto.email.trim().toLowerCase();
-    const passwordHash = await hashPassword(dto.password); // same cost whether or not the email exists
-    if (await this.users.existsBy({ email })) {
-      this.send(email, alreadyRegisteredEmail());
-    } else {
-      const now = this.clock.now();
-      const row = await this.pending.findOneBy({ email });
-      if (!row || now.getTime() - row.createdAt.getTime() >= RESEND_AFTER_MS) {
-        const token = randomBytes(32).toString('base64url');
-        await this.pending.upsert(
-          { email, passwordHash, tokenHash: sha256(token), expiresAt: new Date(now.getTime() + VERIFY_TTL_MS), createdAt: now },
-          ['email'],
-        );
-        this.send(email, verifyEmail(`https://api.nowfocus.online/v1/auth/verify?token=${token}`));
-      }
-    }
+    const passwordHash = await hashPassword(dto.password);
+    const job = this.startSignup(email, passwordHash).catch((e) => this.logger.error(`sign-up for ${email} failed: ${e}`));
+    this.jobs.add(job);
+    void job.finally(() => this.jobs.delete(job));
     return { status: 'verification_sent' as const };
   }
 
-  /** Turns a confirmed sign-up into an account. The user then signs in normally. */
-  async verify(token: string) {
+  /** Resolves when every sign-up started so far has finished its background work (tests wait on this). */
+  settled() {
+    return Promise.all([...this.jobs]);
+  }
+
+  private async startSignup(email: string, passwordHash: string) {
+    if (!(await this.mailAllowed(email))) return;
+    if (await this.users.existsBy({ email })) return this.send(email, alreadyRegisteredEmail());
+    const now = this.clock.now();
+    const row = await this.pending.findOneBy({ email });
+    if (row && now.getTime() - row.createdAt.getTime() < RESEND_AFTER_MS) return;
+    const token = randomBytes(32).toString('base64url');
+    await this.pending.upsert(
+      { email, passwordHash, tokenHash: sha256(token), expiresAt: new Date(now.getTime() + VERIFY_TTL_MS), createdAt: now },
+      ['email'],
+    );
+    await this.send(email, verifyEmail(`https://api.nowfocus.online/v1/auth/verify?token=${token}`));
+  }
+
+  /** At most MAIL_LIMIT sign-up mails per address per hour, however many IPs ask: stops flooding someone's inbox. */
+  private async mailAllowed(email: string) {
+    const now = this.clock.now();
+    const [{ sent }] = await this.users.query(
+      `insert into signup_mail_limits (email, window_start, sent) values ($1, $2, 1)
+       on conflict (email) do update set
+         sent = case when signup_mail_limits.window_start <= $2::timestamptz - interval '1 hour' then 1 else signup_mail_limits.sent + 1 end,
+         window_start = case when signup_mail_limits.window_start <= $2::timestamptz - interval '1 hour' then $2 else signup_mail_limits.window_start end
+       returning sent`,
+      [email, now],
+    );
+    return sent <= MAIL_LIMIT;
+  }
+
+  /**
+   * Turns a confirmed sign-up into an account. The password must be the one typed at sign-up: a link someone else
+   * triggered for your address is useless to them unless you also type their password.
+   */
+  async verify(token: string, password: string) {
     const row = await this.pending.findOneBy({ tokenHash: sha256(token) });
     if (!row || row.expiresAt <= this.clock.now()) throw fail(404, 'not_found', 'This link is invalid or has expired');
+    if (!(await verifyPassword(password, row.passwordHash))) throw fail(403, 'wrong_password', 'Password is incorrect');
     try {
       await this.users.insert({ id: randomUUID(), email: row.email, passwordHash: row.passwordHash });
     } catch (e: any) {
@@ -80,7 +109,7 @@ export class AuthService {
   }
 
   private send(to: string, m: { subject: string; html: string }) {
-    this.mailer.send(to, m.subject, m.html).catch((e) => this.logger.error(`auth mail to ${to} failed: ${e}`));
+    return this.mailer.send(to, m.subject, m.html);
   }
 
   async login(dto: CredentialsDto) {

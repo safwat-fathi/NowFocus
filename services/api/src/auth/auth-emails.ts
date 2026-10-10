@@ -16,8 +16,8 @@ export function verifyEmail(url: string) {
       preheader: 'Confirm your email to finish creating your account.',
       rows:
         heading('Confirm your email') +
-        row('Tap the button to finish creating your NowFocus account. The link works for 24 hours.') +
-        row('اضغط الزر لإكمال إنشاء حسابك في NowFocus. الرابط صالح لمدة 24 ساعة.', '8px 32px 0') +
+        row('Tap the button to finish creating your NowFocus account. The link works for 24 hours. You will be asked for the password you chose in the app.') +
+        row('اضغط الزر لإكمال إنشاء حسابك في NowFocus. الرابط صالح لمدة 24 ساعة، وسيُطلب منك كلمة المرور التي اخترتها في التطبيق.', '8px 32px 0') +
         button(url, 'Confirm / تأكيد') +
         row('', '16px 32px 0'),
       foot: FOOT,

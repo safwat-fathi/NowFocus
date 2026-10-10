@@ -1,4 +1,4 @@
-import { bearer, createTestApp, logIn, register, signUp, verifyToken, type TestApp } from './helpers/app.js';
+import { bearer, confirm, createTestApp, logIn, register, signUp, verifyToken, type TestApp } from './helpers/app.js';
 
 describe('auth + devices', () => {
   let t: TestApp;
@@ -16,10 +16,10 @@ describe('auth + devices', () => {
     const token = verifyToken(t, 'ann@example.com')!;
     expect((await t.http.get(`/v1/auth/verify?token=${token}`)).status).toBe(200); // a prefetch must not create it
     expect((await t.http.post('/v1/auth/login').send({ email: 'ann@example.com', password: 'pw-pw-pw-pw', device: { name: 'x', platform: 'macos' } })).status).toBe(401);
-    expect((await t.http.post(`/v1/auth/verify?token=${token}`)).status).toBe(200);
+    expect((await confirm(t, token)).text).toMatch(/Email confirmed/);
     const s = await logIn(t, 'ann@example.com', 'macos');
     expect(s.user.email).toBe('ann@example.com');
-    expect((await t.http.post(`/v1/auth/verify?token=${token}`)).status).toBe(404); // single use
+    expect((await confirm(t, token)).status).toBe(404); // single use
 
     const dup = await register(t, 'ANN@example.com', 'windows');
     expect(dup.status).toBe(fresh.status);
@@ -31,7 +31,33 @@ describe('auth + devices', () => {
     await register(t, 'ann@example.com');
     const token = verifyToken(t, 'ann@example.com');
     t.clock.advance(25 * 3600 * 1000);
-    expect((await t.http.post(`/v1/auth/verify?token=${token}`)).status).toBe(404);
+    expect((await confirm(t, token)).status).toBe(404);
+  });
+
+  it('a link someone else triggered for your address is useless without their password', async () => {
+    await register(t, 'victim@example.com', 'macos', 'attackers-password');
+    const token = verifyToken(t, 'victim@example.com');
+    const wrong = await confirm(t, token, 'victims-own-password');
+    expect(wrong.status).toBe(200);
+    expect(wrong.text).toMatch(/Wrong password/);
+    expect((await t.http.post('/v1/auth/login').send({ email: 'victim@example.com', password: 'victims-own-password', device: { name: 'x', platform: 'macos' } })).status).toBe(401);
+    expect((await confirm(t, token, 'attackers-password')).text).toMatch(/Email confirmed/); // only the password typed at sign-up works
+  });
+
+  it('caps sign-up mail per address per hour, for new and taken addresses alike', async () => {
+    for (let i = 0; i < 5; i++) {
+      await register(t, 'flood@example.com');
+      t.clock.advance(61_000);
+    }
+    expect(t.mailer.sent.filter((m) => m.to === 'flood@example.com')).toHaveLength(3);
+    t.clock.advance(3600_000);
+    await register(t, 'flood@example.com');
+    expect(t.mailer.sent.filter((m) => m.to === 'flood@example.com')).toHaveLength(4);
+
+    await signUp(t, 'taken@example.com');
+    const before = t.mailer.sent.length;
+    for (let i = 0; i < 5; i++) await register(t, 'taken@example.com');
+    expect(t.mailer.sent.length - before).toBe(2); // 1 used by signUp's own register, so 2 more fit in the window
   });
 
   it('a second register within a minute sends no second mail, and a later one replaces the link', async () => {

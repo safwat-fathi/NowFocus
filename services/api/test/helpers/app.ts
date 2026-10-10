@@ -4,6 +4,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../../src/app.module.js';
+import { AuthService } from '../../src/auth/auth.service.js';
 import { Clock } from '../../src/clock.js';
 import { Mailer } from '../../src/mail.js';
 import { configureApp } from '../../src/setup.js';
@@ -48,7 +49,7 @@ export async function createTestApp(opts: { throttle?: boolean } = {}): Promise<
   configureApp(app);
   await app.init();
   await app.listen(0);
-  await app.get(DataSource).query('truncate users, pending_signups cascade');
+  await app.get(DataSource).query('truncate users, pending_signups, signup_mail_limits cascade');
   const url = (await app.getUrl()).replace('[::1]', 'localhost');
   return { app, clock, mailer, http: request(app.getHttpServer()), url, close: () => app.close() };
 }
@@ -62,8 +63,16 @@ export interface Session {
 
 export const bearer = (s: Pick<Session, 'accessToken'>) => ({ Authorization: `Bearer ${s.accessToken}` });
 
-export const register = (t: TestApp, email: string, platform = 'macos', password = 'pw-pw-pw-pw') =>
-  t.http.post('/v1/auth/register').send({ email, password, device: { name: `${platform} box`, platform } });
+/** Registers, then waits for the background work (DB rows, mail) that runs after the response. */
+export const register = async (t: TestApp, email: string, platform = 'macos', password = 'pw-pw-pw-pw'): Promise<request.Response> => {
+  const res = await t.http.post('/v1/auth/register').send({ email, password, device: { name: `${platform} box`, platform } });
+  await t.app.get(AuthService).settled();
+  return res;
+};
+
+/** The confirm page's form post. */
+export const confirm = (t: TestApp, token: string | undefined, password = 'pw-pw-pw-pw') =>
+  t.http.post(`/v1/auth/verify?token=${token}`).type('form').send({ password });
 
 /** The token in the last verification mail sent to `email`. */
 export const verifyToken = (t: TestApp, email: string) => {
@@ -75,7 +84,7 @@ export const verifyToken = (t: TestApp, email: string) => {
 export async function signUp(t: TestApp, email: string, platform = 'macos', password = 'pw-pw-pw-pw'): Promise<Session> {
   expect((await register(t, email, platform, password)).status).toBe(202);
   const token = verifyToken(t, email);
-  expect((await t.http.post(`/v1/auth/verify?token=${token}`)).status).toBe(200);
+  expect((await confirm(t, token, password)).text).toMatch(/Email confirmed/);
   return logIn(t, email, platform, password);
 }
 
