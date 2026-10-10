@@ -1110,7 +1110,7 @@ private fun CommitmentScreen(
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
-    Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
         GhostButton(stringResource(R.string.back), onClick = onBack)
 
