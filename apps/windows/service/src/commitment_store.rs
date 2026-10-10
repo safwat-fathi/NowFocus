@@ -26,7 +26,7 @@ use now_focus_ipc::CommitmentStatusWire;
 
 use crate::network_enforcer;
 
-fn state_dir() -> PathBuf {
+pub(crate) fn state_dir() -> PathBuf {
     let base = std::env::var("ProgramData").unwrap_or_else(|_| r"C:\ProgramData".to_string());
     PathBuf::from(base).join("NowFocus")
 }
@@ -113,7 +113,7 @@ impl CommitmentStore {
 /// the Administrators group (S-1-5-32-544), so a standard user cannot edit or
 /// delete the state file to unlock a commitment early. Uses well-known SIDs to
 /// avoid locale-dependent account names.
-fn lock_down_permissions(dir: &std::path::Path) {
+pub(crate) fn lock_down_permissions(dir: &std::path::Path) {
     let status = Command::new("icacls")
         .arg(dir)
         .args([

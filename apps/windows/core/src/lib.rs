@@ -10,6 +10,7 @@ pub mod block_policy;
 pub mod cheat_day;
 pub mod commitment;
 pub mod daily_limit;
+pub mod dns_resolvers;
 pub mod domain_validation;
 pub mod enforcement_health;
 pub mod feed_url;
@@ -22,7 +23,9 @@ pub mod schedule;
 pub mod session_engine;
 
 pub use bedtime_schedule::BedtimeSettings;
-pub use block_policy::{ApplicationRule, BlockPolicy, DomainRule, FeedRule, PolicyMode, Profile};
+pub use block_policy::{
+    ApplicationRule, BlockPolicy, DomainRule, FeedRule, GroupApp, PolicyMode, Profile, RuleGroup,
+};
 pub use commitment::CommitmentState;
 pub use enforcement_health::{EnforcementStatus, PlatformCapabilities};
 pub use focus_session::{

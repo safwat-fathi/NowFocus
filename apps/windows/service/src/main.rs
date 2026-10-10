@@ -1,6 +1,8 @@
 #[cfg(windows)]
 mod commitment_store;
 #[cfg(windows)]
+mod dns_enforcer;
+#[cfg(windows)]
 mod network_enforcer;
 #[cfg(windows)]
 mod pipe_server;
@@ -13,6 +15,8 @@ fn main() -> windows_service::Result<()> {
     // behind (nothing would expire it once the service is gone).
     if std::env::args().any(|a| a == "--cleanup") {
         let _ = network_enforcer::clear();
+        // Before purge: a filtered DNS left behind would outlive the service that could undo it.
+        let _ = dns_enforcer::cleanup();
         commitment_store::purge();
         return Ok(());
     }
@@ -89,6 +93,11 @@ mod windows_impl {
             // (it may have expired, or had its hosts region cleared, while the
             // service was down — mirrors macOS's restoreCommitmentOnLaunch).
             crate::commitment_store::restore_on_launch();
+            // A kept (always-on) DNS is re-applied now, with no app and no one logged in. Any other override left by a
+            // crash or a reboot is undone; a session that is still running is re-applied by the app on its next check.
+            if let Err(e) = crate::dns_enforcer::on_start() {
+                eprintln!("dns start-up failed: {e}");
+            }
             // Self-expiry even if no client ever asks (macOS's hourly timer).
             tokio::spawn(async {
                 loop {
@@ -96,7 +105,16 @@ mod windows_impl {
                     crate::commitment_store::expire_if_needed();
                 }
             });
+            // While a DNS is held (a session, or always on), notice adapters that came up since.
+            // ponytail: a 120s poll that runs PowerShell; subscribe to NotifyIpInterfaceChange if battery matters.
+            tokio::spawn(async {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(120)).await;
+                    let _ = tokio::task::spawn_blocking(crate::dns_enforcer::reassert).await;
+                }
+            });
             crate::pipe_server::run(shutdown_rx).await;
+            let _ = crate::dns_enforcer::on_shutdown();
         });
 
         report_stopped(&status_handle)?;

@@ -46,6 +46,21 @@ pub fn set_language(state: State<SharedState>, language: String) -> Result<AppSt
     snapshot(&state)
 }
 
+/// The DNS the PC uses while a session runs (see `AppState::set_dns`).
+#[tauri::command]
+pub fn set_dns(
+    state: State<SharedState>,
+    provider: String,
+    custom: String,
+    always_on: bool,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .set_dns(&provider, &custom, always_on)?;
+    snapshot(&state)
+}
+
 /// The tray menu and tooltip words, already translated by the UI (see `TrayLabels` in lib.rs).
 #[tauri::command]
 pub fn set_tray_labels(open: String, quit: String, idle: String, left: String) {
@@ -133,6 +148,53 @@ pub fn remove_application(
         .lock()
         .map_err(|_| "app state lock poisoned")?
         .remove_application(&profile_id, &rule_id)?;
+    changed(&state)
+}
+
+#[tauri::command]
+pub fn save_group_from_profile(
+    state: State<SharedState>,
+    profile_id: String,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .save_group_from_profile(&profile_id)?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub fn update_group(
+    state: State<SharedState>,
+    group: now_focus_core::RuleGroup,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .update_group(group)?;
+    snapshot(&state)
+}
+
+#[tauri::command]
+pub fn delete_group(state: State<SharedState>, group_id: String) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .delete_group(&group_id)?;
+    snapshot(&state)
+}
+
+/// Profiles sync, so adding to one nudges the other devices; the group list itself never does.
+#[tauri::command]
+pub fn apply_group(
+    state: State<SharedState>,
+    profile_id: String,
+    group_id: String,
+) -> Result<AppStateDto, String> {
+    state
+        .lock()
+        .map_err(|_| "app state lock poisoned")?
+        .apply_group(&profile_id, &group_id)?;
     changed(&state)
 }
 

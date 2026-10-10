@@ -217,7 +217,18 @@ pub struct SyncStatusDto {
 pub struct AppStateDto {
     /// The language picked in Settings: "system", "en" or "ar". Device-local, never synced.
     pub language: String,
+    /// The DNS the PC uses while a session runs: "system", "cloudflare_family", "adguard_family",
+    /// "cleanbrowsing_family", "quad9" or "custom". Device-local, never synced.
+    pub dns_provider: String,
+    /// The addresses typed for "custom".
+    pub dns_custom: String,
+    /// Keep the DNS on outside focus sessions too.
+    pub dns_always_on: bool,
+    /// "off", "waiting", "active", "notApplied" or "unavailable".
+    pub dns_status: String,
     pub profiles: Vec<ProfileDto>,
+    /// Saved site/app groups, device-local.
+    pub groups: Vec<now_focus_core::RuleGroup>,
     pub session: Option<SessionDto>,
     pub unlock: Option<UnlockStateDto>,
     pub shield: Option<ShieldDto>,

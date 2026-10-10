@@ -40,6 +40,27 @@ pub enum Request {
     /// worthless — the pipe ACL lets any interactive user connect).
     ClearCommitment,
     CommitmentStatus,
+    /// Point the physical adapters' DNS at these servers for the length of a session (the user's own choice in
+    /// Settings). Plain IP literals only: the service re-validates them, since any interactive user can send this.
+    /// Idempotent; the adapters' original DNS is saved once and put back by `ClearDns`.
+    ApplyDns {
+        servers: Vec<String>,
+    },
+    /// A session ended: put the adapters' original DNS back, unless the user keeps this DNS on outside sessions
+    /// (then the service leaves it). A no-op when nothing was changed.
+    ClearDns,
+    /// "Always on". `Some(servers)` keeps these servers applied outside sessions - across reboots, with no app running -
+    /// and applies them now. `None` turns that off (and restores, if it was the thing holding the DNS).
+    SetDnsKeep {
+        servers: Option<Vec<String>>,
+    },
+    DnsStatus,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DnsStateWire {
+    pub servers: Vec<String>,
+    pub keep: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -63,6 +84,10 @@ pub enum Response {
     /// Reply to `CommitmentStatus`: `None` when no commitment is in effect.
     Commitment {
         status: Option<CommitmentStatusWire>,
+    },
+    /// Reply to `DnsStatus`: `None` when the service has not changed any DNS.
+    Dns {
+        state: Option<DnsStateWire>,
     },
 }
 
@@ -108,6 +133,15 @@ mod tests {
             },
             Request::ClearCommitment,
             Request::CommitmentStatus,
+            Request::ApplyDns {
+                servers: vec!["94.140.14.15".to_string(), "94.140.15.16".to_string()],
+            },
+            Request::ClearDns,
+            Request::SetDnsKeep {
+                servers: Some(vec!["1.1.1.3".to_string()]),
+            },
+            Request::SetDnsKeep { servers: None },
+            Request::DnsStatus,
         ] {
             let mut buf = Vec::new();
             write_message(&mut buf, &req).unwrap();
@@ -126,6 +160,13 @@ mod tests {
             },
             Response::Pong,
             Response::Commitment { status: None },
+            Response::Dns { state: None },
+            Response::Dns {
+                state: Some(DnsStateWire {
+                    servers: vec!["1.1.1.3".to_string()],
+                    keep: true,
+                }),
+            },
             Response::Commitment {
                 status: Some(CommitmentStatusWire {
                     domains: vec!["youtube.com".to_string()],

@@ -22,11 +22,28 @@ use crate::enforcer::Enforcer;
 const CONNECT_DEADLINE: Duration = Duration::from_millis(1500);
 const RETRY_DELAY: Duration = Duration::from_millis(50);
 
-pub struct WindowsServiceEnforcer;
+pub struct WindowsServiceEnforcer {
+    /// Resolver servers for the session (empty: leave DNS alone). Set from the app's settings.
+    dns: Vec<String>,
+    /// Whether a policy is applied right now, so releasing always-on mid-session can put the session DNS back.
+    session_active: bool,
+}
 
 impl WindowsServiceEnforcer {
     pub fn new() -> Self {
-        Self
+        Self {
+            dns: Vec::new(),
+            session_active: false,
+        }
+    }
+
+    fn dns_call(&self, request: &Request) -> Result<(), String> {
+        match self.call(request) {
+            Ok(Response::Ack) => Ok(()),
+            Ok(Response::Error { message }) => Err(message),
+            Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
+            Err(e) => Err(format!("service|{e}")),
+        }
     }
 
     fn call(&self, request: &Request) -> io::Result<Response> {
@@ -67,18 +84,64 @@ const ERROR_PIPE_BUSY: i32 = 231;
 impl Enforcer for WindowsServiceEnforcer {
     fn apply(&mut self, policy: &BlockPolicy) -> Result<(), String> {
         let policy_json = serde_json::to_string(policy).map_err(|e| e.to_string())?;
-        match self.call(&Request::ApplyPolicy { policy_json }) {
+        let result = match self.call(&Request::ApplyPolicy { policy_json }) {
             Ok(Response::Ack) => Ok(()),
             Ok(Response::Error { message }) => Err(message),
             Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
             Err(e) => Err(format!("service|{e}")),
+        };
+        // DNS is a bonus layer next to the hosts file: a failure here is logged, never a reason to refuse the session.
+        if result.is_ok() {
+            self.session_active = true;
         }
+        if result.is_ok() && !self.dns.is_empty() {
+            if let Err(e) = self.dns_call(&Request::ApplyDns {
+                servers: self.dns.clone(),
+            }) {
+                eprintln!("could not apply the session DNS: {e}");
+            }
+        }
+        result
     }
 
     fn clear(&mut self) -> Result<(), String> {
-        match self.call(&Request::ClearPolicy) {
+        let result = match self.call(&Request::ClearPolicy) {
             Ok(Response::Ack) => Ok(()),
             Ok(Response::Error { message }) => Err(message),
+            Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
+            Err(e) => Err(format!("service|{e}")),
+        };
+        self.session_active = false;
+        // Always, even with no DNS chosen now: the service only acts if it saved an original, so this also undoes a
+        // choice that was changed since, and leaves a DNS the user keeps on. Idempotent, and best-effort as in apply.
+        if let Err(e) = self.dns_call(&Request::ClearDns) {
+            eprintln!("could not restore the DNS: {e}");
+        }
+        result
+    }
+
+    fn set_dns(&mut self, servers: Vec<String>) {
+        self.dns = servers;
+    }
+
+    fn keep_dns(&mut self, servers: Option<Vec<String>>) {
+        let release = servers.is_none();
+        if let Err(e) = self.dns_call(&Request::SetDnsKeep { servers }) {
+            eprintln!("could not change always-on DNS: {e}");
+        }
+        // Releasing restores the original DNS, which a running session still wants filtered.
+        if release && self.session_active && !self.dns.is_empty() {
+            if let Err(e) = self.dns_call(&Request::ApplyDns {
+                servers: self.dns.clone(),
+            }) {
+                eprintln!("could not re-apply the session DNS: {e}");
+            }
+        }
+    }
+
+    fn dns_state(&self) -> Result<Option<now_focus_ipc::DnsStateWire>, String> {
+        match self.call(&Request::DnsStatus) {
+            Ok(Response::Dns { state }) => Ok(state),
             Ok(other) => Err(format!("unexpected reply from NowFocusService: {other:?}")),
             Err(e) => Err(format!("service|{e}")),
         }

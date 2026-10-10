@@ -1,6 +1,6 @@
 import { useT } from "../i18n";
 import type { AppState, ScreenId } from "../types";
-import { BedtimeIcon, CommitmentIcon, DevicesIcon, FocusIcon, ProfilesIcon, StatsIcon } from "./Icons";
+import { BedtimeIcon, CommitmentIcon, DevicesIcon, FocusIcon, GlobeIcon, ProfilesIcon, StatsIcon } from "./Icons";
 
 export function Sidebar({ state, screen, onNavigate }: { state: AppState; screen: ScreenId; onNavigate: (s: ScreenId) => void }) {
   const t = useT();
@@ -38,6 +38,12 @@ export function Sidebar({ state, screen, onNavigate }: { state: AppState; screen
         <BedtimeIcon />
         <span className="nav-item__label">{t("nav.bedtime")}</span>
         {state.bedtime.enabled && <span className="nav-item__dot" />}
+      </button>
+
+      <button className="nav-item" data-active={screen === "dns"} onClick={() => onNavigate("dns")}>
+        <GlobeIcon />
+        <span className="nav-item__label">{t("nav.dns")}</span>
+        {state.dnsAlwaysOn && state.dnsProvider !== "system" && <span className="nav-item__dot" />}
       </button>
 
       <button className="nav-item" data-active={screen === "schedules"} onClick={() => onNavigate("schedules")}>

@@ -175,6 +175,26 @@ fn dispatch(request: Request) -> Response {
         Request::CommitmentStatus => Response::Commitment {
             status: crate::commitment_store::status(),
         },
+        Request::ApplyDns { servers } => match crate::dns_enforcer::apply(&servers) {
+            Ok(()) => Response::Ack,
+            Err(message) => Response::Error { message },
+        },
+        Request::ClearDns => match crate::dns_enforcer::clear() {
+            Ok(()) => Response::Ack,
+            Err(message) => Response::Error { message },
+        },
+        Request::SetDnsKeep { servers } => {
+            match crate::dns_enforcer::set_keep(servers.as_deref()) {
+                Ok(()) => Response::Ack,
+                Err(message) => Response::Error { message },
+            }
+        }
+        Request::DnsStatus => Response::Dns {
+            state: crate::dns_enforcer::read_state().map(|s| now_focus_ipc::DnsStateWire {
+                servers: s.servers,
+                keep: s.keep,
+            }),
+        },
     }
 }
 

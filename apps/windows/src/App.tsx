@@ -20,6 +20,7 @@ import { Devices } from "./screens/Devices";
 import { Stats } from "./screens/Stats";
 import { Commitment } from "./screens/Commitment";
 import { Bedtime } from "./screens/Bedtime";
+import { Dns } from "./screens/Dns";
 import { Tray } from "./screens/Tray";
 
 /** Tells the backend what the tray icon's menu and tooltip say, in the current language (it holds no translations). */
@@ -108,6 +109,7 @@ export default function App() {
           {view === "stats" && <Stats state={state} />}
           {view === "commitment" && <Commitment state={state} onState={refresh} />}
           {view === "bedtime" && <Bedtime state={state} onState={refresh} />}
+          {view === "dns" && <Dns state={state} onState={refresh} />}
           {view === "schedules" && <Schedules state={state} onState={refresh} />}
           {view === "limits" && <Limits state={state} onState={refresh} />}
           {view === "cheatday" && <CheatDay state={state} onState={refresh} />}

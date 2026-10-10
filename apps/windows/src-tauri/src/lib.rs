@@ -167,6 +167,10 @@ pub fn run() {
             commands::add_application,
             commands::remove_application,
             commands::toggle_feed,
+            commands::save_group_from_profile,
+            commands::update_group,
+            commands::delete_group,
+            commands::apply_group,
             commands::start_session,
             commands::end_session_normal,
             commands::begin_unlock,
@@ -195,6 +199,7 @@ pub fn run() {
             commands::sync_revoke_device,
             commands::sync_set_join_remote,
             commands::set_language,
+            commands::set_dns,
             commands::set_tray_labels,
         ])
         .run(tauri::generate_context!())
@@ -360,6 +365,7 @@ fn periodic_tick() {
             // Re-applies a session after a restart, pauses it for a cheat day and brings it back when the day ends.
             guard.reconcile_enforcement();
             guard.refresh_commitment();
+            guard.refresh_dns_status();
             lock
         };
         if lock_now {

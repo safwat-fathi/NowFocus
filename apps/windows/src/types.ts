@@ -32,6 +32,14 @@ export interface Profile {
   feeds: FeedRule[];
 }
 
+/** A saved set of sites and apps to add into a profile. Device-local. */
+export interface RuleGroup {
+  id: string;
+  name: string;
+  domains: string[];
+  applications: { nativeIdentifier: string; displayName: string }[];
+}
+
 export type SessionMode = "normal" | "strict" | "locked";
 
 export interface Session {
@@ -183,7 +191,16 @@ export interface DeviceInfo {
 export interface AppState {
   /** The language picked in Settings: "system", "en" or "ar". Device-local. */
   language: string;
+  /** The DNS used while a session runs: "system", "adguard_family", "cloudflare_family", "cleanbrowsing_family", "quad9" or "custom". Device-local. */
+  dnsProvider: string;
+  /** The addresses typed for "custom". */
+  dnsCustom: string;
+  /** Keep the DNS on outside focus sessions too. */
+  dnsAlwaysOn: boolean;
+  /** "off", "waiting", "active", "notApplied" or "unavailable". */
+  dnsStatus: "off" | "waiting" | "active" | "notApplied" | "unavailable";
   profiles: Profile[];
+  groups: RuleGroup[];
   session: Session | null;
   unlock: UnlockState | null;
   shield: Shield | null;
@@ -208,6 +225,7 @@ export type ScreenId =
   | "stats"
   | "commitment"
   | "bedtime"
+  | "dns"
   | "schedules"
   | "cheatday"
   | "limits"

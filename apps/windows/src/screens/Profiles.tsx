@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { api } from "../lib/api";
-import type { AppState, PolicyMode, Profile } from "../types";
+import type { AppState, PolicyMode, Profile, RuleGroup } from "../types";
 import { profileSummary } from "../lib/profile";
-import { errorText, tOr, useI18n } from "../i18n";
+import { errorText, tOr, useI18n, type T } from "../i18n";
 import { GlobeIcon, PlusIcon, RemoveIcon } from "../components/Icons";
 
 export function Profiles({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
@@ -50,19 +50,20 @@ export function Profiles({ state, onState }: { state: AppState; onState: (s: App
             <span className="profile-list-item__meta">{profileSummary(p, t)}</span>
           </button>
         ))}
+        <GroupsPanel groups={state.groups} onState={onState} />
         <p style={{ fontSize: 12, color: "var(--color-neutral-700)", padding: "16px 20px", margin: "auto 0 0" }}>
           {t("prof.thisPcOnly")}
         </p>
       </div>
 
-      {profile ? <ProfileEditor profile={profile} onState={onState} /> : (
+      {profile ? <ProfileEditor profile={profile} groups={state.groups} onState={onState} /> : (
         <div style={{ padding: 32 }}>{t("prof.createFirst")}</div>
       )}
     </div>
   );
 }
 
-function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: AppState) => void }) {
+function ProfileEditor({ profile, groups, onState }: { profile: Profile; groups: RuleGroup[]; onState: (s: AppState) => void }) {
   const { t } = useI18n();
   const [name, setName] = useState(profile.name);
   const [newDomain, setNewDomain] = useState("");
@@ -191,6 +192,24 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
             <PlusIcon />
             {t("prof.addApp")}
           </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            {groups.length > 0 && (
+              <select
+                className="input"
+                value=""
+                onChange={(e) => e.target.value && run(() => api.applyGroup(profile.id, e.target.value))}
+                style={{ minHeight: 40, fontSize: 14, width: "auto" }}
+              >
+                <option value="">{t("groups.add")}</option>
+                {groups.map((g) => <option key={g.id} value={g.id}>{g.name} · {groupSummary(g, t)}</option>)}
+              </select>
+            )}
+            {(profile.domains.length > 0 || profile.applications.length > 0) && (
+              <button className="btn btn-secondary" style={{ minHeight: 40 }} onClick={() => run(() => api.saveGroupFromProfile(profile.id))}>
+                {t("groups.saveAs")}
+              </button>
+            )}
+          </div>
 
           <div className="column-header" style={{ marginTop: 22 }}>
             <span className="column-header__label">{t("prof.feedsTitle")}</span>
@@ -218,6 +237,65 @@ function ProfileEditor({ profile, onState }: { profile: Profile; onState: (s: Ap
           <div className="error-line">{appError}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function groupSummary(g: RuleGroup, t: T): string {
+  return t("prof.summary", { sites: t("count.sites", { count: g.domains.length }), apps: t("count.apps", { count: g.applications.length }) });
+}
+
+/** Saved groups: rename, trim or delete here; "Save as group" in a profile makes a new one. */
+function GroupsPanel({ groups, onState }: { groups: RuleGroup[]; onState: (s: AppState) => void }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState<string | null>(null);
+  const save = async (g: RuleGroup) => onState(await api.updateGroup(g));
+
+  return (
+    <div style={{ padding: "12px 20px" }}>
+      <span className="column-header__label">{t("groups.title")}</span>
+      <p style={{ fontSize: 12, color: "var(--color-neutral-700)", margin: "4px 0 8px" }}>
+        {groups.length === 0 ? t("groups.none") : t("groups.note")}
+      </p>
+      {groups.map((g) => (
+        <div key={g.id} style={{ marginBottom: 6 }}>
+          <button className="profile-list-item" data-active={open === g.id} onClick={() => setOpen(open === g.id ? null : g.id)}>
+            <span className="profile-list-item__name">{g.name}</span>
+            <span className="profile-list-item__meta">{groupSummary(g, t)}</span>
+          </button>
+          {open === g.id && (
+            <div style={{ padding: "6px 0 6px 8px" }}>
+              <input
+                className="input"
+                aria-label={t("groups.name")}
+                defaultValue={g.name}
+                onBlur={(e) => e.target.value.trim() && e.target.value !== g.name && save({ ...g, name: e.target.value.trim() })}
+                style={{ minHeight: 36, fontSize: 14, marginBottom: 6 }}
+              />
+              {g.domains.map((d) => (
+                <div className="rule-row" key={d}>
+                  <GlobeIcon />
+                  <span className="rule-row__label">{d}</span>
+                  <button className="btn btn-icon" title={t("common.remove")} onClick={() => save({ ...g, domains: g.domains.filter((x) => x !== d) })} style={{ width: 30, height: 30 }}>
+                    <RemoveIcon />
+                  </button>
+                </div>
+              ))}
+              {g.applications.map((a) => (
+                <div className="rule-row" key={a.nativeIdentifier}>
+                  <span className="rule-row__label">{a.displayName}</span>
+                  <button className="btn btn-icon" title={t("common.remove")} onClick={() => save({ ...g, applications: g.applications.filter((x) => x.nativeIdentifier !== a.nativeIdentifier) })} style={{ width: 30, height: 30 }}>
+                    <RemoveIcon />
+                  </button>
+                </div>
+              ))}
+              <button className="btn btn-secondary" style={{ minHeight: 34, marginTop: 6 }} onClick={async () => onState(await api.deleteGroup(g.id))}>
+                {t("common.remove")}
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

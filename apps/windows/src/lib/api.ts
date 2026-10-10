@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
 import type { T } from "../i18n";
-import type { AppState, DeviceInfo, PolicyMode, Schedule } from "../types";
+import type { AppState, DeviceInfo, PolicyMode, RuleGroup, Schedule } from "../types";
 
 // One wrapper per #[tauri::command] in src-tauri/src/commands.rs. Every
 // mutating call returns the fresh AppState — same "recompute everything
@@ -23,6 +23,10 @@ export const api = {
     invoke<AppState>("add_application", { profileId, nativeIdentifier, displayName }),
   removeApplication: (profileId: string, ruleId: string) =>
     invoke<AppState>("remove_application", { profileId, ruleId }),
+  saveGroupFromProfile: (profileId: string) => invoke<AppState>("save_group_from_profile", { profileId }),
+  updateGroup: (group: RuleGroup) => invoke<AppState>("update_group", { group }),
+  deleteGroup: (groupId: string) => invoke<AppState>("delete_group", { groupId }),
+  applyGroup: (profileId: string, groupId: string) => invoke<AppState>("apply_group", { profileId, groupId }),
   toggleFeed: (profileId: string, feedKey: string) =>
     invoke<AppState>("toggle_feed", { profileId, feedKey }),
 
@@ -50,6 +54,7 @@ export const api = {
   syncRevokeDevice: (id: string) => invoke<void>("sync_revoke_device", { id }),
   syncSetJoinRemote: (on: boolean) => invoke<AppState>("sync_set_join_remote", { on }),
   setLanguage: (language: string) => invoke<AppState>("set_language", { language }),
+  setDns: (provider: string, custom: string, alwaysOn: boolean) => invoke<AppState>("set_dns", { provider, custom, alwaysOn }),
   setTrayLabels: (open: string, quit: string, idle: string, left: string) =>
     invoke<void>("set_tray_labels", { open, quit, idle, left }),
   usePass: () => invoke<AppState>("use_pass"),

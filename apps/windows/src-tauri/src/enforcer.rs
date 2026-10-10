@@ -20,6 +20,15 @@ pub trait Enforcer: Send {
     fn apply_commitment(&mut self, domains: &[String]) -> Result<(), String>;
     fn clear_commitment(&mut self) -> Result<(), String>;
     fn commitment_status(&self) -> Option<CommitmentStatusWire>;
+    /// The DNS servers to point the adapters at while a policy is applied (the user's pick in Settings), or empty to
+    /// leave DNS alone. Only the real enforcer acts on it.
+    fn set_dns(&mut self, _servers: Vec<String>) {}
+    /// Keep (`Some`) or stop keeping (`None`) the session DNS on outside sessions. Best-effort, like the DNS itself.
+    fn keep_dns(&mut self, _servers: Option<Vec<String>>) {}
+    /// What the service reports having applied: `Ok(None)` for nothing, `Err` when it did not answer.
+    fn dns_state(&self) -> Result<Option<now_focus_ipc::DnsStateWire>, String> {
+        Ok(None)
+    }
 }
 
 /// Dev-mode stand-in. Deliberately reports `"unknown"`, not `"active"` — it

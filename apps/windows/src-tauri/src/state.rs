@@ -7,13 +7,14 @@ use chrono::{
 use now_focus_core::block_policy::FeedRule;
 use now_focus_core::cheat_day::{self, CheatDay};
 use now_focus_core::daily_limit::{self, DailyLimit};
+use now_focus_core::dns_resolvers::{self, DnsProvider, DnsState};
 use now_focus_core::feed_url::URL_FEEDS;
 use now_focus_core::history_stats::BlockEvent;
 use now_focus_core::schedule::{self, Schedule};
 use now_focus_core::{
     allowlist, bedtime_schedule, domain_validation, history_stats, passes, session_engine,
     ApplicationRule, BedtimeSettings, DomainRule, EnforcementMode, FocusSession,
-    FocusSessionStatus, PolicyMode, Profile, SessionOrigin, SessionType,
+    FocusSessionStatus, GroupApp, PolicyMode, Profile, RuleGroup, SessionOrigin, SessionType,
 };
 use now_focus_ipc::CommitmentStatusWire;
 
@@ -89,6 +90,9 @@ pub struct AppState {
     /// Whether the running session's policy is applied to the enforcer right now. False while a cheat day
     /// pauses it, and until the first tick after launch re-asserts it.
     session_enforced: bool,
+    /// What the service last reported having applied: `None` when it did not answer, `Some(None)` for nothing.
+    /// Refreshed on the 30s tick and after a change; the status itself is derived from it live (`dns_status`).
+    dns_reply: Option<Option<DnsState>>,
     /// Live per-app passes (lowercased exe path to when it ends) and how many the running session has used.
     /// In memory only: a restart forgets them.
     passes: Vec<(String, DateTime<Utc>)>,
@@ -115,7 +119,9 @@ impl AppState {
         }
 
         let commitment = enforcer.commitment_status();
-        Ok(Self::from_parts(db, enforcer, device_id, commitment))
+        let mut state = Self::from_parts(db, enforcer, device_id, commitment);
+        state.load_dns_into_enforcer();
+        Ok(state)
     }
 
     fn from_parts(
@@ -134,6 +140,7 @@ impl AppState {
             last_block_at: HashMap::new(),
             last_sleep_lock_at: None,
             session_enforced: false,
+            dns_reply: None,
             passes: Vec::new(),
             passes_used: (None, 0),
             shield_native: None,
@@ -286,7 +293,12 @@ impl AppState {
 
         Ok(AppStateDto {
             language: self.language(),
+            dns_provider: self.dns_provider(),
+            dns_custom: self.dns_custom(),
+            dns_always_on: self.dns_always_on(),
+            dns_status: self.dns_status(),
             profiles: profile_dtos,
+            groups: self.db.list_groups().map_err(|e| e.to_string())?,
             session: session_dto,
             unlock: unlock_dto,
             shield,
@@ -460,6 +472,64 @@ impl AppState {
             return Err("cantRemoveLast".to_string());
         }
         self.save_edited(profile)
+    }
+
+    // ---- Saved groups (local to this PC, never synced) ------------------
+
+    pub fn save_group_from_profile(&mut self, profile_id: &str) -> Result<(), String> {
+        let p = self.require_profile(profile_id)?.policy;
+        let group = RuleGroup {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: p.name,
+            domains: p.domains.into_iter().map(|d| d.domain).collect(),
+            applications: p
+                .applications
+                .into_iter()
+                .map(|a| GroupApp {
+                    native_identifier: a.native_identifier,
+                    display_name: a.display_name,
+                })
+                .collect(),
+        };
+        self.db.save_group(&group).map_err(|e| e.to_string())
+    }
+
+    /// Rename or trim a group: the screen sends back the whole edited group.
+    pub fn update_group(&mut self, group: RuleGroup) -> Result<(), String> {
+        let known = self.db.list_groups().map_err(|e| e.to_string())?;
+        if group.name.trim().is_empty() || !known.iter().any(|g| g.id == group.id) {
+            return Err("That group no longer exists".to_string());
+        }
+        self.db.save_group(&group).map_err(|e| e.to_string())
+    }
+
+    pub fn delete_group(&mut self, group_id: &str) -> Result<(), String> {
+        self.db.delete_group(group_id).map_err(|e| e.to_string())
+    }
+
+    /// Adds the group's sites and apps through the normal add paths, so validation and the running-session
+    /// guards apply and what the profile already lists is skipped. An allowlist has no site list.
+    pub fn apply_group(&mut self, profile_id: &str, group_id: &str) -> Result<(), String> {
+        let group = self
+            .db
+            .list_groups()
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .find(|g| g.id == group_id)
+            .ok_or("That group no longer exists")?;
+        let skip_listed = |r: Result<(), String>| match r {
+            Err(e) if e.starts_with("listed|") => Ok(()),
+            other => other,
+        };
+        if self.require_profile(profile_id)?.policy.mode == PolicyMode::Blocklist {
+            for d in &group.domains {
+                skip_listed(self.add_domain(profile_id, d))?;
+            }
+        }
+        for a in group.applications {
+            skip_listed(self.add_application(profile_id, a.native_identifier, a.display_name))?;
+        }
+        Ok(())
     }
 
     pub fn toggle_feed(&mut self, profile_id: &str, feed_key: &str) -> Result<(), String> {
@@ -1203,6 +1273,9 @@ const KV_SYNC_STATE: &str = "sync_state";
 const KV_BEDTIME_UPDATED: &str = "bedtime_updated_at";
 const KV_JOIN_REMOTE: &str = "join_remote";
 const KV_LANGUAGE: &str = "language";
+const KV_DNS_PROVIDER: &str = "dns_provider";
+const KV_DNS_CUSTOM: &str = "dns_custom";
+const KV_DNS_ALWAYS_ON: &str = "dns_always_on";
 
 /// What the sync crate needs from the app (see `sync_glue`). Kept together so the boundary is easy to see:
 /// everything here either reads local data or applies something another device decided.
@@ -1243,6 +1316,103 @@ impl AppState {
         self.db
             .kv_set(KV_LANGUAGE, language)
             .map_err(|e| e.to_string())
+    }
+
+    /// The DNS the PC uses while a session runs: a `dns_resolvers::DnsProvider` id, "system" by default. This device
+    /// only, like the language.
+    pub fn dns_provider(&self) -> String {
+        self.db
+            .kv_get(KV_DNS_PROVIDER)
+            .ok()
+            .flatten()
+            .filter(|v| DnsProvider::from_id(v).is_some())
+            .unwrap_or_else(|| "system".to_string())
+    }
+
+    /// The addresses typed for the "custom" choice (kept even while another one is picked).
+    pub fn dns_custom(&self) -> String {
+        self.db
+            .kv_get(KV_DNS_CUSTOM)
+            .ok()
+            .flatten()
+            .unwrap_or_default()
+    }
+
+    /// Keep the DNS on outside focus sessions too (default off).
+    pub fn dns_always_on(&self) -> bool {
+        self.db
+            .kv_get(KV_DNS_ALWAYS_ON)
+            .ok()
+            .flatten()
+            .is_some_and(|v| v == "on")
+    }
+
+    /// `dnsInvalid` (a bare code the UI translates) for a bad choice or address. Safe mid-session: the service applies
+    /// a new pick over the old one and keeps the saved originals.
+    pub fn set_dns(&mut self, provider: &str, custom: &str, always_on: bool) -> Result<(), String> {
+        let chosen = DnsProvider::from_id(provider).ok_or_else(|| "dnsInvalid".to_string())?;
+        let custom = if chosen == DnsProvider::Custom {
+            dns_resolvers::parse_servers(custom)?
+                .iter()
+                .map(|ip| ip.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        } else {
+            self.dns_custom()
+        };
+        self.db
+            .kv_set(KV_DNS_PROVIDER, provider)
+            .map_err(|e| e.to_string())?;
+        self.db
+            .kv_set(KV_DNS_CUSTOM, &custom)
+            .map_err(|e| e.to_string())?;
+        self.db
+            .kv_set(KV_DNS_ALWAYS_ON, if always_on { "on" } else { "off" })
+            .map_err(|e| e.to_string())?;
+        self.load_dns_into_enforcer();
+        Ok(())
+    }
+
+    /// The stored choice as the servers it means (empty: leave DNS alone).
+    fn dns_servers(&self) -> Vec<String> {
+        let provider = DnsProvider::from_id(&self.dns_provider()).unwrap_or(DnsProvider::System);
+        dns_resolvers::servers_for(provider, &self.dns_custom())
+    }
+
+    /// Hands the stored choice to the enforcer: the session servers, and the always-on intent (re-asserted on every
+    /// start, since the service remembers it but this app owns it).
+    fn load_dns_into_enforcer(&mut self) {
+        let servers = self.dns_servers();
+        self.enforcer.set_dns(servers.clone());
+        if self.dns_always_on() && !servers.is_empty() {
+            self.enforcer.keep_dns(Some(servers));
+        } else {
+            self.enforcer.keep_dns(None);
+        }
+        self.refresh_dns_status();
+    }
+
+    /// Asks the service what it applied. Called from the 30s tick and after a change, not per snapshot: the snapshot
+    /// is polled every 500ms and already pings the pipe once.
+    pub fn refresh_dns_status(&mut self) {
+        self.dns_reply = self.enforcer.dns_state().ok().map(|reply| {
+            reply.map(|w| DnsState {
+                servers: w.servers,
+                keep: w.keep,
+            })
+        });
+    }
+
+    /// "off", "waiting", "active", "notApplied" or "unavailable" (see `dns_resolvers::status`).
+    fn dns_status(&self) -> String {
+        dns_resolvers::status(
+            &self.dns_servers(),
+            self.dns_always_on(),
+            self.session_enforced,
+            self.dns_reply.is_some(),
+            self.dns_reply.as_ref().and_then(|r| r.as_ref()),
+        )
+        .to_string()
     }
 
     pub fn device_name(&self) -> String {
@@ -1641,6 +1811,10 @@ mod tests {
     struct FakeEnforcer {
         applied: Arc<Mutex<Vec<BlockPolicy>>>,
         clears: Arc<std::sync::atomic::AtomicUsize>,
+        /// What `set_dns` last received.
+        dns: Arc<Mutex<Vec<String>>>,
+        /// Every `keep_dns` call, in order.
+        keeps: Arc<Mutex<Vec<Option<Vec<String>>>>>,
     }
 
     impl FakeEnforcer {
@@ -1661,6 +1835,8 @@ mod tests {
                 Self {
                     applied: log.clone(),
                     clears: clears.clone(),
+                    dns: Arc::new(Mutex::new(Vec::new())),
+                    keeps: Arc::new(Mutex::new(Vec::new())),
                 },
                 log,
                 clears,
@@ -1693,6 +1869,12 @@ mod tests {
         }
         fn commitment_status(&self) -> Option<CommitmentStatusWire> {
             None
+        }
+        fn set_dns(&mut self, servers: Vec<String>) {
+            *self.dns.lock().unwrap() = servers;
+        }
+        fn keep_dns(&mut self, servers: Option<Vec<String>>) {
+            self.keeps.lock().unwrap().push(servers);
         }
     }
 
@@ -2279,6 +2461,50 @@ mod tests {
     }
 
     #[test]
+    fn a_saved_group_is_added_into_profiles_without_duplicates() {
+        let (mut state, _) = fresh();
+        state
+            .create_profile("Work".into(), PolicyMode::Blocklist)
+            .unwrap();
+        state
+            .create_profile("Study".into(), PolicyMode::Allowlist)
+            .unwrap();
+        let snap = state.snapshot().unwrap();
+        let id_of = |name: &str| {
+            snap.profiles
+                .iter()
+                .find(|p| p.name == name)
+                .unwrap()
+                .id
+                .clone()
+        };
+        let (work, study) = (id_of("Work"), id_of("Study"));
+        state.add_domain(&work, "x.com").unwrap();
+        state
+            .add_application(&work, r"C:\x.exe".into(), "X".into())
+            .unwrap();
+        state.save_group_from_profile(&work).unwrap();
+        state.add_domain(&work, "reddit.com").unwrap();
+        let group = state.snapshot().unwrap().groups[0].id.clone();
+
+        state.apply_group(&work, &group).unwrap(); // already listed: skipped, no error
+        state.apply_group(&study, &group).unwrap();
+
+        let snap = state.snapshot().unwrap();
+        let by = |id: &str| snap.profiles.iter().find(|p| p.id == id).unwrap();
+        assert_eq!(by(&work).domains.len(), 2);
+        assert_eq!(by(&work).applications.len(), 1);
+        assert!(
+            by(&study).domains.is_empty(),
+            "an allowlist has no site list"
+        );
+        assert_eq!(by(&study).applications.len(), 1);
+
+        state.delete_group(&group).unwrap();
+        assert!(state.snapshot().unwrap().groups.is_empty());
+    }
+
+    #[test]
     fn a_whitelist_session_closes_unlisted_apps_and_keeps_listed_ones() {
         let (mut state, _) = fresh();
         let id = allow_profile(&mut state, &[r"C:\Apps\Code.exe"]);
@@ -2476,6 +2702,97 @@ mod tests {
         assert_eq!(state.language(), "ar");
         assert_eq!(state.snapshot().unwrap().language, "ar");
         assert!(state.set_language("fr").is_err());
+    }
+
+    #[test]
+    fn the_dns_choice_is_remembered_checked_and_passed_on() {
+        let (fake, _) = FakeEnforcer::new();
+        let dns = fake.dns.clone();
+        let mut state =
+            AppState::open_with_db(Database::open_in_memory().unwrap(), Box::new(fake)).unwrap();
+        assert_eq!(state.dns_provider(), "system");
+        assert!(!state.dns_always_on());
+        assert!(
+            dns.lock().unwrap().is_empty(),
+            "nothing chosen: DNS is left alone"
+        );
+
+        state.set_dns("adguard_family", "", false).unwrap();
+        assert_eq!(state.snapshot().unwrap().dns_provider, "adguard_family");
+        assert_eq!(*dns.lock().unwrap(), vec!["94.140.14.15", "94.140.15.16"]);
+
+        assert_eq!(
+            state.set_dns("custom", "not an ip", false).unwrap_err(),
+            "dnsInvalid"
+        );
+        assert_eq!(state.set_dns("nope", "", false).unwrap_err(), "dnsInvalid");
+        assert_eq!(
+            state.dns_provider(),
+            "adguard_family",
+            "a refused choice changes nothing"
+        );
+
+        state
+            .set_dns("custom", "192.168.1.2 ,1.1.1.1", false)
+            .unwrap();
+        assert_eq!(state.dns_custom(), "192.168.1.2, 1.1.1.1");
+        assert_eq!(*dns.lock().unwrap(), vec!["192.168.1.2", "1.1.1.1"]);
+
+        state.set_dns("system", "", false).unwrap();
+        assert!(dns.lock().unwrap().is_empty());
+        assert_eq!(
+            state.dns_custom(),
+            "192.168.1.2, 1.1.1.1",
+            "the typed addresses are kept"
+        );
+    }
+
+    #[test]
+    fn always_on_is_kept_released_and_applies_mid_session() {
+        let (fake, _) = FakeEnforcer::new();
+        let keeps = fake.keeps.clone();
+        let mut state =
+            AppState::open_with_db(Database::open_in_memory().unwrap(), Box::new(fake)).unwrap();
+        let adguard = Some(vec!["94.140.14.15".to_string(), "94.140.15.16".to_string()]);
+
+        state.set_dns("adguard_family", "", true).unwrap();
+        assert!(state.dns_always_on());
+        assert_eq!(state.snapshot().unwrap().dns_always_on, true);
+        assert_eq!(keeps.lock().unwrap().last().unwrap(), &adguard);
+
+        state.set_dns("adguard_family", "", false).unwrap();
+        assert_eq!(
+            keeps.lock().unwrap().last().unwrap(),
+            &None,
+            "turning it off releases"
+        );
+
+        // "Always on" with the system DNS has nothing to keep.
+        state.set_dns("system", "", true).unwrap();
+        assert_eq!(keeps.lock().unwrap().last().unwrap(), &None);
+
+        // A session is running: a new pick is accepted (no lock-out).
+        let (mut busy, _, _) = setup();
+        busy.set_dns("quad9", "", false).unwrap();
+        assert_eq!(busy.dns_provider(), "quad9");
+    }
+
+    #[test]
+    fn the_dns_status_follows_the_session_and_the_service() {
+        let (fake, _) = FakeEnforcer::new();
+        let mut state =
+            AppState::open_with_db(Database::open_in_memory().unwrap(), Box::new(fake)).unwrap();
+        assert_eq!(state.snapshot().unwrap().dns_status, "off");
+        state.set_dns("adguard_family", "", false).unwrap();
+        assert_eq!(
+            state.snapshot().unwrap().dns_status,
+            "waiting",
+            "session-only, none running"
+        );
+        state.set_dns("adguard_family", "", true).unwrap();
+        // The fake never reports an applied DNS, so "always on" shows as not applied rather than as working.
+        state.refresh_dns_status();
+        assert_eq!(state.snapshot().unwrap().dns_status, "notApplied");
     }
 
     #[test]

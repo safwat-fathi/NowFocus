@@ -5,7 +5,7 @@ use rusqlite::{params, Connection};
 
 use crate::bedtime_schedule::BedtimeSettings;
 use crate::block_policy::{
-    ApplicationRule, BlockPolicy, DomainRule, FeedRule, NotificationMode, PolicyMode, Profile,
+    ApplicationRule, BlockPolicy, DomainRule, FeedRule, NotificationMode, PolicyMode, Profile, RuleGroup,
 };
 use crate::cheat_day::CheatDay;
 use crate::daily_limit::DailyLimit;
@@ -129,6 +129,10 @@ impl Database {
             );
             CREATE TABLE IF NOT EXISTS limits (
                 key TEXT PRIMARY KEY,
+                data_json TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS rule_groups (
+                id TEXT PRIMARY KEY,
                 data_json TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS limit_usage (
@@ -661,6 +665,37 @@ impl Database {
         Ok(())
     }
 
+    // ---- Saved groups -----------------------------------------------------
+
+    pub fn list_groups(&self) -> Result<Vec<RuleGroup>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT data_json FROM rule_groups ORDER BY rowid ASC")?;
+        let rows = stmt
+            .query_map([], |r| r.get::<_, String>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(rows
+            .iter()
+            .filter_map(|j| serde_json::from_str(j).ok())
+            .collect())
+    }
+
+    pub fn save_group(&self, g: &RuleGroup) -> Result<()> {
+        let json = serde_json::to_string(g).unwrap_or_default();
+        self.conn.execute(
+            "INSERT INTO rule_groups (id, data_json) VALUES (?1, ?2)
+             ON CONFLICT(id) DO UPDATE SET data_json = excluded.data_json",
+            params![g.id, json],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_group(&self, id: &str) -> Result<()> {
+        self.conn
+            .execute("DELETE FROM rule_groups WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
     // ---- Daily limits -----------------------------------------------------
 
     pub fn list_limits(&self) -> Result<Vec<DailyLimit>> {
@@ -978,6 +1013,24 @@ mod tests {
         let all = db.list_profiles().unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].policy.name, "Deep Work");
+    }
+
+    #[test]
+    fn groups_round_trip_and_delete() {
+        let db = Database::open_in_memory().unwrap();
+        let g = RuleGroup {
+            id: "g1".into(),
+            name: "Social".into(),
+            domains: vec!["x.com".into()],
+            applications: vec![crate::block_policy::GroupApp {
+                native_identifier: "C:\\x.exe".into(),
+                display_name: "X".into(),
+            }],
+        };
+        db.save_group(&g).unwrap();
+        assert_eq!(db.list_groups().unwrap(), vec![g.clone()]);
+        db.delete_group("g1").unwrap();
+        assert!(db.list_groups().unwrap().is_empty());
     }
 
     #[test]

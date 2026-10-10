@@ -118,6 +118,24 @@ pub struct FeedRule {
     pub enabled: bool,
 }
 
+/// A saved set of sites and apps that can be added into any profile. Local to this PC: never synced, since
+/// applications are platform-specific and the server only knows profiles.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuleGroup {
+    pub id: String,
+    pub name: String,
+    pub domains: Vec<String>,
+    pub applications: Vec<GroupApp>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupApp {
+    pub native_identifier: String,
+    pub display_name: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
     pub policy: BlockPolicy,
