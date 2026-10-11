@@ -2,15 +2,20 @@ package app.getnowfocus.android
 
 import android.content.Intent
 import android.content.Context
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,9 +59,11 @@ class FrictionActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val pkg = intent.getStringExtra(EXTRA_PACKAGE) ?: return finish()
         val label = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(localized().getString(R.string.block_this_app))
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT), navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
+                  Box(Modifier.fillMaxSize().systemBarsPadding()) {
                     FrictionScreen(
                         appLabel = label,
                         onOpen = { FrictionGate.allow(pkg, System.currentTimeMillis()); finish() },
@@ -65,6 +72,7 @@ class FrictionActivity : ComponentActivity() {
                             finish()
                         },
                     )
+                  }
                 }
             }
         }

@@ -4,10 +4,13 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.graphics.Color
 import android.os.Bundle
 import android.text.format.DateUtils
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
@@ -136,13 +140,15 @@ class BlockedActivity : ComponentActivity() {
             intent.getBooleanExtra(EXTRA_ALLOWLIST, false) -> BlockReason.ALLOWLIST_SESSION
             else -> BlockReason.FOCUS_SESSION
         }
+        enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT), navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
         setContent {
             NowFocusTheme {
                 Surface(Modifier.fillMaxSize(), color = NowFocusColors.text) {
+                  Box(Modifier.fillMaxSize().systemBarsPadding()) {
                     ShieldScreen(
-                        title = BlockCopy.title(appLabel).resolve(this),
-                        reasonText = BlockCopy.reason(reason, until, appLabel, intent.getIntExtra(EXTRA_LIMIT_MINUTES, 0)).resolve(this),
-                        timeLabel = BlockCopy.timeLabel(reason).resolve(this),
+                        title = BlockCopy.title(appLabel).resolve(this@BlockedActivity),
+                        reasonText = BlockCopy.reason(reason, until, appLabel, intent.getIntExtra(EXTRA_LIMIT_MINUTES, 0)).resolve(this@BlockedActivity),
+                        timeLabel = BlockCopy.timeLabel(reason).resolve(this@BlockedActivity),
                         endAt = endAt,
                         fromShield = fromShield,
                         fromLimit = fromLimit,
@@ -158,6 +164,7 @@ class BlockedActivity : ComponentActivity() {
                         onPass = { pkg?.let { openWithPass(it, passKey ?: it, fromLimit) } },
                     )
                 }
+                  }
             }
         }
     }

@@ -10,9 +10,12 @@ import android.os.Bundle
 import android.provider.Settings
 import android.text.format.DateFormat
 import androidx.fragment.app.FragmentActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,6 +32,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -93,6 +99,7 @@ class MainActivity : FragmentActivity() {   // FragmentActivity: BiometricPrompt
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()   // same on API 26-36; 35+ forces it anyway (targetSdk 36), and App() pads for the bars
         val startOnUnlock = intent.getStringExtra(EXTRA_ROUTE) == ROUTE_UNLOCK
         val startOnSettings = intent.getStringExtra(EXTRA_ROUTE) == ROUTE_SETTINGS
         if (startOnSettings) intent.removeExtra(EXTRA_ROUTE)   // once: a later rotation should not come back here
@@ -231,8 +238,18 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
     val tabsVisible = screen is Screen.Home || screen is Screen.Policies || screen is Screen.EditPolicy || screen is Screen.Groups || screen is Screen.EditGroup ||
         screen is Screen.Stats || screen is Screen.Devices || screen is Screen.Active || screen is Screen.Settings
 
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f)) {
+    // Edge-to-edge: the window draws under the bars, so the root pads for them. Active (accent) and
+    // Bedtime (dark) paint their own full-bleed colour, so the strip behind the status bar matches.
+    val barColor = when (screen) { Screen.Active -> NowFocusColors.accent; Screen.Bedtime -> NowFocusColors.text; else -> NowFocusColors.bg }
+    LaunchedEffect(screen is Screen.Bedtime) {
+        val dark = screen is Screen.Bedtime
+        (context as? ComponentActivity)?.enableEdgeToEdge(
+            statusBarStyle = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+        )
+    }
+    Column(Modifier.fillMaxSize().background(barColor).statusBarsPadding().imePadding()) {
+        Box(if (tabsVisible) Modifier.weight(1f) else Modifier.weight(1f).navigationBarsPadding()) {
             when (val s = screen) {
                 Screen.Home -> HomeScreen(
                     running = running,
@@ -462,7 +479,7 @@ private fun BottomTabBar(onFocus: () -> Unit, onRules: () -> Unit, onDevices: ()
     val statsSelected = selected is Screen.Stats
     val settingsSelected = selected is Screen.Settings
     SectionRule(thick = true)
-    Row(Modifier.fillMaxWidth().background(NowFocusColors.bg)) {
+    Row(Modifier.fillMaxWidth().background(NowFocusColors.bg).navigationBarsPadding()) {
         TabItem(stringResource(R.string.tab_focus), selected = !rulesSelected && !devicesSelected && !statsSelected && !settingsSelected, modifier = Modifier.weight(1f), onClick = onFocus)
         TabItem(stringResource(R.string.rules_title), selected = rulesSelected, modifier = Modifier.weight(1f), onClick = onRules)
         TabItem(stringResource(R.string.devices_title), selected = devicesSelected, modifier = Modifier.weight(1f), onClick = onDevices)
