@@ -9,6 +9,7 @@ import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -86,6 +87,14 @@ data class ActiveRules(val windows: List<RuleWindow> = emptyList()) {
      */
     fun windowsBlocking(pkg: String, now: Long, exempt: (String) -> Boolean = { false }): List<RuleWindow> =
         blocking(now).filter { it.closes(pkg, exempt) && !it.passed(pkg, now) }
+
+    /**
+     * How long a notification from [pkg] should be held: until the first moment the answer can change, the end of
+     * the earliest blocking window or a cheat day still ahead of it. Null when nothing blocks [pkg].
+     * Per package on purpose: Android has no public way to un-snooze, so another app's pass must not shorten it.
+     */
+    fun holdUntil(pkg: String, now: Long, exempt: (String) -> Boolean = { false }): Long? =
+        windowsBlocking(pkg, now, exempt).minOfOrNull { if (it.pausedFrom > now) minOf(it.endAt, it.pausedFrom) else it.endAt }
 
     /** The live window blocking [host]: the Shield if it blocks it too (the stricter source), else the session; null if none does. */
     fun windowBlockingDomain(host: String, now: Long): RuleWindow? =
@@ -181,6 +190,22 @@ object Enforcement {
             context.startActivity(
                 Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).putExtra(":settings:fragment_args_key", context.packageName)
             )
+        }
+    }
+
+    /** Optional "Notification access", which lets [FocusNotificationListener] hold blocked apps' notifications. */
+    fun isNotificationListenerEnabled(context: Context) =
+        NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+
+    /** The per-app switch on Android 11+, the full list before that or if an OEM Settings lacks the action. */
+    fun openListenerAccess(context: Context) {
+        val list = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        if (Build.VERSION.SDK_INT < 30) return context.startActivity(list)
+        val me = ComponentName(context, FocusNotificationListener::class.java).flattenToString()
+        try {
+            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, me))
+        } catch (e: ActivityNotFoundException) {
+            context.startActivity(list)
         }
     }
 

@@ -13,4 +13,7 @@
     <string name="devices_enable_blocking">تفعيل حجب التطبيقات</string>
     <string name="devices_enable_filter">تفعيل تصفية المواقع</string>
     <string name="devices_enable_dnd">تفعيل الوصول إلى «عدم الإزعاج»</string>
+    <string name="devices_enable_hold">تأجيل إشعارات التطبيقات المحجوبة</string>
+    <string name="notif_listener_title">هل تريد تأجيل إشعارات التطبيقات المحجوبة؟</string>
+    <string name="notif_listener_description">يستخدم NowFocus «الوصول إلى الإشعارات» لمعرفة أي تطبيق نشر كل إشعار، ليُخفي إشعارات التطبيقات المحجوبة حاليًا ويعيدها عند انتهاء الحجب. لا يقرأ أبدًا ما يقوله الإشعار، ولا يخزّن أي إشعار ولا يرسله. المكالمات والمنبّهات لا تُؤجَّل أبدًا. وقد يُسمع صوت أو اهتزاز قصير قبل إخفاء الإشعار.</string>
 </resources>

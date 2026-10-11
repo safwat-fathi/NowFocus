@@ -33,6 +33,21 @@ fun accessibilityOpener(): () -> Unit {
     return { show = true }
 }
 
+/** Same disclosure-then-Settings flow for the optional Notification access. Call it at the top of a composable. */
+@Composable
+fun notificationListenerOpener(): () -> Unit {
+    val context = LocalContext.current
+    var show by remember { mutableStateOf(false) }
+    if (show) ConfirmDialog(
+        title = stringResource(R.string.notif_listener_title),
+        message = stringResource(R.string.notif_listener_description),
+        confirmLabel = stringResource(R.string.a11y_agree),
+        onConfirm = { show = false; Enforcement.openListenerAccess(context) },
+        onDismiss = { show = false },
+    )
+    return { show = true }
+}
+
 /**
  * No app can open its own service's page: ACTION_ACCESSIBILITY_DETAILS_SETTINGS needs a system-only permission
  * (verified on a Galaxy, Android 13). The highlight extras make stock Android scroll to and flash NowFocus's row;

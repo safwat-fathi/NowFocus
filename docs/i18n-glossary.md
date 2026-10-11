@@ -45,6 +45,8 @@ Everything marked **proposed** has no precedent on the site and needs a native r
 | English | Arabic |
 |---|---|
 | schedule | جدول |
+| notification | إشعار (plural: إشعارات) |
+| hold / snooze a notification until the block ends | تأجيل الإشعار |
 | pass / limit pass | تصريح |
 | cheat day | يوم استراحة |
 | unlock | فك القفل |

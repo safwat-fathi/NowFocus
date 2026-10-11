@@ -141,6 +141,51 @@ class ActiveRulesTest {
     }
 
     @Test
+    fun `holdUntil is null when nothing blocks the package`() {
+        val rules = ActiveRules(listOf(RuleWindow(endAt = 9000, domains = emptySet(), packages = setOf("com.x"))))
+        assertNull(rules.holdUntil("com.other", now = 1000))
+        assertNull(ActiveRules().holdUntil("com.x", now = 1000))
+    }
+
+    @Test
+    fun `holdUntil is the end of the window that blocks the package`() {
+        val rules = ActiveRules(listOf(RuleWindow(endAt = 9000, domains = emptySet(), packages = setOf("com.x"))))
+        assertEquals(9000L, rules.holdUntil("com.x", now = 1000))
+    }
+
+    @Test
+    fun `holdUntil takes the earlier end when the Shield and a session both block`() {
+        val rules = ActiveRules(listOf(
+            RuleWindow(endAt = 5000, domains = emptySet(), packages = setOf("com.x")),
+            RuleWindow(endAt = 9000, domains = emptySet(), packages = setOf("com.x"), source = BlockSource.COMMITMENT_SHIELD),
+        ))
+        assertEquals(5000L, rules.holdUntil("com.x", now = 1000))
+    }
+
+    @Test
+    fun `holdUntil stops at a cheat day that is still ahead`() {
+        val rules = ActiveRules(listOf(RuleWindow(endAt = 9000, domains = emptySet(), packages = setOf("com.x"), pausedFrom = 4000, pausedUntil = 6000)))
+        assertEquals(4000L, rules.holdUntil("com.x", now = 1000))
+        // Mid cheat day nothing is blocking, so nothing is held.
+        assertNull(rules.holdUntil("com.x", now = 5000))
+    }
+
+    @Test
+    fun `holdUntil ignores another app's pass but not its own`() {
+        val rules = ActiveRules(listOf(RuleWindow(endAt = 9000, domains = emptySet(), packages = setOf("com.chat", "com.video"), passes = mapOf("com.chat" to 5000L))))
+        assertNull(rules.holdUntil("com.chat", now = 1000))
+        assertEquals(9000L, rules.holdUntil("com.video", now = 1000))
+    }
+
+    @Test
+    fun `holdUntil leaves exempt packages alone in an allowlist session`() {
+        val rules = ActiveRules(listOf(RuleWindow(endAt = 9000, domains = emptySet(), packages = setOf("com.ok"), allowlist = true)))
+        assertEquals(9000L, rules.holdUntil("com.other", now = 1000, exempt = { false }))
+        assertNull(rules.holdUntil("com.other", now = 1000, exempt = { it == "com.other" }))
+        assertNull(rules.holdUntil("com.ok", now = 1000, exempt = { false }))
+    }
+
+    @Test
     fun `windowBlockingDomain prefers the Shield and matches subdomains only`() {
         val session = RuleWindow(endAt = 2000, domains = setOf("x.com"), packages = emptySet())
         val shield = RuleWindow(endAt = 3000, domains = setOf("x.com"), packages = emptySet(), source = BlockSource.COMMITMENT_SHIELD)

@@ -566,6 +566,21 @@ The DNS screen: Android Rules → Protections → DNS; Windows and macOS sidebar
 **Result:** [ ] pass  [ ] fail  [ ] skipped
 **Notes:**
 
+## K1 — Android: hold notifications from blocked apps
+Devices → **Hold notifications from blocked apps** → read the explanation → Agree → switch NowFocus on in Android's Notification access screen (sideloaded Android 13+: App info → ⋮ → Allow restricted settings first). The button disappears once it is on. Then:
+
+1. **Decides the snooze length, do this first.** Start a 2-minute session blocking an app you can message (a chat app, from another device). Send it a message. Note: is there any sound or vibration, and for how long; does the notification leave the shade; does it come back when the session ends; **does it buzz again when it comes back?** If the return is silent, the listener should snooze in 10-minute chunks (see the `ponytail:` note in `FocusNotificationListener.kt`); if it buzzes, keep full-length snoozes.
+2. **Allow-only session** on a profile that allows one app: a notification from any other app is held. SMS, the dialer, Settings, an alarm going off and NowFocus's own session notification are not.
+3. **Full shade first:** have a few notifications from the app waiting, then start the session. They are swept at that moment, not only new ones.
+4. **Shield plus a short session** on the same app: when the session ends the notification comes back and is held again until the Shield ends.
+5. **End a session early** by hand (Normal): note when the held notifications return. Expected: at the original end time, not when you ended it (Android has no way to release a snooze early). The same goes for a pass or a cheat day that starts after the notification was held.
+6. A call from a blocked app still rings. Music/navigation notifications are untouched.
+7. Switch Notification access off mid-session (nothing crashes, nothing new is held, already-held ones still return), then reboot with it on (the listener works without opening NowFocus).
+8. Grouped and message-style notifications (several from one chat) all leave the shade.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
 ---
 
 # Things I know are rough (you don't need to report these as bugs)
@@ -577,6 +592,7 @@ The DNS screen: Android Rules → Protections → DNS; Windows and macOS sidebar
 - **Desktop DNS during a session is unverified on real machines** (PowerShell on Windows, `networksetup` as root on macOS). It uses IPv4 presets only, only adapters that are up when the session starts or on the 30s check, and browsers with their own secure DNS ignore it.
 - **Windows has no autostart**, so schedules, Bedtime and sync only work while the app is running.
 - **Windows and macOS in-app blocking is address-only and unverified.** It closes the tab on Shorts / Reels pages (Windows: Chrome, Edge, Brave, Firefox; macOS: Safari, Chrome, Brave, Edge, Arc). It can't hide parts of a page, so X For you, TikTok and YouTube Home/Related stay Android-only. Another browser, or turning Automation off on a Mac, gets around it. Closing the last tab closes the window.
+- **Held notifications (Android):** the sound or vibration can still play briefly before a notification is hidden, and ending a session early (or a pass or cheat day) doesn't bring held ones back until the original end. Daily limits and partial blocks don't hold notifications.
 - **Android background sync is every ~15 minutes and inexact.** Samsung's battery manager may delay it; the session joins sooner if you open the app.
 - **A remote Locked session can lock a device for up to 24 hours** (the phone and PC cap it; the server cap is not deployed). Turn "Join sessions from my other devices" off if that worries you.
 - **Cheat day uses the wall clock**, so changing the date can start one early. It is a plan-ahead tool, not tamper-proof.

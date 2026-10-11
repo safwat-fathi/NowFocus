@@ -42,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit, onVpnResult: () -> Unit) {
     val context = LocalContext.current
     val openAccessibility = accessibilityOpener()
+    val openListener = notificationListenerOpener()
     // The VPN consent dialog closes itself unless it is started for a result (it reads its caller from there),
     // so a plain startActivity never showed it. The result also re-reads the tile, since no resume follows a dialog.
     var vpnKey by remember { mutableIntStateOf(0) }
@@ -57,6 +58,8 @@ fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit
         val websiteFilterOk = Enforcement.isVpnPermitted(context)
         val notifOk = context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted ?: false
         val allOk = appBlockingOk && websiteFilterOk && notifOk
+        // Optional, so it is not part of allOk: leaving it off must not turn a working phone to Degraded.
+        val holdOk = Enforcement.isNotificationListenerEnabled(context)
 
         Column(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
             Spacer(Modifier.height(NowFocusSpace.s2))
@@ -108,6 +111,11 @@ fun DevicesScreen(resumeKey: Int, account: SyncStatus, onOpenAccount: () -> Unit
             if (!notifOk) {
                 Spacer(Modifier.height(NowFocusSpace.s2))
                 GhostButton(stringResource(R.string.devices_enable_dnd)) { Enforcement.openDndAccess(context) }
+            }
+            if (!holdOk) {
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                GhostButton(stringResource(R.string.devices_enable_hold), onClick = openListener)
+                Text(stringResource(R.string.restricted_settings_hint), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
             }
             SectionRule()
         }
