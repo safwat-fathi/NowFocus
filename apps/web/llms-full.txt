@@ -46,6 +46,10 @@ It is a self-control tool, not a lock. Someone who owns the device can uninstall
 - https://nowfocus.online/blog/cold-turkey-mac-and-mobile/
 - https://nowfocus.online/blog/opal-alternative-android/
 - https://nowfocus.online/blog/forest-alternative/
+- https://nowfocus.online/blog/block-youtube-shorts-reels-tiktok-feed/
+- https://nowfocus.online/blog/choose-your-dns-android-focus/
+- https://nowfocus.online/blog/arabic-focus-app/
+- https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/
 
 ## Arabic pages (العربية)
 - https://nowfocus.online/ar/
@@ -57,3 +61,4 @@ It is a self-control tool, not a lock. Someone who owns the device can uninstall
 - https://nowfocus.online/ar/terms/
 - https://nowfocus.online/ar/blog/
 - https://nowfocus.online/ar/blog/why-nowfocus/
+- https://nowfocus.online/ar/blog/arabic-focus-app/

@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why NowFocus’s Code Is Public, and How It Will Pay for Itself</title>
+<meta name="description" content="NowFocus’s code is public under a source-available licence so you can check what it does with your data. Here is why, and the plan for paying for it.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="theme-color" content="#f3f2f2">
+<link rel="canonical" href="https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/archivo-800.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="NowFocus">
+<meta property="og:title" content="Why NowFocus’s Code Is Public, and How It Will Pay for Itself">
+<meta property="og:description" content="NowFocus’s code is public under a source-available licence so you can check what it does with your data. Here is why, and the plan for paying for it.">
+<meta property="og:url" content="https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/">
+<meta property="og:image" content="https://nowfocus.online/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="NowFocus: Your focus. Your rules.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/site.css">
+<script src="/consent.js" defer></script>
+<script src="/waitlist.js" defer></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://nowfocus.online/#org",
+      "name": "NowFocus",
+      "url": "https://nowfocus.online/",
+      "logo": {
+        "@type": "ImageObject",
+        "@id": "https://nowfocus.online/#logo",
+        "url": "https://nowfocus.online/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "hello@nowfocus.online",
+        "availableLanguage": [
+          "en",
+          "ar"
+        ]
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://nowfocus.online/#website",
+      "url": "https://nowfocus.online/",
+      "name": "NowFocus",
+      "description": "NowFocus is a privacy-first focus app for Android, macOS and Windows.",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://nowfocus.online/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://nowfocus.online/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Source-available and pricing",
+          "item": "https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/"
+        }
+      ]
+    },
+    {
+      "@type": "BlogPosting",
+      "@id": "https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/#article",
+      "headline": "Why NowFocus’s Code Is Public, and How It Will Pay for Itself",
+      "description": "NowFocus’s code is public under a source-available licence so you can check what it does with your data. Here is why, and the plan for paying for it.",
+      "datePublished": "2026-10-11",
+      "dateModified": "2026-10-11",
+      "inLanguage": "en",
+      "mainEntityOfPage": "https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/",
+      "isPartOf": {
+        "@id": "https://nowfocus.online/#website"
+      },
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "NowFocus team"
+      },
+      "image": "https://nowfocus.online/og-image.png"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is NowFocus open source?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. NowFocus is source-available under the Functional Source License (FSL-1.1-ALv2). You can read, build and run the code, but you may not use it to offer a competing product or service. Each version becomes Apache 2.0 two years after its release."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is NowFocus free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Every build is free to download and nothing is locked behind a payment today. Paid plans may come later, and the download page will say so before they do."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How will NowFocus make money?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The plan is to keep core focus features free and charge for extras such as sync, analytics and features for families or teams. It does not plan to show ads or sell your data. No prices have been decided."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="nav" aria-label="Main">
+  <a class="nav-brand" href="/">
+    <svg class="mark" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
+    NowFocus
+  </a>
+  <a class="nav-link" href="/#what">What it is</a>
+  <a class="nav-link" href="/#different">Why it’s different</a>
+  <a class="nav-link" href="/#platforms">Platforms</a>
+  <a class="nav-link" href="/blog/" aria-current="page">Blog</a>
+  <a class="nav-link" href="/download/">Download</a>
+  <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
+</nav>
+
+<main id="main">
+<div class="page">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">Home</a></li>
+      <li><a href="/blog/">Blog</a></li>
+      <li aria-current="page">Source-available and pricing</li>
+    </ol>
+  </nav>
+
+  <header class="article-hero">
+    <span class="kicker">Vision</span>
+    <h1>Why NowFocus’s Code Is Public, and How It Will Pay for Itself</h1>
+    <div class="article-meta">
+      <span>By NowFocus team</span>
+      <span>Published 11 October 2026</span>
+      <span>6 min read</span>
+    </div>
+  </header>
+
+  <article class="prose">
+    <p class="lede">A focus app gets deep access to your phone: it can see which app is in front, filter your DNS lookups, and record a voice note to yourself. “Trust us” is not a good enough answer for that. So the code is public. You can read it.</p>
+
+    <h2>What “public” means here</h2>
+    <p>The Android app, the Windows app, this website and the sync API all live in one repository on GitHub. They are licensed under the <strong>Functional Source License (FSL-1.1-ALv2)</strong>. In plain terms:</p>
+    <ul>
+      <li>You can read, build and run it, and use it for your own purposes. The <a href="https://github.com/safwat-fathi/NowFocus">repository is on GitHub</a>.</li>
+      <li>You cannot use it to offer a competing product or service.</li>
+      <li>Each version becomes Apache 2.0 two years after its release, at which point the restriction falls away for that version.</li>
+    </ul>
+    <p>We call this <strong>source-available</strong>, not open source, on purpose. Open source has a specific meaning, and a licence that forbids competing use does not meet it. We would rather be accurate than borrow a better-sounding label.</p>
+
+    <h2>Why we did it</h2>
+    <p>Two reasons, and they pull in different directions.</p>
+    <ol>
+      <li><strong>You should be able to audit it.</strong> We say things like “signed out, the app does not connect to any NowFocus server” and “the VPN handles DNS lookups only”. With the code public, you do not have to take our word for either. That matters more for a tool with this much access than for most apps.</li>
+      <li><strong>We would like to keep existing.</strong> A fully permissive licence would let anyone repackage the app under another name and compete with the people building it. FSL blocks that for two years and then opens everything up.</li>
+    </ol>
+    <p>It is not a perfect trade, and not everyone will like the competing-use limit. We think it is the honest middle between a closed app and a free-for-all.</p>
+
+    <h2>How the money is meant to work</h2>
+    <p>NowFocus is free to download today, and nothing is locked behind a payment. Here is the plan from here, in the order that matters:</p>
+    <ul>
+      <li><strong>The core stays free.</strong> Being able to block sites and apps and run a focus session should not cost anything.</li>
+      <li><strong>Paid plans, if they come, are for the extras:</strong> things like synchronisation across devices, deeper analytics, and features for families or teams.</li>
+      <li><strong>No ads, and no selling your data.</strong> This is the part that shapes everything else. Revenue from subscriptions means we have no reason to collect your browsing, and an app with this much access should not be funded by what it can see.</li>
+    </ul>
+    <p>Nothing about prices is decided. When paid plans exist, the <a href="/download/">download page</a> will say so before they do, which is already what it promises.</p>
+
+    <div class="callout-strong">
+      <h3>What this does not mean</h3>
+      <p>Public code is not a claim of perfection. The apps are early access, some platforms are further along than others, and a focus app is a self-control aid rather than a lock. If you read the code and find something that does not match what we wrote here, tell us at hello@nowfocus.online.</p>
+    </div>
+
+    <p>If you want the longer argument for building friction instead of relying on willpower, start with <a href="/blog/why-nowfocus/">why NowFocus exists</a>. If you want to see what the feature work looks like in practice, <a href="/blog/block-youtube-shorts-reels-tiktok-feed/">partial blocking</a> and <a href="/blog/choose-your-dns-android-focus/">the DNS screen</a> are both in the repository.</p>
+
+    <h2>Frequently asked questions</h2>
+    <div class="faq">
+      <details>
+        <summary>Is NowFocus open source?</summary>
+        <p>No. NowFocus is source-available under the Functional Source License (FSL-1.1-ALv2). You can read, build and run the code, but you may not use it to offer a competing product or service. Each version becomes Apache 2.0 two years after its release.</p>
+      </details>
+      <details>
+        <summary>Is NowFocus free?</summary>
+        <p>Yes. Every build is free to download and nothing is locked behind a payment today. Paid plans may come later, and the download page will say so before they do.</p>
+      </details>
+      <details>
+        <summary>How will NowFocus make money?</summary>
+        <p>The plan is to keep core focus features free and charge for extras such as sync, analytics and features for families or teams. It does not plan to show ads or sell your data. No prices have been decided.</p>
+      </details>
+    </div>
+
+    <div class="article-cta">
+      <h3>Read the code, then try the app</h3>
+      <p>The repository is public. The Android build is free to download.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/download/android/">Get the Android build</a>
+        <button type="button" class="btn btn-ghost" data-waitlist-open>Join Waitlist</button>
+      </div>
+    </div>
+  </article>
+</div>
+</main>
+
+<footer class="foot">
+  <span class="foot-brand">
+    <svg class="mark" width="20" height="20" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
+    © 2026 NowFocus
+  </span>
+  <nav class="foot-links" aria-label="Footer">
+    <a href="/download/">Download</a>
+    <a href="/download/android/">Android</a>
+    <a href="/download/macos/">macOS</a>
+    <a href="/download/windows/">Windows</a>
+    <a href="/blog/">Blog</a>
+    <a href="/privacy/">Privacy</a>
+    <a href="/terms/">Terms</a>
+    <a href="mailto:hello@nowfocus.online">Contact</a>
+    <button type="button" class="foot-btn" data-consent-reset>Cookie settings</button>
+  </nav>
+</footer>
+</body>
+</html>

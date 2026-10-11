@@ -25,6 +25,10 @@ Status (2026-10-07): free, not in any store. Windows has a public early-access i
 - [Cold Turkey for Mac and Mobile](https://nowfocus.online/blog/cold-turkey-mac-and-mobile/): closing the cross-device loophole left by desktop-only blockers
 - [Opal Alternative for Android](https://nowfocus.online/blog/opal-alternative-android/): native Android accessibility, feed blocking, and strict focus without the $99/year fee
 - [Forest Alternative](https://nowfocus.online/blog/forest-alternative/): why structural friction beats cartoon trees for serious deep work
+- [Block YouTube Shorts and Reels Without Deleting the App](https://nowfocus.online/blog/block-youtube-shorts-reels-tiktok-feed/): hide feeds on Android while keeping the rest of each app
+- [Choose the DNS Your Android Focus App Uses](https://nowfocus.online/blog/choose-your-dns-android-focus/): pick the DNS server the Android website filter uses
+- [NowFocus Now Speaks Arabic, Right to Left](https://nowfocus.online/blog/arabic-focus-app/): full right-to-left app and in-app language switch
+- [Why NowFocus’s Code Is Public, and How It Will Pay for Itself](https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/): free core, optional paid extras, no ads
 
 ## Arabic (العربية)
 

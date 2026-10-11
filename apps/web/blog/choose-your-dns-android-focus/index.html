@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choose the DNS Your Android Focus App Uses</title>
+<meta name="description" content="NowFocus lets you pick the DNS server it uses on Android: AdGuard, Cloudflare, CleanBrowsing, Quad9 or your own. What each does, and when it runs.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="theme-color" content="#f3f2f2">
+<link rel="canonical" href="https://nowfocus.online/blog/choose-your-dns-android-focus/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preload" href="/fonts/archivo-800.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="NowFocus">
+<meta property="og:title" content="Choose the DNS Your Android Focus App Uses">
+<meta property="og:description" content="NowFocus lets you pick the DNS server it uses on Android: AdGuard, Cloudflare, CleanBrowsing, Quad9 or your own. What each does, and when it runs.">
+<meta property="og:url" content="https://nowfocus.online/blog/choose-your-dns-android-focus/">
+<meta property="og:image" content="https://nowfocus.online/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="NowFocus: Your focus. Your rules.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/site.css">
+<script src="/consent.js" defer></script>
+<script src="/waitlist.js" defer></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://nowfocus.online/#org",
+      "name": "NowFocus",
+      "url": "https://nowfocus.online/",
+      "logo": {
+        "@type": "ImageObject",
+        "@id": "https://nowfocus.online/#logo",
+        "url": "https://nowfocus.online/logo-512.png",
+        "width": 512,
+        "height": 512
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "hello@nowfocus.online",
+        "availableLanguage": [
+          "en",
+          "ar"
+        ]
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://nowfocus.online/#website",
+      "url": "https://nowfocus.online/",
+      "name": "NowFocus",
+      "description": "NowFocus is a privacy-first focus app for Android, macOS and Windows.",
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://nowfocus.online/blog/choose-your-dns-android-focus/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://nowfocus.online/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Blog",
+          "item": "https://nowfocus.online/blog/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Choose your DNS",
+          "item": "https://nowfocus.online/blog/choose-your-dns-android-focus/"
+        }
+      ]
+    },
+    {
+      "@type": "BlogPosting",
+      "@id": "https://nowfocus.online/blog/choose-your-dns-android-focus/#article",
+      "headline": "Choose the DNS Your Android Focus App Uses",
+      "description": "NowFocus lets you pick the DNS server it uses on Android: AdGuard, Cloudflare, CleanBrowsing, Quad9 or your own. What each does, and when it runs.",
+      "datePublished": "2026-10-11",
+      "dateModified": "2026-10-11",
+      "inLanguage": "en",
+      "mainEntityOfPage": "https://nowfocus.online/blog/choose-your-dns-android-focus/",
+      "isPartOf": {
+        "@id": "https://nowfocus.online/#website"
+      },
+      "publisher": {
+        "@id": "https://nowfocus.online/#org"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "NowFocus team"
+      },
+      "image": "https://nowfocus.online/og-image.png"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://nowfocus.online/blog/choose-your-dns-android-focus/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Which DNS server should I pick for a focus app on Android?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on what you want filtered. AdGuard Family blocks adult sites, ads and malware, Cloudflare Family blocks adult sites and malware, CleanBrowsing Family blocks adult sites, and Quad9 blocks malware. My network’s DNS leaves everything as it is."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does NowFocus send all my traffic through its VPN?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The VPN service handles DNS lookups only. It answers “no such site” for blocked domains and passes other lookups on. The rest of your traffic does not go through it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does the DNS screen say Conflict?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Your phone’s Private DNS is set to a hostname, and Android sends every lookup there instead of through NowFocus. Set Private DNS to Automatic or Off so NowFocus’s blocklist applies, or keep using that provider if filtering by the provider is enough."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="nav" aria-label="Main">
+  <a class="nav-brand" href="/">
+    <svg class="mark" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
+    NowFocus
+  </a>
+  <a class="nav-link" href="/#what">What it is</a>
+  <a class="nav-link" href="/#different">Why it’s different</a>
+  <a class="nav-link" href="/#platforms">Platforms</a>
+  <a class="nav-link" href="/blog/" aria-current="page">Blog</a>
+  <a class="nav-link" href="/download/">Download</a>
+  <button type="button" class="btn btn-primary" data-waitlist-open>Join Waitlist</button>
+</nav>
+
+<main id="main">
+<div class="page">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <ol>
+      <li><a href="/">Home</a></li>
+      <li><a href="/blog/">Blog</a></li>
+      <li aria-current="page">Choose your DNS</li>
+    </ol>
+  </nav>
+
+  <header class="article-hero">
+    <span class="kicker">How-to</span>
+    <h1>Choose the DNS Your Android Focus App Uses</h1>
+    <div class="article-meta">
+      <span>By NowFocus team</span>
+      <span>Published 11 October 2026</span>
+      <span>6 min read</span>
+    </div>
+  </header>
+
+  <article class="prose">
+    <p class="lede">When a focus app blocks a website on Android, something has to answer the phone’s “where is this site?” question with “nowhere”. That something is DNS. NowFocus’s website filter works at exactly that level, and from version 0.9 you choose which DNS server stands behind it.</p>
+
+    <h2>How the website filter works</h2>
+    <p>Android has no other way to filter sites for every app at once. So NowFocus runs a local VPN service that handles <strong>DNS lookups only</strong>. For a site on your blocklist it answers “no such site”. Every other lookup is passed on. The rest of your traffic never goes through it.</p>
+    <p>The new DNS screen sits under Rules, then Protections. It has one job: decide where the <em>allowed</em> lookups go. Your blocklist always applies first, whatever you pick.</p>
+
+    <h2>The servers you can choose</h2>
+    <ul>
+      <li><strong>My network’s DNS:</strong> NowFocus changes nothing. This is the plain, no-extras option.</li>
+      <li><strong>AdGuard Family:</strong> blocks adult sites, ads and malware.</li>
+      <li><strong>Cloudflare Family:</strong> blocks adult sites and malware.</li>
+      <li><strong>CleanBrowsing Family:</strong> blocks adult sites.</li>
+      <li><strong>Quad9:</strong> blocks malware.</li>
+      <li><strong>Other server:</strong> any DNS-over-TLS server you type in, like dns.example.com.</li>
+    </ul>
+    <p>The adult-site, ad and malware filtering is done by the server you pick, not by NowFocus. That is worth knowing in both directions: you get a maintained list without us curating it, and you are trusting that provider with your lookups. Pick one you are comfortable with, or stay on your network’s own DNS.</p>
+    <p>If your chosen server stops answering, lookups fall back to your network’s DNS for now, and the screen says “Not answering” so you are not left wondering.</p>
+
+    <h2>Only during sessions, or always on</h2>
+    <p>Under “When it runs” there are two choices:</p>
+    <ol>
+      <li><strong>Only during sessions</strong> (the default): the server is used while a focus session or the Commitment Shield is live, then your normal DNS comes back.</li>
+      <li><strong>Always on:</strong> NowFocus keeps the DNS running all the time, including after a restart. The blocklist still applies only during a session or the Shield. What stays on is the family filter you chose.</li>
+    </ol>
+    <p>“Always on” has two practical conditions. Android allows only one VPN app at a time, and Private DNS must be set to Automatic or Off. The screen shows a status for each case: Off, Waiting, Active, Needs permission, Conflict, Not answering.</p>
+
+    <div class="callout-strong">
+      <h3>If your phone uses a Private DNS hostname</h3>
+      <p>When Android’s Private DNS is set to a specific hostname, the phone sends every lookup there, past NowFocus. The DNS screen shows “Conflict” and offers one tap to keep using that provider. To get NowFocus’s blocklist working too, set Private DNS to Automatic or Off. As a backstop, NowFocus also reads the address bar of supported browsers and closes a blocked domain it sees, which helps in cases like this one.</p>
+    </div>
+
+    <h2>What it cannot do</h2>
+    <ul>
+      <li>Browsers with their own secure DNS ignore the setting.</li>
+      <li>It does not filter by app, only by domain.</li>
+      <li>It is a self-control tool, not a lock. Someone determined can change DNS settings back.</li>
+    </ul>
+    <p>The Windows and Mac apps are getting the same DNS screen, but we have not verified it on real machines yet, so we are not promising it there. For the apps-and-feeds side of the story, see <a href="/blog/block-youtube-shorts-reels-tiktok-feed/">how partial blocking removes feeds without removing the app</a>.</p>
+
+    <h2>Frequently asked questions</h2>
+    <div class="faq">
+      <details>
+        <summary>Which DNS server should I pick for a focus app on Android?</summary>
+        <p>It depends on what you want filtered. AdGuard Family blocks adult sites, ads and malware, Cloudflare Family blocks adult sites and malware, CleanBrowsing Family blocks adult sites, and Quad9 blocks malware. My network’s DNS leaves everything as it is.</p>
+      </details>
+      <details>
+        <summary>Does NowFocus send all my traffic through its VPN?</summary>
+        <p>No. The VPN service handles DNS lookups only. It answers “no such site” for blocked domains and passes other lookups on. The rest of your traffic does not go through it.</p>
+      </details>
+      <details>
+        <summary>Why does the DNS screen say Conflict?</summary>
+        <p>Your phone’s Private DNS is set to a hostname, and Android sends every lookup there instead of through NowFocus. Set Private DNS to Automatic or Off so NowFocus’s blocklist applies, or keep using that provider if filtering by the provider is enough.</p>
+      </details>
+    </div>
+
+    <div class="article-cta">
+      <h3>Pick the DNS that fits your rules</h3>
+      <p>The DNS screen is in Android 0.9. Open Rules, then Protections, then DNS.</p>
+      <div class="actions">
+        <a class="btn btn-primary" href="/download/android/">Get the Android build</a>
+        <button type="button" class="btn btn-ghost" data-waitlist-open>Join Waitlist</button>
+      </div>
+    </div>
+  </article>
+</div>
+</main>
+
+<footer class="foot">
+  <span class="foot-brand">
+    <svg class="mark" width="20" height="20" viewBox="0 0 100 100" aria-hidden="true"><path d="M9 36V9h27M64 9h27v27M91 64v27H64M36 91H9V64" fill="none" stroke="#201e1d" stroke-width="13" stroke-linecap="square"/><rect x="37" y="37" width="26" height="26" fill="#ec3013"/></svg>
+    © 2026 NowFocus
+  </span>
+  <nav class="foot-links" aria-label="Footer">
+    <a href="/download/">Download</a>
+    <a href="/download/android/">Android</a>
+    <a href="/download/macos/">macOS</a>
+    <a href="/download/windows/">Windows</a>
+    <a href="/blog/">Blog</a>
+    <a href="/privacy/">Privacy</a>
+    <a href="/terms/">Terms</a>
+    <a href="mailto:hello@nowfocus.online">Contact</a>
+    <button type="button" class="foot-btn" data-consent-reset>Cookie settings</button>
+  </nav>
+</footer>
+</body>
+</html>
