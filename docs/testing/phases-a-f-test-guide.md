@@ -145,12 +145,12 @@ Also note whether Chrome with "Use secure DNS" on, and Firefox with DNS over HTT
 
 ### A4. Onboarding ends on a first session (clears app data)
 1. Settings, Apps, NowFocus, Storage, **Clear data** (this erases everything on the phone's NowFocus). Open NowFocus.
-2. Go through Welcome, Goals, People, Permissions. On Permissions leave Accessibility **off**.
+2. Go through Welcome, Goals, People, Heads up, Permissions. On Permissions leave Accessibility **off**.
 3. On the last step, pick an app. Try to start.
 4. Turn Accessibility on (use "Allow restricted settings" if the switch is grey) and come back.
 5. Tap **Start 10 minutes**. Open the app you picked.
 
-**Expect:** 5 steps ("STEP 5 OF 5, YOUR FIRST SESSION"). With Accessibility off the start button stays disabled and the step shows the Accessibility row. With it on, the session starts on a profile called "First focus" and the app you picked is bounced to the "This can wait" screen. Android 13 asked for notification permission on this step.
+**Expect:** 6 steps ("STEP 6 OF 6, YOUR FIRST SESSION"). Step 4 "HEADS UP" explains the Android warning and its "View the source code" button opens the GitHub repo. With Accessibility off the start button stays disabled and the step shows the Accessibility row. With it on, the session starts on a profile called "First focus" and the app you picked is bounced to the "This can wait" screen. Android 13 asked for notification permission on this step.
 
 **Result:** [ ] pass  [ ] fail  [ ] skipped
 **Notes:**
