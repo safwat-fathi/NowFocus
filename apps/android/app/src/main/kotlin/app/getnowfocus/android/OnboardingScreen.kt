@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 
 /**
- * 6 steps: Welcome, Goals, People, Heads up (calms the user before Android's Accessibility warning),
+ * 7 steps: Welcome, Goals, People, Heads up + Open source (calm the user before Android's Accessibility warning),
  * Permissions, First session. The mockup's pairing-code step (a
  * Mac/PC) doesn't apply here - cross-device sync is Phase 6 in
  * native_tech_stack_spec.md, not built yet. Goals and People are skippable, and so is the last step.
@@ -89,7 +89,8 @@ fun OnboardingScreen(
                 1 -> OnboardingGoals(goals, onAddGoal, onRemoveGoal)
                 2 -> OnboardingPeople(people, onAddPerson, onRemovePerson, onSetLastTalked)
                 3 -> OnboardingHeadsUp()
-                4 -> OnboardingPermissions(resumeKey)
+                4 -> OnboardingOpenSource()
+                5 -> OnboardingPermissions(resumeKey)
                 else -> OnboardingFirstSession(
                     picked = picked,
                     onPick = { picked = picked + it },
@@ -119,7 +120,7 @@ fun OnboardingScreen(
     }
 }
 
-private const val LAST_STEP = 5
+private const val LAST_STEP = 6
 private const val SOURCE_URL = "https://github.com/safwat-fathi/NowFocus"
 
 @Composable
@@ -245,7 +246,6 @@ private fun OnboardingWelcome() {
 
 @Composable
 private fun OnboardingHeadsUp() {
-    val context = LocalContext.current
     Text(stringResource(R.string.onb_heads), style = kickerStyle())
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(stringResource(R.string.onb_heads_title), style = headingStyle(28.sp))
@@ -256,7 +256,7 @@ private fun OnboardingHeadsUp() {
     )
     Spacer(Modifier.height(NowFocusSpace.s4))
     SectionRule(thick = true)
-    listOf(R.string.onb_heads_point1, R.string.onb_heads_point2, R.string.onb_heads_point3, R.string.onb_heads_point4).forEachIndexed { i, id ->
+    listOf(R.string.onb_heads_point1, R.string.onb_heads_point2, R.string.onb_heads_point3).forEachIndexed { i, id ->
         Row(Modifier.fillMaxWidth().padding(vertical = NowFocusSpace.s3)) {
             Text(
                 String.format(java.util.Locale.ROOT, "%02d", i + 1),
@@ -267,12 +267,26 @@ private fun OnboardingHeadsUp() {
         }
         SectionRule()
     }
-    GhostButton(stringResource(R.string.onb_heads_source)) {
+}
+
+@Composable
+private fun OnboardingOpenSource() {
+    val context = LocalContext.current
+    Text(stringResource(R.string.onb_oss), style = kickerStyle())
+    Spacer(Modifier.height(NowFocusSpace.s2))
+    Text(stringResource(R.string.onb_oss_title), style = headingStyle(28.sp))
+    Spacer(Modifier.height(NowFocusSpace.s2))
+    Text(
+        stringResource(R.string.onb_oss_body),
+        style = TextStyle(fontFamily = ArchivoRegular, fontSize = 15.sp, color = NowFocusColors.neutral800),
+    )
+    Spacer(Modifier.height(NowFocusSpace.s4))
+    GhostButton(stringResource(R.string.onb_oss_source)) {
         context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(SOURCE_URL)))
     }
     Spacer(Modifier.height(NowFocusSpace.s2))
     Text(
-        stringResource(R.string.onb_heads_how),
+        stringResource(R.string.onb_oss_how),
         style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700),
     )
     Text(
