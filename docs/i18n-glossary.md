@@ -35,7 +35,8 @@ Everything marked **proposed** has no precedent on the site and needs a native r
 | sync | المزامنة |
 | account | الحساب |
 | settings | الإعدادات |
-| friction | احتكاك |
+| friction | حواجز التريّث / صعوبة مقصودة (واحتكاك سلوكي في السياق الفلسفي) |
+| opening friction | التريّث قبل الفتح / مهلة التريّث قبل فتح التطبيقات |
 | urge | الرغبة الملحّة |
 | grace window | مهلة التراجع |
 | voice note | ملاحظة صوتية |

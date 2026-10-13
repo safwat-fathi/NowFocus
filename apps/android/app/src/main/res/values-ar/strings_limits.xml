@@ -18,7 +18,7 @@
     <string name="limits_minutes_per_day">دقائق في اليوم</string>
     <string name="limits_used_up_note">استُنفد اليوم: رفعه أو إزالته يسري من منتصف الليل. التصريح في شاشة الحجب هو السبيل إلى وقت إضافي اليوم.</string>
     <string name="limits_remove">إزالة الحد</string>
-    <string name="friction_apps_title">احتكاك الفتح</string>
-    <string name="friction_apps_intro">افتح أحد هذه التطبيقات فيطلب منك NowFocus أولًا أن تتنفس عشر ثوانٍ وتقول لماذا جئت. ثم يُفتح التطبيق ويبقى مفتوحًا عشر دقائق. يعمل في أي وقت، داخل الجلسة أو خارجها.</string>
+    <string name="friction_apps_title">التريّث قبل الفتح</string>
+    <string name="friction_apps_intro">عند محاولة فتح أي من هذه التطبيقات، يمنحك NowFocus وقفة قصيرة للتنفس لمدة 10 ثوانٍ وتحديد هدفك قبل الدخول. يفتح التطبيق بعدها لمدة 10 دقائق فقط. تعمل هذه الميزة دائمًا، سواء كنت في جلسة تركيز أم لا.</string>
     <string name="friction_apps_add">+ إضافة تطبيق…</string>
 </resources>

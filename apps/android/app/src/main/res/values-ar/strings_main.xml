@@ -131,8 +131,8 @@
         <item quantity="many">يومًا متبقيًا</item>
         <item quantity="other">يوم متبقٍ</item>
     </plurals>
-    <string name="shield_sites_degraded">المواقع متراجعة — لم يُمنح إذن VPN</string>
-    <string name="shield_apps_degraded">التطبيقات متراجعة — إمكانية الوصول غير مفعّلة</string>
+    <string name="shield_sites_degraded">حجب المواقع معطّل — لم يُمنح إذن VPN</string>
+    <string name="shield_apps_degraded">حجب التطبيقات معطّل — إمكانية الوصول غير مفعّلة</string>
     <string name="shield_locked_sites">المواقع المقفلة</string>
     <string name="shield_locked_apps">التطبيقات المقفلة</string>
     <string name="shield_caveat">إيقاف إمكانية الوصول أو سحب إذن VPN أو حذف التطبيق ما زال يوقف هذا الدرع — لا سبيل إلى تجاوز ذلك في تطبيق عادي. وأثناء عمله لا يمكن لتطبيق VPN آخر أن يعمل في الوقت نفسه (يسمح Android بواحد فقط).</string>
