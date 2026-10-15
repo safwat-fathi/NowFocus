@@ -1,5 +1,6 @@
-// `pnpm run notify --platform android --version 0.9 --url <link> --notes "Fix A|Add B" [--to me@x.com] [--send]`
+// `pnpm run notify --platform android --version 0.9 --url <link> --notes "Fix A|Add B" [--to me@x.com] [--first-time-only] [--send]`
 // Emails the waitlist about a new test build. Dry run unless --send; each (person, platform, version) is sent once.
+// --first-time-only skips anyone who has already been sent any build.
 import { parseArgs } from 'node:util';
 import { DataSource } from 'typeorm';
 import { loadConfig } from './config.js';
@@ -15,6 +16,7 @@ const { values: v } = parseArgs({
   options: {
     platform: { type: 'string' }, version: { type: 'string' }, url: { type: 'string' }, notes: { type: 'string' },
     to: { type: 'string' }, locale: { type: 'string' }, send: { type: 'boolean', default: false },
+    'first-time-only': { type: 'boolean', default: false },
   },
 });
 
@@ -31,7 +33,7 @@ if (!config.brevoApiKey && (v.send || v.to)) die('BREVO_API_KEY is not set');
 const ds = await new DataSource(dataSourceOptions(config.databaseUrl)).initialize();
 try {
   const notes = (v.notes ?? '').split('|').map((s) => s.trim()).filter(Boolean);
-  await notifyVersion(ds, config, { platform, version: v.version!, url: url!, notes, send: v.send!, to: v.to, locale: v.locale as 'en' | 'ar' | undefined });
+  await notifyVersion(ds, config, { platform, version: v.version!, url: url!, notes, send: v.send!, to: v.to, firstTimeOnly: v['first-time-only'], locale: v.locale as 'en' | 'ar' | undefined });
 } finally {
   await ds.destroy();
 }

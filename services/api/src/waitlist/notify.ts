@@ -16,6 +16,8 @@ export interface NotifyOpts {
   to?: string;
   /** Preview language for `to`. */
   locale?: Locale;
+  /** Only people who have never been sent any build, on any platform or version. */
+  firstTimeOnly?: boolean;
 }
 
 export interface NotifyResult { pending: number; sent: number; failed: number }
@@ -44,6 +46,7 @@ export async function notifyVersion(ds: DataSource, config: Config, o: NotifyOpt
     `select w.id, w.email, w.locale from waitlist w
       where $1 = any(w.platforms) and w.unsubscribed_at is null
         and not exists (select 1 from waitlist_sends s where s.waitlist_id = w.id and s.platform = $1 and s.version = $2)
+        ${o.firstTimeOnly ? 'and not exists (select 1 from waitlist_sends s where s.waitlist_id = w.id)' : ''}
       order by w.created_at`,
     [o.platform, o.version],
   );
