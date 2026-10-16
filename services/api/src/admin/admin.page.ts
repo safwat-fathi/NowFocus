@@ -23,22 +23,24 @@ td.fr{max-width:420px;white-space:pre-wrap;word-break:break-word}.mute{color:var
 <button id="csv">Download CSV</button><button id="out">Sign out</button>
 <span id="count" class="mute"></span></div>
 <div class="table"><table><thead><tr><th>Date</th><th>Email</th><th>Platforms</th><th>Lang</th><th>Sent</th><th>Feature request</th><th>Issue</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+<div class="bar" id="pager"><button id="prev">Prev</button><span id="pg" class="mute"></span><button id="next">Next</button><select id="size"><option>25</option><option selected>50</option><option>100</option><option>200</option></select><span class="mute">per page</span></div>
 </div>
 <script>
-const $=id=>document.getElementById(id);let rows=[];
+const $=id=>document.getElementById(id);let rows=[],page=0,PAGE=50;
 const tok=()=>{try{return localStorage.getItem('t')||''}catch{return ''}};
 async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{Authorization:'Bearer '+tok()}});
  if(r.status===401||r.status===404){try{localStorage.removeItem('t')}catch{};show(false);$('err').textContent=r.status===401?'Wrong token':'Admin is disabled';throw 0}
  if(r.status===429){$('err').textContent='Too many attempts, wait a minute';throw 0}
  if(!r.ok)throw 0;return r.status===204?null:r.json()}
 function show(on){$('app').hidden=!on;$('login').hidden=on}
-async function load(){rows=await api('/v1/admin/waitlist');show(true);draw()}
+async function load(){rows=await api('/v1/admin/waitlist');page=0;show(true);draw()}
 function view(){const q=$('q').value.toLowerCase(),p=$('plat').value,f=$('fr').checked;
  return rows.filter(r=>(!p||r.platforms.includes(p))&&(!f||r.featureRequest)&&(!q||(r.email+' '+(r.featureRequest||'')).toLowerCase().includes(q)))}
 function td(tr,t){const c=tr.insertCell();if(t instanceof Node)c.append(t);else c.textContent=t;return c}
-function draw(){const v=view(),b=$('rows');b.replaceChildren();
+function draw(){const v=view(),b=$('rows'),n=Math.max(1,Math.ceil(v.length/PAGE));b.replaceChildren();page=Math.min(page,n-1);
  $('count').textContent=v.length+' of '+rows.length+' ('+rows.filter(r=>r.featureRequest).length+' with feature requests)';
- for(const r of v){const tr=b.insertRow();td(tr,r.createdAt.slice(0,10));td(tr,r.email+(r.unsubscribedAt?' (unsubscribed)':''));td(tr,r.platforms.join(', ')).className='mute';td(tr,r.locale);td(tr,r.sends.map(s=>s.platform+' '+s.version).join(', ')).className='mute';
+ $('pager').hidden=v.length<=25;$('pg').textContent='Page '+(page+1)+' of '+n;$('prev').disabled=page<1;$('next').disabled=page>=n-1;
+ for(const r of v.slice(page*PAGE,(page+1)*PAGE)){const tr=b.insertRow();td(tr,r.createdAt.slice(0,10));td(tr,r.email+(r.unsubscribedAt?' (unsubscribed)':''));td(tr,r.platforms.join(', ')).className='mute';td(tr,r.locale);td(tr,r.sends.map(s=>s.platform+' '+s.version).join(', ')).className='mute';
   td(tr,r.featureRequest||'').className='fr';
   let l='';if(r.githubIssueUrl&&/^https:\\/\\//.test(r.githubIssueUrl)){l=document.createElement('a');l.href=r.githubIssueUrl;l.textContent='issue';l.rel='noopener'}td(tr,l);
   const d=document.createElement('button');d.textContent='Delete';d.onclick=async()=>{if(!confirm('Delete '+r.email+'?'))return;
@@ -46,7 +48,9 @@ function draw(){const v=view(),b=$('rows');b.replaceChildren();
 const esc=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
 $('csv').onclick=()=>{const t=['date,email,platforms,locale,sent,unsubscribed,feature_request,issue'].concat(view().map(r=>[r.createdAt,r.email,r.platforms.join(' '),r.locale,r.sends.map(s=>s.platform+' '+s.version).join(' '),r.unsubscribedAt,r.featureRequest,r.githubIssueUrl].map(esc).join(','))).join('\\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/csv'}));a.download='waitlist.csv';a.click()};
-for(const id of['q','plat','fr'])$(id).oninput=draw;
+for(const id of['q','plat','fr'])$(id).oninput=()=>{page=0;draw()};
+$('size').onchange=()=>{PAGE=+$('size').value;page=0;draw()};
+$('prev').onclick=()=>{page--;draw()};$('next').onclick=()=>{page++;draw()};
 $('out').onclick=()=>{try{localStorage.removeItem('t')}catch{};rows=[];show(false)};
 $('login').onsubmit=async e=>{e.preventDefault();$('err').textContent='';
  const r=await fetch('/v1/admin/session',{method:'POST',headers:{Authorization:'Bearer '+$('tok').value}});$('tok').value='';
