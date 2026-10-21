@@ -18,6 +18,8 @@ export interface NotifyOpts {
   locale?: Locale;
   /** Only people who have never been sent any build, on any platform or version. */
   firstTimeOnly?: boolean;
+  /** Email everyone again even if they were already sent this version. An interrupted resend can't resume: re-running emails everyone again. */
+  resend?: boolean;
 }
 
 export interface NotifyResult { pending: number; sent: number; failed: number }
@@ -25,7 +27,7 @@ export interface NotifyResult { pending: number; sent: number; failed: number }
 const MAX_CONSECUTIVE_FAILURES = 5; // a bad key or Brevo outage should stop the run, not fail every recipient
 
 /**
- * Emails everyone who picked `platform`, hasn't unsubscribed and has not yet been sent `version`.
+ * Emails everyone who picked `platform`, hasn't unsubscribed and has not yet been sent `version` (unless `resend`).
  * A waitlist_sends row is written only after Brevo accepts the message, so a re-run resumes where it stopped.
  */
 export async function notifyVersion(ds: DataSource, config: Config, o: NotifyOpts, mail: typeof sendMail = sendMail, log: (s: string) => void = console.log): Promise<NotifyResult> {
@@ -45,10 +47,10 @@ export async function notifyVersion(ds: DataSource, config: Config, o: NotifyOpt
   const rows: { id: string; email: string; locale: Locale }[] = await ds.query(
     `select w.id, w.email, w.locale from waitlist w
       where $1 = any(w.platforms) and w.unsubscribed_at is null
-        and not exists (select 1 from waitlist_sends s where s.waitlist_id = w.id and s.platform = $1 and s.version = $2)
+        ${o.resend ? '' : 'and not exists (select 1 from waitlist_sends s where s.waitlist_id = w.id and s.platform = $1 and s.version = $2)'}
         ${o.firstTimeOnly ? 'and not exists (select 1 from waitlist_sends s where s.waitlist_id = w.id)' : ''}
       order by w.created_at`,
-    [o.platform, o.version],
+    o.resend ? [o.platform] : [o.platform, o.version], // Postgres rejects a bound parameter the query never references
   );
   const res: NotifyResult = { pending: rows.length, sent: 0, failed: 0 };
   if (!o.send) {
@@ -62,7 +64,7 @@ export async function notifyVersion(ds: DataSource, config: Config, o: NotifyOpt
     try {
       const m = build(r.id, r.locale);
       await mail(config, r.email, m.subject, m.html, m.headers, SENDER_NAME);
-      await ds.query('insert into waitlist_sends (waitlist_id, platform, version) values ($1, $2, $3) on conflict do nothing', [r.id, o.platform, o.version]);
+      await ds.query('insert into waitlist_sends (waitlist_id, platform, version) values ($1, $2, $3) on conflict (waitlist_id, platform, version) do update set sent_at = now()', [r.id, o.platform, o.version]);
       res.sent++;
       streak = 0;
     } catch (err: unknown) {

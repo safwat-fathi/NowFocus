@@ -1,6 +1,7 @@
-// `pnpm run notify --platform android --version 0.9 --url <link> --notes "Fix A|Add B" [--to me@x.com] [--first-time-only] [--send]`
+// `pnpm run notify --platform android --version 0.9 --url <link> --notes "Fix A|Add B" [--to me@x.com] [--first-time-only | --resend] [--send]`
 // Emails the waitlist about a new test build. Dry run unless --send; each (person, platform, version) is sent once.
 // --first-time-only skips anyone who has already been sent any build.
+// --resend emails everyone again even if already sent this version; an interrupted resend can't resume (a re-run emails everyone again).
 import { parseArgs } from 'node:util';
 import { DataSource } from 'typeorm';
 import { loadConfig } from './config.js';
@@ -16,7 +17,7 @@ const { values: v } = parseArgs({
   options: {
     platform: { type: 'string' }, version: { type: 'string' }, url: { type: 'string' }, notes: { type: 'string' },
     to: { type: 'string' }, locale: { type: 'string' }, send: { type: 'boolean', default: false },
-    'first-time-only': { type: 'boolean', default: false },
+    'first-time-only': { type: 'boolean', default: false }, resend: { type: 'boolean', default: false },
   },
 });
 
@@ -26,6 +27,7 @@ if (!(PLATFORMS as readonly string[]).includes(platform)) die(`--platform must b
 if (!v.version) die('--version is required');
 const url = v.url ?? DEFAULT_URL[platform];
 if (!url?.startsWith('https://')) die('--url is required and must be https:// (Android: your Play testing opt-in link)');
+if (v.resend && v['first-time-only']) die('--resend and --first-time-only contradict each other');
 if (v.locale && v.locale !== 'en' && v.locale !== 'ar') die('--locale must be en or ar');
 
 const config = loadConfig();
@@ -33,7 +35,7 @@ if (!config.brevoApiKey && (v.send || v.to)) die('BREVO_API_KEY is not set');
 const ds = await new DataSource(dataSourceOptions(config.databaseUrl)).initialize();
 try {
   const notes = (v.notes ?? '').split('|').map((s) => s.trim()).filter(Boolean);
-  await notifyVersion(ds, config, { platform, version: v.version!, url: url!, notes, send: v.send!, to: v.to, firstTimeOnly: v['first-time-only'], locale: v.locale as 'en' | 'ar' | undefined });
+  await notifyVersion(ds, config, { platform, version: v.version!, url: url!, notes, send: v.send!, to: v.to, firstTimeOnly: v['first-time-only'], resend: v.resend, locale: v.locale as 'en' | 'ar' | undefined });
 } finally {
   await ds.destroy();
 }
