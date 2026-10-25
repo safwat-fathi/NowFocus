@@ -16,4 +16,7 @@
     <string name="cheat_row_paused">Blocking is paused until midnight</string>
     <string name="cheat_row_planned">Planned</string>
     <string name="cheat_row_idle">A planned day off from blocking</string>
+    <string name="cheat_repeat_label">Repeat every week</string>
+    <string name="cheat_repeating_note">Repeats automatically every week.</string>
+    <string name="cheat_stop_repeating">Stop repeating</string>
 </resources>

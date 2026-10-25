@@ -6,9 +6,31 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
 
-/** A whole local day on which sessions, Bedtime, schedules and limits don't block. The Commitment Shield still does. */
-data class CheatDay(val startAt: Long, val endAt: Long, val createdAt: Long) {
-    fun isActive(now: Long) = now in startAt until endAt
+/**
+ * A whole local day on which sessions, Bedtime, schedules and limits don't block. The Commitment Shield still does.
+ * [repeatDays] null is one-time (today's behavior); set, this same record also covers every later cycle of that
+ * many days from [startAt], so [isActive] projects the anchor forward instead of needing a new record written
+ * each time one ends (which would miss a cycle if the device were off at that moment).
+ */
+data class CheatDay(val startAt: Long, val endAt: Long, val createdAt: Long, val repeatDays: Long? = null) {
+    /** [startAt] until [endAt] for a one-time day; for a repeating one, whichever cycle contains [now]. */
+    fun isActive(now: Long, zone: ZoneId = ZoneId.systemDefault()) = now in occurrence(now, zone)
+
+    /** When the cycle covering [now] ends - the arm target for the next reconcile. */
+    fun occurrenceEnd(now: Long, zone: ZoneId = ZoneId.systemDefault()) = occurrence(now, zone).last + 1
+
+    private fun occurrence(now: Long, zone: ZoneId): LongRange {
+        val repeat = repeatDays
+        if (repeat == null || repeat <= 0) return startAt until endAt
+        val anchor = Instant.ofEpochMilli(startAt).atZone(zone).toLocalDate()
+        val elapsed = ChronoUnit.DAYS.between(anchor, Instant.ofEpochMilli(now).atZone(zone).toLocalDate())
+        if (elapsed < 0) return startAt until endAt
+        val durationDays = ChronoUnit.DAYS.between(anchor, Instant.ofEpochMilli(endAt).atZone(zone).toLocalDate()).coerceAtLeast(1)
+        val cycleStart = anchor.plusDays((elapsed / repeat) * repeat)
+        val start = cycleStart.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = cycleStart.plusDays(durationDays).atStartOfDay(zone).toInstant().toEpochMilli()
+        return start until end
+    }
 }
 
 /**
@@ -42,8 +64,8 @@ object CheatDays {
             .take(count)
     }
 
-    fun forDay(dayStart: Long, now: Long, zone: ZoneId) =
-        CheatDay(dayStart, dayStart(dateOf(dayStart, zone).plusDays(1), zone), now)
+    fun forDay(dayStart: Long, now: Long, zone: ZoneId, repeatDays: Long? = null) =
+        CheatDay(dayStart, dayStart(dateOf(dayStart, zone).plusDays(1), zone), now, repeatDays)
 
     /** Cancelling a day that hasn't begun frees the week; ending a live one early keeps it counted. */
     fun cancel(cheat: CheatDay, now: Long): CheatDay? = when {
@@ -51,4 +73,7 @@ object CheatDays {
         cheat.isActive(now) -> cheat.copy(endAt = now)
         else -> cheat
     }
+
+    /** Turns off recurrence; a cycle already in progress still finishes as a one-time day. */
+    fun stopRepeating(cheat: CheatDay): CheatDay = cheat.copy(repeatDays = null)
 }

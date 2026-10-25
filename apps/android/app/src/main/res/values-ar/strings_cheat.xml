@@ -16,4 +16,7 @@
     <string name="cheat_row_paused">الحجب متوقف حتى منتصف الليل</string>
     <string name="cheat_row_planned">مخطَّط</string>
     <string name="cheat_row_idle">يوم استراحة مجدول من الحجب</string>
+    <string name="cheat_repeat_label">تكرار كل أسبوع</string>
+    <string name="cheat_repeating_note">يتكرر تلقائيًا كل أسبوع.</string>
+    <string name="cheat_stop_repeating">إيقاف التكرار</string>
 </resources>

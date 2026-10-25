@@ -63,4 +63,32 @@ class CheatDaysTest {
         assertEquals(cheat.startAt, ended.startAt)
         assertEquals(cheat, CheatDays.cancel(cheat, at(2026, 10, 12)))
     }
+
+    @Test
+    fun `a repeating cheat day recurs every repeatDays without a stored next record`() {
+        val cheat = CheatDays.forDay(at(2026, 10, 10), now = 0, zone = zone, repeatDays = 7)
+        // The anchor cycle itself.
+        assertTrue(cheat.isActive(at(2026, 10, 10, 12), zone))
+        // Three cycles later (21 days on), still active on its own day.
+        assertTrue(cheat.isActive(at(2026, 10, 31, 12), zone))
+        assertFalse(cheat.isActive(at(2026, 10, 30, 12), zone))
+        // Self-heals after any amount of downtime: no cycle needs to have been observed to compute a later one.
+        assertTrue(cheat.isActive(at(2027, 1, 23, 1), zone)) // 105 days later = 15 cycles
+    }
+
+    @Test
+    fun `occurrenceEnd is the end of the cycle covering now, for arming`() {
+        val cheat = CheatDays.forDay(at(2026, 10, 10), now = 0, zone = zone, repeatDays = 7)
+        assertEquals(at(2026, 10, 11), cheat.occurrenceEnd(at(2026, 10, 10, 12), zone))
+        assertEquals(at(2026, 10, 25), cheat.occurrenceEnd(at(2026, 10, 24, 12), zone))
+    }
+
+    @Test
+    fun `stopRepeating clears repeatDays without touching the current cycle`() {
+        val cheat = CheatDays.forDay(at(2026, 10, 10), now = 0, zone = zone, repeatDays = 7)
+        val stopped = CheatDays.stopRepeating(cheat)
+        assertNull(stopped.repeatDays)
+        assertEquals(cheat.startAt, stopped.startAt)
+        assertEquals(cheat.endAt, stopped.endAt)
+    }
 }
