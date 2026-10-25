@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../lib/api";
 import { canStart, profileSummary } from "../lib/profile";
+import { ProNote } from "../components/ProNote";
 import type { AppState, SessionMode } from "../types";
 import { ArrowRightIcon } from "../components/Icons";
 import { useI18n } from "../i18n";
@@ -25,6 +26,7 @@ export function Focus({
   const [starting, setStarting] = useState(false);
 
   const running = !!state.session;
+  const selected = state.profiles.find((p) => p.id === profileId);
   const healthy = state.health.websiteBlocking === "active";
 
   async function start() {
@@ -119,14 +121,16 @@ export function Focus({
             ))}
           </div>
           <p className="mode-desc">{t(`focus.mode.${mode}`)}</p>
-          {!canStart(state.profiles.find((p) => p.id === profileId)) && (
-            <p className="mode-desc">{t("focus.allowOne")}</p>
+          {selected?.mode === "allowlist" && !state.pro ? (
+            <ProNote>{t("pro.allowlistRun")}</ProNote>
+          ) : (
+            !canStart(selected, state.pro) && <p className="mode-desc">{t("focus.allowOne")}</p>
           )}
 
           <button
             className="btn btn-primary"
             onClick={start}
-            disabled={!canStart(state.profiles.find((p) => p.id === profileId)) || starting}
+            disabled={!canStart(selected, state.pro) || starting}
             style={{ width: "100%", minHeight: 56, justifyContent: "space-between", fontSize: 16, marginTop: "auto" }}
           >
             {starting ? t("focus.starting") : t("focus.start", { duration: t(`dur.${duration}`) })}

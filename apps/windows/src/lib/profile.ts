@@ -12,7 +12,7 @@ export function profileSummary(p: Profile, t: T): string {
   return p.applications.length === 0 ? t("prof.noneAllowed") : t("prof.allowedCount", { count: p.applications.length });
 }
 
-/** False for a whitelist with no app on this PC: it would close everything, so it can't start. */
-export function canStart(p: Profile | undefined): boolean {
-  return !!p && (p.mode === "blocklist" || p.applications.length > 0);
+/** False for a whitelist with no app on this PC (it would close everything) and for any whitelist on a Free account. */
+export function canStart(p: Profile | undefined, pro: boolean): boolean {
+  return !!p && (p.mode === "blocklist" || (pro && p.applications.length > 0));
 }

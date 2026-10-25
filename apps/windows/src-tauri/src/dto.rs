@@ -210,6 +210,9 @@ pub struct SyncStatusDto {
     pub rejected: usize,
     /// Whether this PC joins sessions started on the account's other devices.
     pub join_remote: bool,
+    /// What the server last said about the plan: `Some(true)` Pro, `Some(false)` Free, `None` signed out or not
+    /// asked yet.
+    pub pro: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -244,4 +247,7 @@ pub struct AppStateDto {
     /// Day starts (RFC3339) a cheat day can still be planned for.
     pub cheat_options: Vec<String>,
     pub sync: SyncStatusDto,
+    /// Whether the Pro features (allowlist profiles, Cheat Day, Bedtime Wind-Down) are open on this PC. Always
+    /// true until Pro launches (`now_focus_core::plan::PRO_ENFORCED`).
+    pub pro: bool,
 }

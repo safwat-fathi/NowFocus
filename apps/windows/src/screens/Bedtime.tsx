@@ -2,6 +2,7 @@ import { api } from "../lib/api";
 import { profileSummary } from "../lib/profile";
 import { useT } from "../i18n";
 import type { AppState, Bedtime as BedtimeSettings } from "../types";
+import { ProNote } from "../components/ProNote";
 
 function minutesToTime(min: number): string {
   const h = Math.floor(min / 60);
@@ -49,6 +50,7 @@ export function Bedtime({ state, onState }: { state: AppState; onState: (s: AppS
       <p className="screen-lede">
         {t("bed.lede")}
       </p>
+      {!state.pro && <ProNote>{t("pro.bedtime")}</ProNote>}
 
       <div style={{ maxWidth: 520, opacity: b.enabled ? 1 : 0.55, pointerEvents: b.enabled ? "auto" : "none" }}>
         <div className="field-label" style={{ marginTop: 20 }}>{t("bed.profile")}</div>

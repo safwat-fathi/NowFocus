@@ -3,6 +3,7 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { api } from "../lib/api";
 import { errorText, useI18n } from "../i18n";
 import type { AppState } from "../types";
+import { ProNote } from "../components/ProNote";
 
 /** Plan a day off from blocking, ahead of time: at least 24 hours ahead, one a week, and the Commitment (which
  * the background service holds) stays on. Sessions, Bedtime and schedules pause for the whole local day. */
@@ -33,7 +34,9 @@ export function CheatDay({ state, onState }: { state: AppState; onState: (s: App
         {t("cheat.lede")}
       </p>
       <div style={{ maxWidth: 520, marginTop: 20 }}>
-        {cheat?.active ? (
+        {!state.pro ? (
+          <ProNote>{t("pro.cheat")}</ProNote>
+        ) : cheat?.active ? (
           <>
             <h2 style={{ fontSize: 28, margin: "0 0 6px" }}>{t("cheat.onNow")}</h2>
             <p>{t("cheat.pausedUntil", { time: fmt.time(cheat.endAt) })}</p>

@@ -193,6 +193,11 @@ export const en = {
   "prof.blockThese": "Block these",
   "prof.allowOnly": "Allow only these",
   "prof.modeNote": "Block closes what you list. Allow only closes everything except the apps you list.",
+  "pro.tag": "Pro",
+  "pro.allowlistNew": "“Allow only these” profiles are part of NowFocus Pro.",
+  "pro.allowlistRun": "Running an “Allow only these” profile is part of NowFocus Pro. This one is kept, and starts once this account is on Pro.",
+  "pro.cheat": "Cheat day is part of NowFocus Pro. A day you planned earlier is kept, and applies again once this account is on Pro.",
+  "pro.bedtime": "Bedtime Wind-Down is part of NowFocus Pro. Your settings are kept, but nothing starts and the screen isn't locked until this account is on Pro.",
   "prof.thisPcOnly": "Profiles apply to this PC only until another device is linked.",
   "prof.createFirst": "Create a profile to get started.",
   "prof.name": "Profile name",
@@ -473,6 +478,7 @@ export const en = {
   "err.server": "NowFocus is having trouble right now. Try again shortly.",
   "err.offline": "Offline. Will retry.",
   "err.signedOut": "This PC was signed out. Sign in again to keep syncing.",
+  "err.proRequired": "That's part of NowFocus Pro, and this account is on the free plan.",
 } satisfies Record<string, Message>;
 
 export type Key = keyof typeof en;

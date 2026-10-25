@@ -10,6 +10,7 @@ use now_focus_core::daily_limit::{self, DailyLimit};
 use now_focus_core::dns_resolvers::{self, DnsProvider, DnsState};
 use now_focus_core::feed_url::URL_FEEDS;
 use now_focus_core::history_stats::BlockEvent;
+use now_focus_core::plan;
 use now_focus_core::schedule::{self, Schedule};
 use now_focus_core::{
     allowlist, bedtime_schedule, domain_validation, history_stats, passes, session_engine,
@@ -101,6 +102,8 @@ pub struct AppState {
     shield_native: Option<String>,
     /// What the sync loop last reported, for the Devices screen. Set by `sync_glue`.
     sync_status: SyncStatusDto,
+    /// Whether Free/Pro is enforced in this build (`plan::PRO_ENFORCED`); a field so tests can turn it on.
+    pro_enforced: bool,
     /// The limited app (or none) that was in front at the last foreground note, and when: the next note
     /// credits the time since then to it. In memory only.
     limit_tick: Option<daily_limit::Tick>,
@@ -145,8 +148,27 @@ impl AppState {
             passes_used: (None, 0),
             shield_native: None,
             sync_status: SyncStatusDto::default(),
+            pro_enforced: plan::PRO_ENFORCED,
             limit_tick: None,
         }
+    }
+
+    /// Whether the Pro features are open: always, until Pro launches; then only for an account the server
+    /// last called Pro. A live session is never touched by this, only what can start or apply from now on.
+    fn pro(&self) -> bool {
+        plan::is_pro(self.pro_enforced, self.sync_status.pro)
+    }
+
+    /// Why this profile can't start a session on this PC, or `Ok`. An allowlist is Pro: a Free account keeps
+    /// the profile (it stays in the list and keeps syncing) but can't run it.
+    fn check_can_start(&self, profile: &Profile) -> Result<(), String> {
+        if profile.policy.mode == PolicyMode::Allowlist && !self.pro() {
+            return Err("proRequired".to_string());
+        }
+        if !allowlist::enforces_here(&profile.policy) {
+            return Err("allowOne".to_string());
+        }
+        Ok(())
     }
 
     // ---- Recovery --------------------------------------------------
@@ -286,10 +308,14 @@ impl AppState {
             .map(schedule_to_dto)
             .collect();
         let limits = self.limit_dtos(now);
-        let cheat_options = cheat_day::options(now, &Local, cheat.as_ref(), 14)
-            .into_iter()
-            .map(|d| d.to_rfc3339())
-            .collect();
+        let cheat_options = if self.pro() {
+            cheat_day::options(now, &Local, cheat.as_ref(), 14)
+                .into_iter()
+                .map(|d| d.to_rfc3339())
+                .collect()
+        } else {
+            Vec::new()
+        };
 
         Ok(AppStateDto {
             language: self.language(),
@@ -311,6 +337,7 @@ impl AppState {
             limits,
             cheat_options,
             sync: self.sync_status.clone(),
+            pro: self.pro(),
         })
     }
 
@@ -395,6 +422,9 @@ impl AppState {
 
     /// The mode is fixed here: a blocklist and an allowlist hold the same kind of rows with opposite meaning.
     pub fn create_profile(&mut self, name: String, mode: PolicyMode) -> Result<(), String> {
+        if mode == PolicyMode::Allowlist && !self.pro() {
+            return Err("proRequired".to_string());
+        }
         let profile = Profile::with_mode(name, mode);
         self.db.save_profile(&profile).map_err(|e| e.to_string())
     }
@@ -613,9 +643,7 @@ impl AppState {
             return Err("running".to_string());
         }
         let profile = self.require_profile(profile_id)?;
-        if !allowlist::enforces_here(&profile.policy) {
-            return Err("allowOne".to_string());
-        }
+        self.check_can_start(&profile)?;
         let mode = parse_mode(mode)?;
         let now = Utc::now();
         let mut session = FocusSession::new(
@@ -641,7 +669,12 @@ impl AppState {
 
     // ---- Cheat day -----------------------------------------------------------
 
+    /// The planned cheat day, if any. A stored one stops applying (and showing) while the account isn't Pro; it
+    /// is kept, so it comes back with Pro.
     fn cheat(&self) -> Option<CheatDay> {
+        if !self.pro() {
+            return None;
+        }
         self.db.get_cheat_day().ok().flatten()
     }
 
@@ -652,6 +685,9 @@ impl AppState {
     /// Plan a day off from blocking (see `now_focus_core::cheat_day` for the rules). `day_start` is one of the
     /// instants `snapshot().cheat_options` offered, as RFC3339.
     pub fn schedule_cheat_day(&mut self, day_start: &str) -> Result<(), String> {
+        if !self.pro() {
+            return Err("proRequired".to_string());
+        }
         let day = DateTime::parse_from_rfc3339(day_start)
             .map_err(|_| "notDay".to_string())?
             .with_timezone(&Utc);
@@ -754,8 +790,9 @@ impl AppState {
         let Ok(Some(profile)) = self.db.get_profile(&due.policy_id) else {
             return;
         };
-        // An allowlist with no app for this PC (it was built on another platform) has nothing to enforce here.
-        if !allowlist::enforces_here(&profile.policy) {
+        // An allowlist with no app for this PC (it was built on another platform) has nothing to enforce here,
+        // and a Free account doesn't run allowlists at all.
+        if self.check_can_start(&profile).is_err() {
             return;
         }
 
@@ -1209,6 +1246,10 @@ impl AppState {
     /// in-window/sleep-moment/debounce decision is the unit-tested
     /// `bedtime_schedule::tick_decision`.
     pub fn bedtime_tick(&mut self) -> bool {
+        // Bedtime Wind-Down is Pro: a Free account keeps its saved settings, but nothing starts or locks.
+        if !self.pro() {
+            return false;
+        }
         let settings = match self.db.get_bedtime() {
             Ok(s) => s,
             Err(_) => return false,
@@ -1556,7 +1597,7 @@ impl AppState {
         else {
             return Ok(false);
         };
-        if !allowlist::enforces_here(&profile.policy) {
+        if self.check_can_start(&profile).is_err() {
             return Ok(false);
         }
         if self
@@ -2430,6 +2471,149 @@ mod tests {
             "cancelling a planned day removes it"
         );
     }
+    // ---- Free vs Pro ----------------------------------------------------------
+
+    /// Turns the gate on and says what the account last reported (`Some(true)` Pro, `Some(false)` Free).
+    fn enforce(state: &mut AppState, pro: Option<bool>) {
+        state.pro_enforced = true;
+        state.sync_status.pro = pro;
+    }
+
+    #[test]
+    fn nothing_is_gated_while_pro_is_not_enforced() {
+        let (mut state, _) = fresh();
+        assert!(!state.pro_enforced, "the shipped build is dormant");
+        assert!(state.snapshot().unwrap().pro, "signed out, still open");
+        let id = allow_profile(&mut state, &[r"C:\Apps\Code.exe"]);
+        state.start_session(&id, 60, "normal").unwrap();
+    }
+
+    #[test]
+    fn a_free_account_keeps_its_allowlist_profile_but_cannot_create_or_start_one() {
+        let (mut state, _) = fresh();
+        let id = allow_profile(&mut state, &[r"C:\Apps\Code.exe"]);
+        enforce(&mut state, Some(false));
+
+        assert_eq!(
+            state.create_profile("Another".into(), PolicyMode::Allowlist),
+            Err("proRequired".to_string())
+        );
+        assert!(state
+            .create_profile("Blocks".into(), PolicyMode::Blocklist)
+            .is_ok());
+        assert_eq!(
+            state.start_session(&id, 60, "normal"),
+            Err("proRequired".to_string())
+        );
+        let snap = state.snapshot().unwrap();
+        assert!(!snap.pro);
+        assert!(
+            snap.profiles.iter().any(|p| p.id == id),
+            "the profile is kept, not deleted"
+        );
+
+        // Signed out or never asked counts as Free too.
+        enforce(&mut state, None);
+        assert_eq!(
+            state.start_session(&id, 60, "normal"),
+            Err("proRequired".to_string())
+        );
+        // Pro runs it.
+        enforce(&mut state, Some(true));
+        state.start_session(&id, 60, "normal").unwrap();
+    }
+
+    #[test]
+    fn a_free_account_still_starts_ordinary_blocklist_sessions() {
+        let (mut state, log) = fresh();
+        enforce(&mut state, Some(false));
+        let id = state.snapshot().unwrap().profiles[0].id.clone();
+        state.start_session(&id, 30, "normal").unwrap();
+        assert_eq!(log.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn a_running_allowlist_session_is_not_touched_when_the_account_turns_free() {
+        let (mut state, log) = fresh();
+        let id = allow_profile(&mut state, &[r"C:\Apps\Code.exe"]);
+        state.start_session(&id, 60, "normal").unwrap();
+        log.lock().unwrap().clear();
+
+        enforce(&mut state, Some(false));
+        state.reconcile_enforcement();
+
+        let snap = state.snapshot().unwrap();
+        assert!(snap.session.is_some(), "the live session carries on");
+        assert!(snap.session.unwrap().allowlist);
+    }
+
+    #[test]
+    fn a_free_account_gets_no_cheat_day_and_a_stored_one_stops_applying() {
+        let (mut state, _) = fresh();
+        let ok = state.snapshot().unwrap().cheat_options[0].clone();
+        state.schedule_cheat_day(&ok).unwrap();
+        assert!(state.snapshot().unwrap().cheat_day.is_some());
+
+        enforce(&mut state, Some(false));
+        let snap = state.snapshot().unwrap();
+        assert!(snap.cheat_day.is_none(), "a stored day stops applying");
+        assert!(snap.cheat_options.is_empty(), "and none is offered");
+        assert_eq!(
+            state.schedule_cheat_day(&ok),
+            Err("proRequired".to_string())
+        );
+
+        enforce(&mut state, Some(true));
+        assert!(
+            state.snapshot().unwrap().cheat_day.is_some(),
+            "it was kept, so Pro gets it back"
+        );
+    }
+
+    #[test]
+    fn a_cheat_day_no_longer_pauses_a_running_session_once_the_account_is_free() {
+        let (mut state, _id, _log) = setup();
+        let now = Utc::now();
+        state
+            .db
+            .set_cheat_day(Some(&CheatDay {
+                start_at: now - ChronoDuration::hours(1),
+                end_at: now + ChronoDuration::hours(23),
+                created_at: now - ChronoDuration::days(3),
+            }))
+            .unwrap();
+        assert!(state.snapshot().unwrap().session.unwrap().paused);
+
+        enforce(&mut state, Some(false));
+        assert!(
+            !state.snapshot().unwrap().session.unwrap().paused,
+            "blocking comes back: a session only gets stricter when the plan lapses"
+        );
+        enforce(&mut state, Some(true));
+        assert!(state.snapshot().unwrap().session.unwrap().paused);
+    }
+
+    #[test]
+    fn bedtime_starts_for_pro_and_stays_quiet_for_a_free_account() {
+        // Wind-down at midnight with wake at midnight is a window that covers the whole day, so the test
+        // doesn't depend on when it runs.
+        let start = |state: &mut AppState, id: &str| {
+            state
+                .set_bedtime(true, 0, 0, 0, false, Some(id.to_string()))
+                .unwrap();
+            state.bedtime_tick();
+            state.snapshot().unwrap().session.is_some()
+        };
+
+        let (mut state, _) = fresh();
+        let id = state.snapshot().unwrap().profiles[0].id.clone();
+        enforce(&mut state, Some(false));
+        assert!(!start(&mut state, &id), "Free: nothing starts");
+
+        enforce(&mut state, Some(true));
+        assert!(start(&mut state, &id), "Pro: the locked session starts");
+    }
+
     // ---- whitelist mode -------------------------------------------------------
 
     /// An allowlist profile with `apps` allowed (before any session), and its id.

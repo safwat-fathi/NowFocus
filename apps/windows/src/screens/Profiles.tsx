@@ -5,6 +5,7 @@ import type { AppState, PolicyMode, Profile, RuleGroup } from "../types";
 import { profileSummary } from "../lib/profile";
 import { errorText, tOr, useI18n, type T } from "../i18n";
 import { GlobeIcon, PlusIcon, RemoveIcon } from "../components/Icons";
+import { ProNote } from "../components/ProNote";
 
 export function Profiles({ state, onState }: { state: AppState; onState: (s: AppState) => void }) {
   const { t } = useI18n();
@@ -36,9 +37,11 @@ export function Profiles({ state, onState }: { state: AppState; onState: (s: App
             <button className="btn btn-secondary" onClick={() => addProfile("blocklist")} style={{ minHeight: 40, justifyContent: "flex-start" }}>
               {t("prof.blockThese")}
             </button>
-            <button className="btn btn-secondary" onClick={() => addProfile("allowlist")} style={{ minHeight: 40, justifyContent: "flex-start" }}>
+            <button className="btn btn-secondary" disabled={!state.pro} onClick={() => addProfile("allowlist")} style={{ minHeight: 40, justifyContent: "flex-start" }}>
               {t("prof.allowOnly")}
+              {!state.pro && <span className="pro-tag">{t("pro.tag")}</span>}
             </button>
+            {!state.pro && <ProNote>{t("pro.allowlistNew")}</ProNote>}
             <p style={{ fontSize: 12, color: "var(--color-neutral-700)", margin: 0 }}>
               {t("prof.modeNote")}
             </p>
@@ -56,14 +59,14 @@ export function Profiles({ state, onState }: { state: AppState; onState: (s: App
         </p>
       </div>
 
-      {profile ? <ProfileEditor profile={profile} groups={state.groups} onState={onState} /> : (
+      {profile ? <ProfileEditor profile={profile} groups={state.groups} pro={state.pro} onState={onState} /> : (
         <div style={{ padding: 32 }}>{t("prof.createFirst")}</div>
       )}
     </div>
   );
 }
 
-function ProfileEditor({ profile, groups, onState }: { profile: Profile; groups: RuleGroup[]; onState: (s: AppState) => void }) {
+function ProfileEditor({ profile, groups, pro, onState }: { profile: Profile; groups: RuleGroup[]; pro: boolean; onState: (s: AppState) => void }) {
   const { t } = useI18n();
   const [name, setName] = useState(profile.name);
   const [newDomain, setNewDomain] = useState("");
@@ -119,6 +122,7 @@ function ProfileEditor({ profile, groups, onState }: { profile: Profile; groups:
           />
         </div>
       </div>
+      {allow && !pro && <ProNote>{t("pro.allowlistRun")}</ProNote>}
 
       <div className="profile-editor__columns">
         {!allow && <div style={{ display: "flex", flexDirection: "column" }}>

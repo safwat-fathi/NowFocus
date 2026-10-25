@@ -178,6 +178,8 @@ export interface SyncStatus {
   rejected: number;
   /** Whether this PC joins sessions started on the account's other devices. */
   joinRemote: boolean;
+  /** What the server last said about the plan: true Pro, false Free, null signed out or not asked yet. */
+  pro: boolean | null;
 }
 
 export interface DeviceInfo {
@@ -214,6 +216,8 @@ export interface AppState {
   /** Day starts (RFC3339) a cheat day can still be planned for. */
   cheatOptions: string[];
   sync: SyncStatus;
+  /** Whether the Pro features (allow-only profiles, Cheat day, Bedtime Wind-Down) are open here. Always true until Pro launches. */
+  pro: boolean;
 }
 
 export type ScreenId =

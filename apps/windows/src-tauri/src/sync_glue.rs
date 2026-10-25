@@ -22,6 +22,8 @@ use crate::dto::SyncStatusDto;
 use crate::state::AppState;
 
 const PASS_EVERY: Duration = Duration::from_secs(30);
+/// A signed-in Free account only asks "am I Pro yet?" this often, so an upgrade shows up without a 403 every 30 s.
+const FREE_PASS_EVERY: Duration = Duration::from_secs(300);
 /// A burst of edits (or a nudge from several commands) becomes one pass.
 const DEBOUNCE: Duration = Duration::from_millis(1500);
 
@@ -130,7 +132,7 @@ pub fn start(app: AppHandle) -> Arc<SyncController> {
 
     let worker = controller.clone();
     std::thread::spawn(move || loop {
-        match rx.recv_timeout(PASS_EVERY) {
+        match rx.recv_timeout(worker.pass_every()) {
             Ok(()) => {
                 std::thread::sleep(DEBOUNCE);
                 while rx.try_recv().is_ok() {} // coalesce the burst
@@ -152,11 +154,20 @@ impl SyncController {
         }
     }
 
+    fn pass_every(&self) -> Duration {
+        match self.api.stored() {
+            Some(a) if a.pro == Some(false) => FREE_PASS_EVERY,
+            _ => PASS_EVERY,
+        }
+    }
+
     /// Updates what the Devices screen shows (and keeps `join_remote` current).
     fn publish(&self, f: impl FnOnce(&mut SyncStatusDto)) {
         let mut status = self.status.lock().unwrap();
-        status.signed_in = self.api.is_signed_in();
-        status.email = self.api.stored().map(|a| a.email);
+        let stored = self.api.stored();
+        status.signed_in = stored.is_some();
+        status.pro = stored.as_ref().and_then(|a| a.pro);
+        status.email = stored.map(|a| a.email);
         f(&mut status);
         if let Ok(mut guard) = self.app.state::<SharedState>().lock() {
             status.join_remote = guard.join_remote();

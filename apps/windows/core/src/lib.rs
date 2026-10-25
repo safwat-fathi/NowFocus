@@ -19,6 +19,7 @@ pub mod history_stats;
 pub mod hosts_block;
 pub mod passes;
 pub mod persistence;
+pub mod plan;
 pub mod schedule;
 pub mod session_engine;
 

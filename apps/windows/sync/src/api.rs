@@ -48,6 +48,7 @@ impl ApiError {
                 "credentials".into()
             }
             ApiError::Http { code: Some(c), .. } if c == "wrong_password" => "wrongPassword".into(),
+            ApiError::Http { code: Some(c), .. } if c == "pro_required" => "proRequired".into(),
             ApiError::Http { status: 429, .. } => "rate".into(),
             ApiError::Http { status, .. } if *status >= 500 => "server".into(),
             ApiError::Http { message, .. } => message.clone(),
@@ -61,6 +62,17 @@ pub struct StoredAuth {
     pub email: String,
     pub device_id: String,
     pub refresh_token: String,
+    /// What the server last said about the plan: `Some(true)` Pro, `Some(false)` Free, `None` not asked yet.
+    /// `default` keeps the blobs saved before this field existed readable (an unreadable one signs the user out).
+    #[serde(default)]
+    pub pro: Option<bool>,
+}
+
+impl ApiError {
+    /// The server refused because the account is on Free: the sync probe's "no".
+    pub fn is_pro_required(&self) -> bool {
+        matches!(self, ApiError::Http { status: 403, code: Some(c), .. } if c == "pro_required")
+    }
 }
 
 pub trait AuthStore: Send + Sync {
@@ -150,6 +162,19 @@ impl Api {
         self.auth.load()
     }
 
+    /// Records the plan the server just showed us. Takes the refresh lock because the stored blob also holds the
+    /// single-use refresh token: a write racing a refresh could put the old one back and sign the device out.
+    /// Writes only on a change; best effort (the next pull says it again).
+    pub fn note_pro(&self, pro: bool) {
+        let _guard = self.refresh_lock.lock().unwrap();
+        if let Some(mut stored) = self.auth.load() {
+            if stored.pro != Some(pro) {
+                stored.pro = Some(pro);
+                let _ = self.auth.save(&stored);
+            }
+        }
+    }
+
     // ---- account
 
     /// No session yet: the server emails a confirm link (the same answer for an address that already has an
@@ -177,6 +202,7 @@ impl Api {
                 .and_then(|d| s(d, "id"))
                 .unwrap_or_default(),
             refresh_token: s(&res, "refreshToken").unwrap_or_default(),
+            pro: None,
         };
         self.auth.save(&stored).map_err(ApiError::Network)?;
         *self.access.lock().unwrap() = s(&res, "accessToken");
@@ -386,11 +412,24 @@ fn report_body(message: &str, contact: &str, app_version: &str, os_version: &str
 
 impl ApiPort for Api {
     fn pull(&self, cursor: i64, limit: u32) -> Result<Page, ApiError> {
-        let res = self.authed(
+        // Pull is also the plan probe: 200 means Pro, 403 `pro_required` means Free (it lands before anything
+        // local has changed).
+        let res = match self.authed(
             "GET",
             &format!("/v1/sync/pull?cursor={cursor}&limit={limit}"),
             None,
-        )?;
+        ) {
+            Ok(res) => {
+                self.note_pro(true);
+                res
+            }
+            Err(e) => {
+                if e.is_pro_required() {
+                    self.note_pro(false);
+                }
+                return Err(e);
+            }
+        };
         Ok(Page {
             changes: res
                 .get("changes")
@@ -429,6 +468,80 @@ impl ApiPort for Api {
                     .collect()
             })
             .unwrap_or_default())
+    }
+}
+
+#[cfg(test)]
+mod pro_tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    #[derive(Default)]
+    struct Mem(Mutex<Option<StoredAuth>>);
+    impl AuthStore for Mem {
+        fn load(&self) -> Option<StoredAuth> {
+            self.0.lock().unwrap().clone()
+        }
+        fn save(&self, auth: &StoredAuth) -> Result<(), String> {
+            *self.0.lock().unwrap() = Some(auth.clone());
+            Ok(())
+        }
+        fn clear(&self) {
+            *self.0.lock().unwrap() = None;
+        }
+    }
+
+    fn signed_in() -> Api {
+        let mem = Mem::default();
+        mem.save(&StoredAuth {
+            user_id: "u".into(),
+            email: "a@b.co".into(),
+            device_id: "d".into(),
+            refresh_token: "d.secret".into(),
+            pro: None,
+        })
+        .unwrap();
+        Api::new("http://localhost:0", "test", Box::new(mem))
+    }
+
+    #[test]
+    fn a_blob_saved_before_the_plan_existed_still_loads() {
+        let old = r#"{"user_id":"u","email":"a@b.co","device_id":"d","refresh_token":"d.s"}"#;
+        let got: StoredAuth = serde_json::from_str(old).expect("old blob must stay readable");
+        assert_eq!(got.pro, None);
+        assert_eq!(got.refresh_token, "d.s");
+    }
+
+    #[test]
+    fn noting_the_plan_keeps_the_refresh_token_and_flips_both_ways() {
+        let api = signed_in();
+        api.note_pro(true);
+        assert_eq!(api.stored().unwrap().pro, Some(true));
+        api.note_pro(false);
+        let s = api.stored().unwrap();
+        assert_eq!((s.pro, s.refresh_token.as_str()), (Some(false), "d.secret"));
+    }
+
+    #[test]
+    fn noting_the_plan_signed_out_stores_nothing() {
+        let api = signed_in();
+        api.forget();
+        api.note_pro(true);
+        assert!(api.stored().is_none());
+    }
+
+    #[test]
+    fn only_the_pro_required_403_means_free() {
+        let http = |status, code: Option<&str>| ApiError::Http {
+            status,
+            code: code.map(String::from),
+            message: String::new(),
+        };
+        assert!(http(403, Some("pro_required")).is_pro_required());
+        assert!(!http(403, Some("wrong_password")).is_pro_required());
+        assert!(!http(401, Some("pro_required")).is_pro_required());
+        assert!(!ApiError::Network("x".into()).is_pro_required());
+        assert_eq!(http(403, Some("pro_required")).friendly(), "proRequired");
     }
 }
 
