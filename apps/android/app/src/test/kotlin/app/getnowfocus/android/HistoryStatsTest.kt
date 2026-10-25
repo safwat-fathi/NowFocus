@@ -12,12 +12,15 @@ class HistoryStatsTest {
     private val zone = ZoneOffset.UTC
     private fun millisAt(date: LocalDate, hour: Int = 12) = date.atTime(hour, 0).toInstant(zone).toEpochMilli()
 
-    private fun completed(day: LocalDate, startHour: Int, durationMinutes: Long) = SessionHistoryRow(
+    private fun completed(day: LocalDate, startHour: Int, durationMinutes: Long, sessionType: SessionType = SessionType.FOCUS) = SessionHistoryRow(
         policyId = "p1",
         startAt = millisAt(day, startHour),
         endAt = millisAt(day, startHour) + durationMinutes * 60_000,
         status = FocusSessionStatus.COMPLETED,
+        sessionType = sessionType,
     )
+
+    private fun bedtime(day: LocalDate, startHour: Int = 23) = completed(day, startHour, 8 * 60, sessionType = SessionType.BEDTIME_WINDDOWN)
 
     private fun cancelled(day: LocalDate, startHour: Int, scheduledMinutes: Long, actualMinutes: Long) = SessionHistoryRow(
         policyId = "p1",
@@ -269,5 +272,35 @@ class HistoryStatsTest {
         )
         // Counts only: no app name can be in there, because nothing in the message takes one.
         assertFalse(text.toString(), text.toString().contains("secret"))
+    }
+
+    @Test
+    fun `bedtimeNightsCompleted counts distinct nights`() {
+        val today = LocalDate.of(2026, 9, 25)
+        val rows = listOf(bedtime(today), bedtime(today.minusDays(1)), bedtime(today.minusDays(2)))
+        assertEquals(3, HistoryStats.bedtimeNightsCompleted(rows, zone))
+    }
+
+    @Test
+    fun `bedtimeSessionsBetween's own DAO filter, not this pure function, is what keeps bedtime out of the focus streak`() {
+        // HistoryStats itself doesn't care what sessionType a row is - see SessionHistoryDao.sessionsBetween
+        // vs bedtimeSessionsBetween, which is where the two stat lines are actually kept apart.
+        val today = LocalDate.of(2026, 9, 25)
+        assertEquals(1, HistoryStats.currentStreakDays(listOf(bedtime(today)), today, zone))
+    }
+
+    @Test
+    fun `currentBedtimeStreakDays walks back from the most recent completed night, with the same one-day grace`() {
+        val today = LocalDate.of(2026, 9, 25)
+        val rows = listOf(bedtime(today.minusDays(1)), bedtime(today.minusDays(2)))
+        assertEquals(2, HistoryStats.currentBedtimeStreakDays(rows, today, zone))
+        assertEquals(0, HistoryStats.currentBedtimeStreakDays(emptyList(), today, zone))
+    }
+
+    @Test
+    fun `currentBedtimeStreakDays breaks on a missed night`() {
+        val today = LocalDate.of(2026, 9, 25)
+        val rows = listOf(bedtime(today), bedtime(today.minusDays(2))) // gap on minusDays(1)
+        assertEquals(1, HistoryStats.currentBedtimeStreakDays(rows, today, zone))
     }
 }

@@ -88,6 +88,11 @@ interface SessionHistoryDao {
     @Query("SELECT * FROM session_history WHERE startAt >= :from AND startAt < :to AND sessionType = 'FOCUS' ORDER BY startAt")
     suspend fun sessionsBetween(from: Long, to: Long): List<SessionHistoryRow>
 
+    // Its own stat line, never merged into sessionsBetween's: a nightly Bedtime session completes on its
+    // own with no exit, so folding it in would trivially max out the focus streak/score for anyone using it.
+    @Query("SELECT * FROM session_history WHERE startAt >= :from AND startAt < :to AND sessionType = 'BEDTIME_WINDDOWN' AND status = 'COMPLETED' ORDER BY startAt")
+    suspend fun bedtimeSessionsBetween(from: Long, to: Long): List<SessionHistoryRow>
+
     @Query("SELECT * FROM block_events WHERE timestampMillis >= :from AND timestampMillis < :to")
     suspend fun blockEventsBetween(from: Long, to: Long): List<BlockEventRow>
 }
@@ -203,6 +208,25 @@ object HistoryStats {
         var streak = 0
         var day = mostRecent
         while (activeDays.contains(day)) {
+            streak++
+            day = day.minusDays(1)
+        }
+        return streak
+    }
+
+    /** Distinct local days with a completed Bedtime session in [rows] (already filtered - see [bedtimeSessionsBetween]). */
+    fun bedtimeNightsCompleted(rows: List<SessionHistoryRow>, zone: ZoneId): Int =
+        rows.map { Instant.ofEpochMilli(it.startAt).atZone(zone).toLocalDate() }.toSet().size
+
+    /** Same walk-back-from-most-recent-day shape as [currentStreakDays], over completed Bedtime nights instead of focused minutes. */
+    fun currentBedtimeStreakDays(rows: List<SessionHistoryRow>, today: LocalDate, zone: ZoneId): Int {
+        val nights = rows.map { Instant.ofEpochMilli(it.startAt).atZone(zone).toLocalDate() }.toSet()
+        if (nights.isEmpty()) return 0
+        val mostRecent = nights.max()
+        if (mostRecent.isBefore(today.minusDays(1))) return 0
+        var streak = 0
+        var day = mostRecent
+        while (nights.contains(day)) {
             streak++
             day = day.minusDays(1)
         }

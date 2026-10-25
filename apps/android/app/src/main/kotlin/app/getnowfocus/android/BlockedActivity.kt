@@ -77,6 +77,9 @@ class BlockedActivity : ComponentActivity() {
     private var triesToday by mutableStateOf(0)
     // Sizes a daily-limit pass (see LimitPasses.passMinutes). 0 until loaded, which is the plain five minutes.
     private var streakDays by mutableStateOf(0)
+    // Bedtime nights completed and points already spent - the balance is always nights - spent (see SessionRepository.spendBedtimePoint).
+    private var bedtimeNights by mutableStateOf(0)
+    private var bedtimePointsSpent by mutableStateOf(0)
     private var limitExpiry: kotlinx.coroutines.Job? = null
 
     override fun attachBaseContext(newBase: Context) = super.attachBaseContext(newBase.localized())
@@ -97,7 +100,10 @@ class BlockedActivity : ComponentActivity() {
             val from = HistoryStats.startOfDayMillis(now, java.time.ZoneId.systemDefault())
             val dao = HistoryDatabase.get(this@BlockedActivity).dao()
             triesToday = HistoryStats.turnedAwayCount(dao.blockEventsBetween(from, now + 1), from, now + 1)
-            streakDays = HistoryStats.currentStreakDays(dao.sessionsBetween(0L, Long.MAX_VALUE), java.time.LocalDate.now(), java.time.ZoneId.systemDefault())
+            // The streak bonus on a pass is Pro: a Free account always gets the flat length (and no "+N min" note).
+            streakDays = if (repository.proFlow.first()) HistoryStats.currentStreakDays(dao.sessionsBetween(0L, Long.MAX_VALUE), java.time.LocalDate.now(), java.time.ZoneId.systemDefault()) else 0
+            bedtimeNights = HistoryStats.bedtimeNightsCompleted(dao.bedtimeSessionsBetween(0L, Long.MAX_VALUE), java.time.ZoneId.systemDefault())
+            bedtimePointsSpent = repository.bedtimePointsSpentFlow.first()
         }
     }
 
@@ -162,6 +168,10 @@ class BlockedActivity : ComponentActivity() {
                         passLabel = if (pkg != null && passesLeft > 0) getString(R.string.blocked_pass, appLabel ?: getString(R.string.blocked_it), passMinutes(fromLimit), passesLeft) else null,
                         passNote = if (fromLimit && streakDays > 0) resources.getQuantityString(R.plurals.blocked_pass_note, streakDays, streakDays, passMinutes(true) - passMinutes(false)) else null,
                         onPass = { pkg?.let { openWithPass(it, passKey ?: it, fromLimit) } },
+                        pointsLabel = if (pkg != null && fromLimit && passesLeft == 0 && bedtimeNights - bedtimePointsSpent > 0)
+                            getString(R.string.blocked_points_pass, appLabel ?: getString(R.string.blocked_it), passMinutes(true))
+                        else null,
+                        onSpendPoint = { pkg?.let { openWithPaidPass(passKey ?: it, it) } },
                     )
                 }
                   }
@@ -192,6 +202,18 @@ class BlockedActivity : ComponentActivity() {
         lifecycleScope.launch {
             val now = System.currentTimeMillis()
             val granted = if (fromLimit) repository.grantLimitPass(passKey, now, passMinutes(true)) else repository.grantPass(pkg, now)
+            if (!granted) return@launch
+            delay(400)
+            packageManager.getLaunchIntentForPackage(pkg)?.let { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            finish()
+        }
+    }
+
+    /** Same open-after-grant as [openWithPass], funded by a Bedtime point instead of the free daily allowance. */
+    private fun openWithPaidPass(passKey: String, pkg: String) {
+        lifecycleScope.launch {
+            val now = System.currentTimeMillis()
+            val granted = repository.spendBedtimePoint(passKey, now, passMinutes(true), bedtimeNights)
             if (!granted) return@launch
             delay(400)
             packageManager.getLaunchIntentForPackage(pkg)?.let { startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
@@ -234,6 +256,8 @@ private fun ShieldScreen(
     passLabel: String?,
     passNote: String?,
     onPass: () -> Unit,
+    pointsLabel: String?,
+    onSpendPoint: () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().background(NowFocusColors.text).padding(NowFocusSpace.s6)) {
         // Scrolls on its own so the buttons below stay on screen however much the reach-out card or goal takes.
@@ -274,6 +298,10 @@ private fun ShieldScreen(
                     Spacer(Modifier.height(NowFocusSpace.s1))
                     Text(passNote, style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral400))
                 }
+            }
+            if (pointsLabel != null) {
+                Spacer(Modifier.height(NowFocusSpace.s2))
+                GhostButton(pointsLabel, onClick = onSpendPoint)
             }
             if (!fromLimit) {
                 Spacer(Modifier.height(NowFocusSpace.s2))

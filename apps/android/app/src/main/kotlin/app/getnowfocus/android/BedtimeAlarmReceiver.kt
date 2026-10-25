@@ -43,7 +43,7 @@ class BedtimeAlarmReceiver : BroadcastReceiver() {
                 reconcileQuietNotifications(context, settings)
                 reconcileBedtimeSession(context, settings)
                 val cheating = repo.cheatDayFlow.first()?.isActive(System.currentTimeMillis()) == true
-                if (!cheating && settings.enabled && intent.action == ACTION_SLEEP_LOCK && settings.lockAtSleep && Build.VERSION.SDK_INT >= 28) {
+                if (!cheating && settings.enabled && repo.proFlow.first() && intent.action == ACTION_SLEEP_LOCK && settings.lockAtSleep && Build.VERSION.SDK_INT >= 28) {
                     FocusAccessibilityService.instance?.performGlobalAction(
                         android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
                     )
@@ -66,10 +66,12 @@ class BedtimeAlarmReceiver : BroadcastReceiver() {
 suspend fun reconcileQuietNotifications(context: Context, settings: BedtimeSettings) {
     val now = System.currentTimeMillis()
     // A cheat day is full use of the phone: Bedtime counts as off, which also hands back a filter it set.
-    val cheating = SessionRepository(context).cheatDayFlow.first()?.isActive(now) == true
+    val repo = SessionRepository(context)
+    val cheating = repo.cheatDayFlow.first()?.isActive(now) == true
     val nm = context.getSystemService(NotificationManager::class.java) ?: return
     if (!nm.isNotificationPolicyAccessGranted) return
-    val effective = if (cheating) settings.copy(enabled = false) else settings
+    // Bedtime is Pro: on a Free account it counts as off, which also hands back a filter it set earlier.
+    val effective = if (cheating || !repo.proFlow.first()) settings.copy(enabled = false) else settings
     val currentIsPriority = nm.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_PRIORITY
     when (BedtimeSchedule.decideQuietFilter(effective, now, ZoneId.systemDefault(), currentIsPriority)) {
         QuietDecision.SET_PRIORITY -> nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
@@ -103,6 +105,8 @@ private suspend fun startBedtimeIfDue(context: Context, settings: BedtimeSetting
     val window = BedtimeSchedule.currentWindow(settings, now, ZoneId.systemDefault()) ?: return
 
     val repo = SessionRepository(context)
+    // Bedtime Wind-Down is Pro: a Free account keeps its saved settings, but nothing starts.
+    if (!repo.proFlow.first()) return
     // Nothing starts by itself on a cheat day. The schedule alarm re-checks when it ends.
     if (repo.cheatDayFlow.first()?.isActive(now) == true) return
     // Skip while any session is already active — a second session would let

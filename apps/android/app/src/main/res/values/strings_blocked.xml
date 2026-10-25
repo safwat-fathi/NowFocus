@@ -16,4 +16,5 @@
         <item quantity="one">Your %1$d-day streak adds %2$d min.</item>
         <item quantity="other">Your %1$d-day streak adds %2$d min.</item>
     </plurals>
+    <string name="blocked_points_pass">Spend a Bedtime point to open %1$s for %2$d min</string>
 </resources>

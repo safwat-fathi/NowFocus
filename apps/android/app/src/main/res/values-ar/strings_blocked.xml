@@ -20,4 +20,5 @@
         <item quantity="many">سلسلتك البالغة %1$d يومًا تضيف %2$d د.</item>
         <item quantity="other">سلسلتك البالغة %1$d يوم تضيف %2$d د.</item>
     </plurals>
+    <string name="blocked_points_pass">استخدم نقطة نوم لفتح %1$s لمدة %2$d د</string>
 </resources>

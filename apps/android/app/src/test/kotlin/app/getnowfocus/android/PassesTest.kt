@@ -75,4 +75,18 @@ class PassesTest {
         assertNotNull(Passes.fromJson("[]"))
         assertTrue(Passes.fromJson("[]").isEmpty())
     }
+
+    @Test
+    fun `grantPaid still works once the free daily allowance is used up`() {
+        val used = LimitPassState("d1", (0 until Passes.MAX_PER_SESSION).map { AppPass("site:x.com", start - 1) })
+        assertEquals(0, LimitPasses.passesLeft(used, "site:x.com", "d1"))
+        val granted = LimitPasses.grantPaid(used, "site:x.com", now = start, day = "d1", minutes = 5)!!
+        assertEquals(start + 5 * 60_000L, LimitPasses.activeUntil(granted, "site:x.com", start, "d1"))
+    }
+
+    @Test
+    fun `grantPaid still refuses a pass already open`() {
+        val open = LimitPassState("d1", listOf(AppPass("site:x.com", start + 100_000)))
+        assertNull(LimitPasses.grantPaid(open, "site:x.com", now = start, day = "d1", minutes = 5))
+    }
 }

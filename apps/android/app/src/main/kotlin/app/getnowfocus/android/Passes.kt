@@ -64,6 +64,15 @@ object LimitPasses {
         return LimitPassState(day, today(state, day) + AppPass(key, now + minutes * 60_000L))
     }
 
+    /**
+     * One more pass on [key] funded by a Bedtime point rather than the free daily allowance - ignores
+     * [passesLeft], so it still works once that's at zero. Still refuses a pass already open.
+     */
+    fun grantPaid(state: LimitPassState, key: String, now: Long, day: String, minutes: Int): LimitPassState? {
+        if (activeUntil(state, key, now, day) > now) return null
+        return LimitPassState(day, today(state, day) + AppPass(key, now + minutes * 60_000L))
+    }
+
     fun toJson(s: LimitPassState): String = JSONObject().put("day", s.day).put("passes", JSONArray(Passes.toJson(s.passes))).toString()
 
     fun fromJson(json: String): LimitPassState = JSONObject(json).let { LimitPassState(it.optString("day"), Passes.fromJson(it.optJSONArray("passes")?.toString() ?: "[]")) }
