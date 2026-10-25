@@ -4,10 +4,13 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -15,6 +18,17 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 private val Context.syncAuthStore by preferencesDataStore(name = "sync_auth")
+
+private val REFRESH_KEY = stringPreferencesKey("refresh")
+private val PRO_KEY = booleanPreferencesKey("pro")
+
+/**
+ * What the server last said about the plan: true Pro, false Free, null when signed out or not asked yet. Read here
+ * rather than from the app's main DataStore so a Google backup restore can never bring Pro back without a sign-in
+ * (this file is excluded from backup, and [DataStoreAuthStore.clear] wipes it).
+ */
+fun Context.storedProFlow(): Flow<Boolean?> =
+    applicationContext.syncAuthStore.data.map { p -> if (p[REFRESH_KEY] == null) null else p[PRO_KEY] }
 
 /** Encrypts the refresh token with a key that never leaves the Android Keystore. */
 interface SecretBox {
@@ -55,7 +69,7 @@ class DataStoreAuthStore(context: Context, private val box: SecretBox = Keystore
     private val userId = stringPreferencesKey("userId")
     private val email = stringPreferencesKey("email")
     private val deviceId = stringPreferencesKey("deviceId")
-    private val refresh = stringPreferencesKey("refresh")
+    private val refresh = REFRESH_KEY
 
     override suspend fun load(): StoredAuth? {
         val p = store.data.first()
@@ -65,9 +79,13 @@ class DataStoreAuthStore(context: Context, private val box: SecretBox = Keystore
 
     override suspend fun save(auth: StoredAuth) {
         store.edit { p ->
+            if (p[userId] != auth.userId) p.remove(PRO_KEY)   // another account: its plan isn't known yet (a refresh saves the same one)
             p[userId] = auth.userId; p[email] = auth.email; p[deviceId] = auth.deviceId; p[refresh] = box.encrypt(auth.refreshToken)
         }
     }
 
     override suspend fun clear() { store.edit { it.clear() } }
+
+    // Only while signed in: a pull that finishes after sign-out must not leave a Pro flag behind with no account.
+    override suspend fun setPro(pro: Boolean) { store.edit { p -> if (p[refresh] != null) p[PRO_KEY] = pro } }
 }

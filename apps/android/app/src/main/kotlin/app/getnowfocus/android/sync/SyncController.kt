@@ -176,9 +176,11 @@ class SyncController(
             } catch (e: AuthExpired) {
                 expired(); return
             } catch (e: Exception) {
-                backoff = if (backoff == 0L) 5_000 else minOf(backoff * 2, 300_000)
+                // A Free account: nothing syncs. Ask again in a while (an upgrade shows up then), not on the retry curve.
+                val free = e is ApiException && e.code == "pro_required"
+                backoff = if (free) 0L else if (backoff == 0L) 5_000 else minOf(backoff * 2, 300_000)
                 _status.update { it.copy(syncing = false, problem = if (e is NetworkException) uiText(R.string.sync_offline) else friendly(e)) }
-                val wait = backoff
+                val wait = if (free) FREE_RECHECK_MS else backoff
                 launch { delay(wait); trigger.trySend(Unit) }
             }
         }
@@ -187,6 +189,7 @@ class SyncController(
     private suspend fun socketLoop() {
         var wait = 1_000L
         var refused: String? = null   // the token the server just rejected: the next connection must use a fresh one
+        var free = false              // the server closed with 4402: this account is not on Pro
         while (true) {
             try {
                 val token = refused?.let { api.refreshedAccessToken(it) } ?: api.accessTokenForSocket()
@@ -198,6 +201,7 @@ class SyncController(
                         is SocketEvent.Closed -> when (ev.code) {
                             4403 -> throw AuthExpired()
                             4401, 401 -> refused = token   // access tokens last 15 minutes; a long-lived socket outlives one
+                            4402 -> free = true            // not 4403, which signs this device out
                         }
                     }
                 }
@@ -206,8 +210,8 @@ class SyncController(
             } catch (e: AuthExpired) {
                 expired(); return
             } catch (_: Exception) { /* offline etc.: just reconnect */ }
-            delay(wait)
-            wait = minOf(wait * 2, 60_000)
+            delay(if (free) FREE_RECHECK_MS else wait)
+            if (free) free = false else wait = minOf(wait * 2, 60_000)
         }
     }
 
@@ -223,11 +227,16 @@ class SyncController(
         e is AuthExpired -> uiText(R.string.sync_err_session_ended)
         e is ApiException && e.code == "invalid_credentials" -> uiText(R.string.sync_err_invalid_credentials)
         e is ApiException && e.code == "wrong_password" -> uiText(R.string.sync_err_wrong_password)
+        e is ApiException && e.code == "pro_required" -> uiText(R.string.sync_pro_needed)
         e is ApiException && e.status == 429 -> uiText(R.string.sync_err_rate_limited)
         e is ApiException && e.status in 500..599 -> uiText(R.string.sync_err_server)
         // The server's own message is English and not ours to translate.
         else -> e.message?.let { UiText.Raw(it) } ?: uiText(R.string.sync_err_generic)
     }
 
-    private companion object { const val DEBOUNCE_MS = 1_500L }
+    private companion object {
+        const val DEBOUNCE_MS = 1_500L
+        /** How long a Free account waits before asking whether it is Pro yet, on a pass and on the socket. */
+        const val FREE_RECHECK_MS = 300_000L
+    }
 }

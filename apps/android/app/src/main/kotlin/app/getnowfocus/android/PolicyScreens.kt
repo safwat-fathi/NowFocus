@@ -55,11 +55,12 @@ fun PolicyListScreen(
     onOpenPeople: () -> Unit,
     goalsCount: Int,
     onOpenGoals: () -> Unit,
+    pro: Boolean,
     extraRows: List<ProtectionEntry> = emptyList(),
 ) {
     var removing by remember { mutableStateOf<BlockPolicy?>(null) }
     var choosing by remember { mutableStateOf(false) }
-    if (choosing) NewProfileDialog(onPick = { choosing = false; onAdd(it) }, onDismiss = { choosing = false })
+    if (choosing) NewProfileDialog(pro = pro, onPick = { choosing = false; onAdd(it) }, onDismiss = { choosing = false })
     removing?.let { policy ->
         ConfirmDialog(
             title = stringResource(R.string.policies_remove_q, policy.name),
@@ -192,7 +193,7 @@ fun profileSummary(policy: BlockPolicy): String = when {
 
 /** The mode is chosen here and never changes: the same rows mean opposite things in the two modes. */
 @Composable
-private fun NewProfileDialog(onPick: (PolicyMode) -> Unit, onDismiss: () -> Unit) {
+private fun NewProfileDialog(pro: Boolean, onPick: (PolicyMode) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.policies_new_title), style = headingStyle(20.sp)) },
@@ -200,7 +201,8 @@ private fun NewProfileDialog(onPick: (PolicyMode) -> Unit, onDismiss: () -> Unit
             Column {
                 ModeChoice(R.string.policies_new_block, R.string.policies_new_block_sub) { onPick(PolicyMode.BLOCKLIST) }
                 Spacer(Modifier.height(NowFocusSpace.s3))
-                ModeChoice(R.string.policies_new_allow, R.string.policies_new_allow_sub) { onPick(PolicyMode.ALLOWLIST) }
+                ModeChoice(R.string.policies_new_allow, R.string.policies_new_allow_sub, locked = !pro) { onPick(PolicyMode.ALLOWLIST) }
+                if (!pro) ProNote(R.string.pro_allowlist_new)
             }
         },
         confirmButton = {},
@@ -209,9 +211,15 @@ private fun NewProfileDialog(onPick: (PolicyMode) -> Unit, onDismiss: () -> Unit
 }
 
 @Composable
-private fun ModeChoice(@StringRes title: Int, @StringRes sub: Int, onClick: () -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = NowFocusSpace.s2)) {
-        Text(stringResource(title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+private fun ModeChoice(@StringRes title: Int, @StringRes sub: Int, locked: Boolean = false, onClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clickable(enabled = !locked, onClick = onClick).padding(vertical = NowFocusSpace.s2)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(title), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 17.sp))
+            if (locked) {
+                Spacer(Modifier.width(NowFocusSpace.s2))
+                TagPill(stringResource(R.string.pro_tag))
+            }
+        }
         Text(stringResource(sub), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.neutral700))
     }
 }

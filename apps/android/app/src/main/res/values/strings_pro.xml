@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_tag">Pro</string>
+    <string name="pro_allowlist_new">“Allow only these” profiles are part of NowFocus Pro.</string>
+    <string name="pro_allowlist_run">Running an “Allow only these” profile is part of NowFocus Pro. This one is kept, and starts once this account is on Pro.</string>
+    <string name="pro_cheat">Cheat day is part of NowFocus Pro. A day you planned earlier is kept, and applies again once this account is on Pro.</string>
+    <string name="pro_bedtime">Bedtime Wind-Down is part of NowFocus Pro. Your settings are kept, but nothing starts and the screen isn\'t locked until this account is on Pro.</string>
+    <string name="sync_pro_needed">Sync is part of NowFocus Pro, and this account is on the free plan.</string>
+</resources>

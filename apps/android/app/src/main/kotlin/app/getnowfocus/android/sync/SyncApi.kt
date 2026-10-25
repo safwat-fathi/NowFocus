@@ -35,6 +35,8 @@ interface AuthStore {
     suspend fun load(): StoredAuth?
     suspend fun save(auth: StoredAuth)
     suspend fun clear()
+    /** Remembers what the server last said about the plan (true Pro, false Free). A no-op by default. */
+    suspend fun setPro(pro: Boolean) {}
 }
 
 data class AccountSession(val userId: String, val email: String, val deviceId: String)
@@ -109,7 +111,14 @@ class SyncApi(
     // ---- sync
 
     override suspend fun pull(cursor: Long, limit: Int): PullPage {
-        val res = authed { it.url("$base/v1/sync/pull?cursor=$cursor&limit=$limit").get() }
+        // Pull doubles as the plan probe: 200 means Pro, 403 `pro_required` means Free (it lands before any local change).
+        val res = try {
+            authed { it.url("$base/v1/sync/pull?cursor=$cursor&limit=$limit").get() }
+        } catch (e: ApiException) {
+            if (e.status == 403 && e.code == "pro_required") auth.setPro(false)
+            throw e
+        }
+        auth.setPro(true)
         return PullPage(res.arr("changes").objects().map(::record), res.l("cursor") ?: cursor, res.b("hasMore", false))
     }
 

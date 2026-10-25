@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pro_tag">Pro</string>
+    <string name="pro_allowlist_new">أنماط «اسمح بهذه فقط» جزء من NowFocus Pro.</string>
+    <string name="pro_allowlist_run">تشغيل نمط «اسمح بهذه فقط» جزء من NowFocus Pro. يبقى هذا النمط محفوظًا، ويعمل متى أصبح هذا الحساب على Pro.</string>
+    <string name="pro_cheat">يوم الاستراحة جزء من NowFocus Pro. يبقى اليوم الذي خططت له سابقًا محفوظًا، ويعمل من جديد متى أصبح هذا الحساب على Pro.</string>
+    <string name="pro_bedtime">تهدئة وقت النوم جزء من NowFocus Pro. تبقى إعداداتك محفوظة، لكن لن يبدأ شيء ولن تُقفل الشاشة حتى يصبح هذا الحساب على Pro.</string>
+    <string name="sync_pro_needed">المزامنة جزء من NowFocus Pro، وهذا الحساب على الخطة المجانية.</string>
+</resources>
