@@ -34,6 +34,8 @@ export class DeviceGateway implements OnGatewayConnection, OnGatewayDisconnect, 
   async handleConnection(client: WebSocket, req: IncomingMessage) {
     try {
       const me = await this.auth.authenticate(req.headers.authorization);
+      // Not 4401 (clients would refresh and retry) and not 4403 (macOS signs the device out on it).
+      if (!(await this.auth.isPro(me.userId))) return client.close(4402, 'pro_required');
       this.hub.add(me.userId, me.deviceId, client);
       client.on('pong', () => this.hub.markAlive(client));
       // Read the cursor only AFTER registering: anything committed earlier is covered by this message,

@@ -5,12 +5,14 @@ import { Subject } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { Clock } from '../clock.js';
+import { Config } from '../config.js';
 import { Device, PendingSignup, User } from '../db/entities.js';
 import { Mailer } from '../mail.js';
 import { alreadyRegisteredEmail, verifyEmail } from './auth-emails.js';
 import { fail } from '../errors.js';
 import type { CredentialsDto, DeviceInfoDto } from './auth.dto.js';
 import { hashPassword, verifyPassword } from './password.js';
+import { isPro as planIsPro } from './plan.js';
 
 export const ACCESS_TTL_S = 15 * 60;
 const VERIFY_TTL_MS = 24 * 3600 * 1000;
@@ -43,6 +45,7 @@ export class AuthService {
     private mailer: Mailer,
     private jwt: JwtService,
     private clock: Clock,
+    private config: Config,
   ) {}
 
   /**
@@ -173,6 +176,18 @@ export class AuthService {
   async me(userId: string) {
     const u = await this.users.findOneByOrFail({ id: userId });
     return { id: u.id, email: u.email, createdAt: u.createdAt };
+  }
+
+  /** Read live, so a grant or a revoke applies to the very next request. Every account counts as Pro until PRO_ENFORCED=1. */
+  async isPro(userId: string) {
+    if (!this.config.proEnforced) return true;
+    const u = await this.users.findOneBy({ id: userId });
+    return !!u && planIsPro(u, this.clock.now());
+  }
+
+  /** 403, never 401: a 401 makes clients refresh their token, which can't fix a plan. */
+  async requirePro(userId: string) {
+    if (!(await this.isPro(userId))) throw fail(403, 'pro_required', 'This needs a Pro plan');
   }
 
   /**

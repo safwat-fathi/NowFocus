@@ -102,6 +102,21 @@ sudo cp services/api/deploy/api.nowfocus.online.conf /etc/nginx/sites-available/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+## Pro plan
+
+Sync is the only server-side Pro feature; the rest is gated in the apps. `PRO_ENFORCED` in the VPS `.env` is the switch: unset (the default) means every account counts as Pro and nothing is refused, `1` means Free accounts get `403 pro_required` on `/v1/sync/*` and a `4402` close on the socket. After changing it: `pm2 restart nowfocus-api --update-env`. Rollback is to unset it and restart; clients notice on their next probe.
+
+Grant or revoke Pro (takes effect on the account's next request; email is case-insensitive):
+
+```sh
+curl -sS -X POST https://api.nowfocus.online/v1/admin/plan -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"email":"tester@example.com","plan":"pro"}'                          # no end date
+curl ... -d '{"email":"tester@example.com","plan":"pro","until":"2027-01-01T00:00:00Z"}'   # lapses on that instant
+curl ... -d '{"email":"tester@example.com","plan":"free"}'                  # revoke
+```
+
+`404 not_found` means no account has that email. The full launch order (grant testers, release clients, flip the switch) is in `docs/pro-launch.md`.
+
 ## Emailing testers about a new version
 
 The `waitlist_sends` table records every (person, platform, version) emailed, so a run never sends the same version twice and an interrupted run can be repeated. From `services/api` on the VPS (after the release containing the command is live):

@@ -16,6 +16,8 @@ export class Config {
   brevoListId?: number;
   /** Shared secret for /admin. Unset = admin routes 404. */
   adminToken?: string;
+  /** PRO_ENFORCED=1 turns the Pro gate on. Off (the default) every account counts as Pro; see docs/pro-launch.md. */
+  proEnforced: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -39,6 +41,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     githubToken: env.GITHUB_TOKEN,
     githubRepo: env.GITHUB_REPO ?? 'safwat-fathi/NowFocus',
     adminToken,
+    proEnforced: env.PRO_ENFORCED === '1',
     brevoApiKey: env.BREVO_API_KEY || undefined,
     mailFrom: env.MAIL_FROM ?? 'hello@nowfocus.online',
     brevoListId: env.BREVO_LIST_ID ? Number(env.BREVO_LIST_ID) : undefined,

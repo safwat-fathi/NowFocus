@@ -9,6 +9,9 @@ export class User {
   @Column({ type: 'text' }) email!: string;
   @Column({ type: 'text' }) passwordHash!: string;
   @Column({ type: 'bigint', default: 0 }) syncSeq!: string; // pg returns bigint as string
+  @Column({ type: 'text', default: 'free' }) plan!: 'free' | 'pro';
+  /** When Pro lapses. Null = never. Ignored for free accounts. */
+  @Column({ type: 'timestamptz', nullable: true }) planExpiresAt!: Date | null;
   @CreateDateColumn({ type: 'timestamptz' }) createdAt!: Date;
 }
 

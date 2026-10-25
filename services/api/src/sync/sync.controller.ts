@@ -2,13 +2,14 @@ import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs
 import { ApiBearerAuth, ApiDefaultResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard, Me } from '../auth/auth.guard.js';
 import type { AuthContext } from '../auth/auth.service.js';
+import { ProGuard } from '../auth/pro.guard.js';
 import { ApiError, type PullResponse, type PushResponse } from '../responses.dto.js';
 import { PullQuery, PushDto } from './sync.dto.js';
 import { SyncService } from './sync.service.js';
 
 @ApiDefaultResponse({ type: ApiError }) @ApiTags('sync') @ApiBearerAuth()
 @Controller('v1/sync')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, ProGuard)
 export class SyncController {
   constructor(private sync: SyncService) {}
 

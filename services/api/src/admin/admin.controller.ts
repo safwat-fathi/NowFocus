@@ -1,11 +1,12 @@
-import { Controller, Delete, Get, Header, HttpCode, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Config } from '../config.js';
-import { WaitlistEntry, WaitlistSend } from '../db/entities.js';
+import { User, WaitlistEntry, WaitlistSend } from '../db/entities.js';
 import { fail } from '../errors.js';
+import { SetPlanDto } from './admin.dto.js';
 import { AdminGuard, SESSION_MS, signSession } from './admin.guard.js';
 import { ADMIN_PAGE } from './admin.page.js';
 
@@ -17,6 +18,7 @@ export class AdminController {
   constructor(
     @InjectRepository(WaitlistEntry) private repo: Repository<WaitlistEntry>,
     @InjectRepository(WaitlistSend) private sends: Repository<WaitlistSend>,
+    @InjectRepository(User) private users: Repository<User>,
     private config: Config,
   ) {}
 
@@ -45,6 +47,18 @@ export class AdminController {
     const byId = new Map<string, { platform: string; version: string; sentAt: Date }[]>();
     for (const { waitlistId, platform, version, sentAt } of sends) byId.set(waitlistId, [...(byId.get(waitlistId) ?? []), { platform, version, sentAt }]);
     return entries.map((e) => ({ ...e, sends: byId.get(e.id) ?? [] }));
+  }
+
+  /** Grant or revoke Pro by email, optionally until a date. Takes effect on the account's next request. */
+  @Post('v1/admin/plan')
+  @UseGuards(AdminGuard)
+  @HttpCode(200)
+  async setPlan(@Body() dto: SetPlanDto) {
+    const email = dto.email.trim().toLowerCase();
+    const until = dto.plan === 'pro' && dto.until ? new Date(dto.until) : null;
+    const res = await this.users.createQueryBuilder().update().set({ plan: dto.plan, planExpiresAt: until }).where('lower(email) = :email', { email }).execute();
+    if (!res.affected) throw fail(404, 'not_found', 'No such user');
+    return { email, plan: dto.plan, until };
   }
 
   @Delete('v1/admin/waitlist/:id')

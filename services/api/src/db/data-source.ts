@@ -5,6 +5,7 @@ import { Reports1760000000000 } from '../migrations/1760000000000-reports.js';
 import { WaitlistSends1760500000000 } from '../migrations/1760500000000-waitlist-sends.js';
 import { PendingSignupsMigration1761000000000 } from '../migrations/1761000000000-pending-signups.js';
 import { SignupMailLimits1761500000000 } from '../migrations/1761500000000-signup-mail-limits.js';
+import { UserPlan1762000000000 } from '../migrations/1762000000000-user-plan.js';
 import { Device, IssueReport, PendingSignup, User, WaitlistEntry, WaitlistSend } from './entities.js';
 
 class SnakeNaming extends DefaultNamingStrategy {
@@ -18,6 +19,6 @@ export const dataSourceOptions = (url: string): DataSourceOptions => ({
   type: 'postgres',
   url,
   entities: [User, PendingSignup, Device, WaitlistEntry, WaitlistSend, IssueReport],
-  migrations: [Init1759000000000, Waitlist1759500000000, Reports1760000000000, WaitlistSends1760500000000, PendingSignupsMigration1761000000000, SignupMailLimits1761500000000],
+  migrations: [Init1759000000000, Waitlist1759500000000, Reports1760000000000, WaitlistSends1760500000000, PendingSignupsMigration1761000000000, SignupMailLimits1761500000000, UserPlan1762000000000],
   namingStrategy: new SnakeNaming(),
 });

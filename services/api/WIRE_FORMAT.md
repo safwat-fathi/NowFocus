@@ -25,6 +25,7 @@ Production base URL: **`https://api.nowfocus.online`** (one build constant per c
 | Storage | Platform secure storage only: Android Keystore, Keychain, Credential Manager. Exclude it from OS backups (Android `allowBackup` is on). |
 | 401 | Refresh once and retry once. If refresh returns `invalid_refresh_token`, the device was revoked or the token is gone: enter the **signed-out** state (section 8). |
 | 403 `wrong_password` | Wrong password on `POST /v1/me/delete`. Deliberately not 401 so you don't enter a refresh loop. |
+| 403 `pro_required` | Sync (`/v1/sync/*`) needs a Pro plan and this account is on Free. Deliberately not 401, so it never triggers a token refresh. A successful `GET /v1/sync/pull` is also how a client learns it is Pro. See section 9a. |
 | 429 | Auth routes allow 10 requests per minute per client IP. Honour `Retry-After`. |
 | Sign out | `POST /v1/auth/logout` revokes this device. `DELETE /v1/devices/:id` revokes another one (its socket closes with `4403`). |
 | Delete account | `POST /v1/me/delete {password}` → 204. Deletes the account, all devices and everything synced. Local data on the device is **kept** and keeps enforcing. Required in-app for store review. |
@@ -136,7 +137,16 @@ Written only by `POST /v1/always-blocked/items` (and `cancel-grace`, `recommit`,
 
 ## 9. Realtime: `WS /ws/device`
 
-`Authorization: Bearer <access token>` on the upgrade request (no token in the URL). The server sends `{"type":"changes","cursor":N}` on connect (the user's current cursor) and after any commit from another device; if `N` is ahead of your cursor, `sync()`. `{"type":"device_revoked"}` is followed by close code `4403`; `4401` means unauthenticated (refresh and reconnect once). The server pings every 30 s: answer pongs (every WebSocket library does this by default) and reconnect with exponential backoff (1 s up to 60 s) when the socket drops. A reconnect for the same device replaces the old socket.
+`Authorization: Bearer <access token>` on the upgrade request (no token in the URL). The server sends `{"type":"changes","cursor":N}` on connect (the user's current cursor) and after any commit from another device; if `N` is ahead of your cursor, `sync()`. `{"type":"device_revoked"}` is followed by close code `4403`; `4401` means unauthenticated (refresh and reconnect once). The server pings every 30 s: answer pongs (every WebSocket library does this by default) and reconnect with exponential backoff (1 s up to 60 s) when the socket drops. A reconnect for the same device replaces the old socket. Close code `4402` means the account is not on Pro (see below): do not reconnect on the usual 1 s to 60 s backoff, wait about 5 minutes.
+
+## 9a. Plans (Free and Pro)
+
+Sync and the realtime socket need a Pro plan. Everything else (account, devices) works on Free. The Commitment Shield stays a free feature because clients enforce it locally, but its server endpoints (`/v1/always-blocked/items`) are only half open on Free: shield items are read back through `GET /v1/sync/pull`, so a Free account can write them and never read them. No app calls those endpoints today. The server only enforces this when started with `PRO_ENFORCED=1`; while that is off every account counts as Pro and none of the below happens. The plan lives on the user (`users.plan`, `users.plan_expires_at`) and is read on every request, so a grant or a revoke applies to the next call with the same access token.
+
+- **There is no plan field in any response.** Do not look for one in login, refresh or `/v1/me`. A client learns its plan from `GET /v1/sync/pull`: `200` means Pro, `403 pro_required` means Free. A Free client keeps probing about every 5 minutes (not the usual 30 s loop) so it notices an upgrade, and the `403` arrives before it has changed any local state.
+- Persist one boolean (Pro or not) next to the refresh token and clear it on sign-out. A client that has never probed is treated as Free once the gate is enforced.
+- The WebSocket handshake answers a Free account with close code `4402`, not `4401` (which means refresh and retry) and not `4403` (which means this device was signed out).
+- Grants are made by an operator: `POST /v1/admin/plan {email, plan: "free"|"pro", until?}` with the admin token (see `deploy/RUNBOOK.md`). `until` is an ISO 8601 instant after which Pro lapses; omit it for no end date.
 
 ## 10. Reserved behaviour
 
