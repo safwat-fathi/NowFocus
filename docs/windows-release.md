@@ -27,6 +27,8 @@ Back up the private key and its password off this machine (password manager). **
 4. The **Windows** workflow's `release` job builds and publishes the GitHub Release. Check it has the `.exe`, the `.exe.sig` and `latest.json`.
 5. `curl -I https://api.nowfocus.online/v1/downloads/windows` should redirect to the new `.exe`; installed copies pick it up within 6 hours.
 
+Before step 3, check that `PRO_ENFORCED` in `apps/windows/core/src/plan.rs` is still `false` unless this is the Pro launch (the `the_shipped_build_is_dormant` test fails otherwise). See [Pro launch](pro-launch.md).
+
 Notes:
 
 - Only a published (non-draft, non-pre-release) GitHub Release counts as "latest". The API looks at the repo's latest release, so a future non-Windows release would hide this one (see the `ponytail:` note in `services/api/src/updates/updates.service.ts`).

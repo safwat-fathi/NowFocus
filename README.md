@@ -545,6 +545,8 @@ webhook_subscriptions
 billing_events
 ```
 
+What exists today (2026-10-25): the plan is two columns on `users` (`plan`, `plan_expires_at`), set by an operator. There is no `subscriptions` or `billing_events` table yet. Entitlement checks are built into the API and the apps and are switched off; see [docs/pro-launch.md](docs/pro-launch.md).
+
 ### Extension-Ready Foundations
 
 To prevent costly database migrations, core session and policy models incorporate extension attribution from day one:
@@ -599,7 +601,7 @@ To prevent costly database migrations, core session and policy models incorporat
 - Pro plan
 - Subscription management
 - Payment integration
-- Entitlements
+- Entitlements (built and switched off; see [docs/pro-launch.md](docs/pro-launch.md))
 - Billing portal
 
 ## Phase 6 — Advanced Features

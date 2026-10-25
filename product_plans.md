@@ -160,7 +160,8 @@ Provide basic statistics:
 
 Initially:
 
-- 1 primary device
+- 1 device only, no cross-device sync
+- A flat 5-minute pass per day (no streak bonus — the streak-scaled bonus is a Pro feature, see below)
 
 The exact device limitation should be validated through experimentation.
 
@@ -232,6 +233,8 @@ Deep Work
 
 ### Cross-device synchronization
 
+Free is capped at 1 device with no sync at all. Pro unlocks unlimited devices and sync between them (`services/api/src/sync/`, `Device` entity in `services/api/src/db/entities.ts`).
+
 A focus session started on one device can affect other devices.
 
 Example:
@@ -290,6 +293,24 @@ Possible mechanisms include:
 - Restricted settings during sessions
 
 The product should not attempt to bypass OS security mechanisms or create unsafe device restrictions.
+
+### Whitelist / Allowlist Mode
+
+Instead of blocking a list of distracting apps, the user can flip the policy around: allow only a specified set of apps and block everything else during a session.
+
+Shipped on Android (`BlockPolicy.kt`) and Windows (`allowlist.rs`). Pro-gated in v1: the Free plan keeps the standard blocklist mode only. A Free account keeps (and syncs) an allow-only profile it already has, but cannot create one or start it. Gate: `BlockPolicy.canStart` in `Pro.kt` (Android), `AppState::check_can_start` (Windows). See `docs/pro-launch.md`.
+
+### Streak-Scaled Pass Bonus
+
+Passes let a user step outside a block for a few minutes without ending the session. On a daily-limit block the pass length scales with the user's current streak (`LimitPasses.passMinutes(streakDays) = 5 + streakDays.coerceIn(0,10)` in `Passes.kt`, capped at 15 minutes), rewarding consistency.
+
+Android only: Windows has a pass count (`passes.rs`) but no streak bonus. Pro-gated in v1: a Free account gets the flat 5-minute pass, because `BlockedActivity` counts its streak as 0 (which also hides the "+N min" note). Note that `grantPaid()` in `Passes.kt` is not part of this: it is the pass a Bedtime point buys.
+
+### Cheat Day
+
+A scheduled 24-hour exemption window, optionally repeating weekly, that lifts blocking rules for the day without requiring the user to disable the app.
+
+Shipped on Android (`CheatDay.kt`, `CheatDayScreen.kt`) and Windows (`cheat_day.rs`). Pro-gated in v1: a Free account can't plan one, and a stored one stops applying (it is kept, and returns with Pro). Gate: `SessionRepository.cheatDayFlow` (Android), `AppState::cheat` (Windows).
 
 ### Bedtime Wind-Down & Sleep Guard (Blue Light Reduction)
 
@@ -825,6 +846,8 @@ Add:
 - Bedtime Wind-Down & Sleep Guard (phone restriction & blue light reduction)
 
 Introduce Pro subscription.
+
+Where this stands: the Free/Pro split described in section 5 is built into the Android, Windows and macOS apps and the sync API, switched off, with no checkout (a plan is granted by an operator). The switches, the launch order and the open decisions are in `docs/pro-launch.md`.
 
 Primary goal:
 

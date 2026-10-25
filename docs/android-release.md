@@ -22,3 +22,5 @@ Each upload:
 3. Upload `app/build/outputs/bundle/release/app-release.aab` in Play Console.
 
 Without a key configured the bundle is built unsigned, which Play rejects.
+
+**Pro gate:** `PRO_ENFORCED` in `app/build.gradle.kts` must stay false (the default) in every build except the Pro launch. A release with it on locks Bedtime, Cheat day and allow-only profiles for every signed-out user. See [Pro launch](pro-launch.md).
