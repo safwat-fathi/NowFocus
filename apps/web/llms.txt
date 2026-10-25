@@ -2,7 +2,7 @@
 
 > NowFocus is a privacy-first focus app for Android, macOS and Windows. It blocks distracting apps and sites during a focus session and makes quitting early a decision, not a reflex. Everything runs on the device; an account is optional and only needed for sync between devices.
 
-Status (2026-10-07): free, not in any store. Windows has a public early-access installer (unsigned, tested on Windows 11; see the Windows guide below); Android has an early-access build (v0.3) that is not public yet; macOS is an early unreleased build; iOS is planned. Optional account sync (profiles, Bedtime settings and sessions) exists in the Android and Windows builds; macOS is not part of it. It is a self-control tool, not a lock: someone determined to uninstall it still can. There is a waitlist (email, platforms, optional feature request) on every page of the site; feature requests are posted publicly as GitHub issues, emails are not.
+Status (2026-10-25): free, not in any store. Windows has a public early-access installer (unsigned, tested on Windows 11; see the Windows guide below); Android has an early-access build (v0.3) that is not public yet; macOS is an early unreleased build; iOS is planned. Optional account sync (profiles, Bedtime settings and sessions) exists in the Android and Windows builds; macOS is not part of it. A Pro tier is planned: when it launches, allow-only profiles, Cheat Day, streak-scaled passes, Bedtime Wind-Down and sync move to Pro; it isn't available to buy yet. It is a self-control tool, not a lock: someone determined to uninstall it still can. There is a waitlist (email, platforms, optional feature request) on every page of the site; feature requests are posted publicly as GitHub issues, emails are not.
 
 ## Pages
 
@@ -28,7 +28,7 @@ Status (2026-10-07): free, not in any store. Windows has a public early-access i
 - [Block YouTube Shorts and Reels Without Deleting the App](https://nowfocus.online/blog/block-youtube-shorts-reels-tiktok-feed/): hide feeds on Android while keeping the rest of each app
 - [Choose the DNS Your Android Focus App Uses](https://nowfocus.online/blog/choose-your-dns-android-focus/): pick the DNS server the Android website filter uses
 - [NowFocus Now Speaks Arabic, Right to Left](https://nowfocus.online/blog/arabic-focus-app/): full right-to-left app and in-app language switch
-- [Why NowFocus’s Code Is Public, and How It Will Pay for Itself](https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/): free core, optional paid extras, no ads
+- [Why NowFocus’s Code Is Public, and How It Will Pay for Itself](https://nowfocus.online/blog/source-available-and-how-nowfocus-makes-money/): free core, Pro tier for sync and advanced features, no ads
 
 ## Arabic (العربية)
 

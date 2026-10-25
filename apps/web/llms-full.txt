@@ -14,17 +14,17 @@ NowFocus is a deep-work app for Android, macOS and Windows. Start a session and 
 - Blocks the feed, not the app (Android, experimental): hides YouTube Shorts, Home feed and Up next, and Facebook Reels, while the rest of the app works.
 - Private by design: stats are counted on the device, blocking never waits on a server, it works offline.
 - 14-day Commitment Shield with a 60-second undo window (typical focus apps: switch off whenever).
-- Bedtime Wind-Down, weekly stats, and "reach out to someone instead" (up to five people, one-tap call/text on Android).
+- Bedtime Wind-Down (moves to Pro at launch), weekly stats, and "reach out to someone instead" (up to five people, one-tap call/text on Android).
 
 ## Platform status
 - Android: early access v0.3, Android 8.0+. Not on Google Play yet. Most complete. Website blocking at DNS level through an on-device VPN (DNS only); app blocking through an Accessibility service, which also reads the browser address bar only to count time for website daily limits (only minutes on limited sites are kept). Microphone only when recording a voice note. Optional Notification access, off until you grant it, lets NowFocus hold notifications from blocked apps (it sees only which app posted, not the text). No contacts, phone or SMS permission.
 - macOS: early build, macOS 14+, Apple silicon and Intel. Not yet released or notarized. Menu-bar app. Website blocking through the hosts file; full-screen overlay for apps.
 - Windows: early access, Windows 10/11 64-bit, public unsigned installer (tested on Windows 11). Tray app plus background service; hosts-file blocking; checks api.nowfocus.online for updates.
 - iOS: planned, no build, no date. Linux may follow.
-- Cross-device sync: optional, needs an account, on Android and Windows (profiles, Bedtime settings, sessions); not on macOS. Signed out, the apps make no sync connection.
+- Cross-device sync: optional, needs an account, on Android and Windows (profiles, Bedtime settings, sessions); not on macOS. Signed out, the apps make no sync connection. Moves to Pro at launch.
 
 ## Pricing
-Free. Nothing is locked behind payment today. Paid plans may come later and the site will say so first.
+Free today: everything in the current builds. When Pro launches, core blocking, DNS choice, basic schedules and a flat daily pass stay free, and allow-only profiles, Cheat Day, streak-scaled passes, Bedtime Wind-Down and cross-device sync move to Pro. Pro isn't available to buy yet and pricing isn't set; the site will say so before it launches.
 
 ## Privacy summary
 Profiles, sessions, stats, goals, contacts you add and voice notes stay on the device. The apps connect to no NowFocus server. On Android, unblocked DNS lookups pass to your network's DNS server (or Cloudflare 1.1.1.1 if it doesn't answer); Google device backup may copy app data to your own Google account (voice notes are excluded). Not directed at children under 13. The website uses Google Analytics 4 with consent: cookies only if you accept, basic cookieless pings otherwise; no Google signals or ads personalisation. Details: https://nowfocus.online/privacy/
