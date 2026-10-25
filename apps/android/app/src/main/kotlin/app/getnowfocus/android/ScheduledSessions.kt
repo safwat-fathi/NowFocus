@@ -22,11 +22,49 @@ suspend fun reconcileScheduledSessions(context: Context) {
     val now = System.currentTimeMillis()
     val zone = ZoneId.systemDefault()
     val schedules = repo.schedulesFlow.first()
-    val cheat = repo.cheatDayFlow.first()?.takeIf { it.isActive(now) }
+    val cheat = repo.cheatDayFlow.first()?.takeIf { it.isActive(now, zone) }
 
     // Nothing starts by itself on a cheat day; the alarm below is also set for when it ends.
-    if (cheat == null) startDueSchedule(context, repo, schedules, now, zone)
-    ScheduleScheduler.arm(context, listOfNotNull(Schedules.nextStart(schedules, now, zone), cheat?.endAt).minOrNull())
+    if (cheat == null) {
+        startDueSchedule(context, repo, schedules, now, zone)
+        startDuePlannedSession(context, repo, now)
+    }
+    val planned = repo.plannedSessionsFlow.first()
+    ScheduleScheduler.arm(context, listOfNotNull(Schedules.nextStart(schedules, now, zone), PlannedSessions.nextStart(planned, now), cheat?.occurrenceEnd(now, zone)).minOrNull())
+}
+
+private suspend fun startDuePlannedSession(context: Context, repo: SessionRepository, now: Long) {
+    val planned = repo.plannedSessionsFlow.first()
+    val due = PlannedSessions.due(planned, now) ?: return
+    // Already past its own end (the phone was off through the whole window): drop it, don't start it late.
+    if (due.endAt <= now) {
+        repo.updatePlannedSessions { it.filterNot { p -> p.id == due.id } }
+        return
+    }
+    // One session at a time, like Bedtime and Schedule: a running one holds, re-checked when it ends.
+    val existing = repo.sessionFlow.first()
+    if (existing != null && SessionEngine.isActive(SessionEngine.evaluateState(existing, now), now)) return
+    val pro = repo.proFlow.first()
+    val policy = repo.policiesFlow.first().find { it.id == due.policyId }?.takeIf { it.canStart(pro) } ?: run {
+        repo.updatePlannedSessions { it.filterNot { p -> p.id == due.id } }
+        return
+    }
+
+    repo.updatePlannedSessions { it.filterNot { p -> p.id == due.id } }
+    repo.save(SessionEngine.evaluateState(
+        FocusSession(
+            id = due.id,
+            policyId = policy.id,
+            startAt = now, // an alarm can be minutes late, or the phone was off: the block starts when we notice
+            endAt = due.endAt,
+            status = FocusSessionStatus.ACTIVE,
+            createdAt = due.createdAt,
+            enforcementMode = due.mode,
+            origin = SessionOrigin.USER,
+        ).withPolicy(policy),
+        now,
+    ))
+    Enforcement.start(context)
 }
 
 private suspend fun startDueSchedule(context: Context, repo: SessionRepository, schedules: List<Schedule>, now: Long, zone: ZoneId) {
@@ -36,8 +74,10 @@ private suspend fun startDueSchedule(context: Context, repo: SessionRepository, 
     // One session at a time, like Bedtime: a running one holds, and this is re-checked when it ends.
     val existing = repo.sessionFlow.first()
     if (existing != null && SessionEngine.isActive(SessionEngine.evaluateState(existing, now), now)) return
-    // A whitelist with no app on this phone (it was built on another platform) has nothing to enforce here.
-    val policy = repo.policiesFlow.first().find { it.id == due.schedule.policyId }?.takeIf { it.enforcesHere } ?: return
+    // A whitelist with no app on this phone (it was built on another platform) has nothing to enforce here, and a
+    // Free account doesn't run whitelists at all.
+    val pro = repo.proFlow.first()
+    val policy = repo.policiesFlow.first().find { it.id == due.schedule.policyId }?.takeIf { it.canStart(pro) } ?: return
 
     repo.noteScheduleRun(due.schedule.id, due.start)
     repo.save(SessionEngine.evaluateState(
