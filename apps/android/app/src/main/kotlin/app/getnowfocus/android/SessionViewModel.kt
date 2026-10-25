@@ -91,6 +91,10 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     val onboardingDone: StateFlow<Boolean> =
         repository.onboardingDoneFlow.stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    /** Whether the Pro features (allow-only profiles, Cheat day, Bedtime Wind-Down, the streak pass bonus) are open. */
+    val pro: StateFlow<Boolean> =
+        repository.proFlow.stateIn(viewModelScope, SharingStarted.Eagerly, Pro.active(null))
+
     /** Null until the saved value loads: unlike onboardingDone, a lock must not default open for a frame. */
     val accountLock: StateFlow<Boolean?> =
         repository.accountLockFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -171,7 +175,7 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
 
     /** False when nothing started: no such profile, or a whitelist with no app on this phone (it would close everything). */
     fun startSession(policyId: String, durationMinutes: Int, mode: EnforcementMode = EnforcementMode.NORMAL): Boolean {
-        val policy = policies.value.find { it.id == policyId }?.takeIf { it.enforcesHere } ?: return false
+        val policy = policies.value.find { it.id == policyId }?.takeIf { it.canStart(pro.value) } ?: return false
         startSessionOn(policy, durationMinutes, mode)
         return true
     }
@@ -407,12 +411,13 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
     }
 
     /** Returns false (and does nothing) when [dayStart] breaks the rules in [CheatDays.canSchedule]. */
-    fun scheduleCheatDay(dayStart: Long): Boolean {
+    fun scheduleCheatDay(dayStart: Long, repeatDays: Long? = null): Boolean {
+        if (!pro.value) return false
         val now = System.currentTimeMillis()
         val zone = java.time.ZoneId.systemDefault()
         if (!CheatDays.canSchedule(now, dayStart, cheatDay.value, zone)) return false
         viewModelScope.launch {
-            repository.setCheatDay(CheatDays.forDay(dayStart, now, zone))
+            repository.setCheatDay(CheatDays.forDay(dayStart, now, zone, repeatDays))
             SessionNotifier.sync(getApplication())
             reconcileAutomation()
         }
@@ -427,6 +432,12 @@ class SessionViewModel(application: Application) : AndroidViewModel(application)
             SessionNotifier.sync(getApplication())
             reconcileAutomation()
         }
+    }
+
+    /** Keeps the current (or in-progress) cheat day but stops it recurring. */
+    fun stopCheatDayRepeating() {
+        val current = cheatDay.value ?: return
+        viewModelScope.launch { repository.setCheatDay(CheatDays.stopRepeating(current)) }
     }
 
     /** Sets [minutes] on [limit] (0 removes it). Tighter or removing counts now (unless used up), raising from midnight: see [AppLimit.withMinutes]. */

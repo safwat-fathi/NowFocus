@@ -20,6 +20,9 @@ android {
         // The sync server. Point a debug build at a local one with `-PsyncBaseUrl=http://10.0.2.2:3000` (emulator).
         val syncBaseUrl = (project.findProperty("syncBaseUrl") as String?) ?: "https://api.nowfocus.online"
         buildConfigField("String", "SYNC_BASE_URL", "\"$syncBaseUrl\"")
+        // Free/Pro gate: off until Pro launches (docs/pro-launch.md). QA with `-PproEnforced=true`.
+        val proEnforced = (project.findProperty("proEnforced") as String?) == "true"
+        buildConfigField("boolean", "PRO_ENFORCED", "$proEnforced")
     }
 
     buildFeatures {

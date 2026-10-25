@@ -11,12 +11,14 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.flow.map
 import app.getnowfocus.android.sync.Local
 import app.getnowfocus.android.sync.SyncLogic
 import app.getnowfocus.android.sync.SyncState
+import app.getnowfocus.android.sync.storedProFlow
 
 private val Context.sessionDataStore by preferencesDataStore(name = "focus_session")
 
@@ -28,6 +30,9 @@ private val Context.sessionDataStore by preferencesDataStore(name = "focus_sessi
 class SessionRepository(context: Context) {
 
     private val store = context.applicationContext.sessionDataStore
+
+    /** Whether the Pro features are open: always until Pro launches, then only for an account sync last found on Pro. */
+    val proFlow: Flow<Boolean> = context.applicationContext.storedProFlow().map { Pro.active(it) }
 
     private object Keys {
         val ID = stringPreferencesKey("id")
@@ -48,8 +53,10 @@ class SessionRepository(context: Context) {
         val LIMITS = stringPreferencesKey("appLimits")
         val SITE_USAGE = stringPreferencesKey("siteUsage")
         val LIMIT_PASSES = stringPreferencesKey("limitPasses")
+        val BEDTIME_POINTS_SPENT = intPreferencesKey("bedtimePointsSpent")
         val FRICTION_APPS = stringPreferencesKey("frictionApps")
         val SCHEDULES = stringPreferencesKey("schedules")
+        val PLANNED_SESSIONS = stringPreferencesKey("plannedSessions")
         val SCHEDULE_RUNS = stringPreferencesKey("scheduleRuns")
         val SESSION_PASSES = stringPreferencesKey("sessionPasses")
         val SESSION_ORIGIN = stringPreferencesKey("sessionOrigin")
@@ -60,6 +67,7 @@ class SessionRepository(context: Context) {
         val CHEAT_START = longPreferencesKey("cheatStartAt")
         val CHEAT_END = longPreferencesKey("cheatEndAt")
         val CHEAT_CREATED = longPreferencesKey("cheatCreatedAt")
+        val CHEAT_REPEAT_DAYS = longPreferencesKey("cheatRepeatDays")
         val SHIELD_START_AT = longPreferencesKey("shieldStartAt")
         val SHIELD_END_AT = longPreferencesKey("shieldEndAt")
         val SHIELD_DOMAINS = stringSetPreferencesKey("shieldDomains")
@@ -159,6 +167,29 @@ class SessionRepository(context: Context) {
         return granted
     }
 
+    /**
+     * Points already spent on extra passes. The balance itself isn't stored: it's always
+     * `HistoryStats.bedtimeNightsCompleted(...) - this`, recomputed from history on every read, so it
+     * can never be double-credited by an event fired twice.
+     */
+    val bedtimePointsSpentFlow: Flow<Int> = store.data.map { p -> p[Keys.BEDTIME_POINTS_SPENT] ?: 0 }
+
+    /** Spends one Bedtime point for a [minutes] pass on [key], if [nightsCompleted] leaves at least one unspent. */
+    suspend fun spendBedtimePoint(key: String, now: Long, minutes: Int, nightsCompleted: Int): Boolean {
+        var granted = false
+        val day = SiteLimits.dayOf(now, java.time.ZoneId.systemDefault())
+        store.edit { p ->
+            val spent = p[Keys.BEDTIME_POINTS_SPENT] ?: 0
+            if (nightsCompleted - spent < 1) return@edit
+            val current = p[Keys.LIMIT_PASSES]?.let { LimitPasses.fromJson(it) } ?: LimitPassState()
+            val updated = LimitPasses.grantPaid(current, key, now, day, minutes) ?: return@edit
+            p[Keys.LIMIT_PASSES] = LimitPasses.toJson(updated)
+            p[Keys.BEDTIME_POINTS_SPENT] = spent + 1
+            granted = true
+        }
+        return granted
+    }
+
     /** Apps that ask for a pause before opening (see FrictionGate). Device-local. */
     val frictionAppsFlow: Flow<List<AppRule>> = store.data.map { p ->
         p[Keys.FRICTION_APPS]?.let { j -> JSONArray(j).let { a -> (0 until a.length()).map { a.getJSONObject(it).let { o -> AppRule(o.getString("pkg"), o.getString("label")) } } } } ?: emptyList()
@@ -192,6 +223,13 @@ class SessionRepository(context: Context) {
         }
     }
 
+    /** One-off future sessions the user planned (see [PlannedSession]). Device-local, like Schedules. */
+    val plannedSessionsFlow: Flow<List<PlannedSession>> = store.data.map { p -> p[Keys.PLANNED_SESSIONS]?.let { PlannedSession.listFromJson(it) } ?: emptyList() }
+
+    suspend fun updatePlannedSessions(transform: (List<PlannedSession>) -> List<PlannedSession>) {
+        store.edit { p -> p[Keys.PLANNED_SESSIONS] = PlannedSession.listToJson(transform(p[Keys.PLANNED_SESSIONS]?.let { PlannedSession.listFromJson(it) } ?: emptyList())) }
+    }
+
     /** Whether this device joins sessions started on the account's other devices. On unless the user turns it off. */
     val joinRemoteFlow: Flow<Boolean> = store.data.map { p -> p[Keys.JOIN_REMOTE] ?: true }
 
@@ -210,20 +248,25 @@ class SessionRepository(context: Context) {
     }
 
     /** Device-local, never synced: a remote write must not be able to loosen blocking. Null if none was ever set. */
-    val cheatDayFlow: Flow<CheatDay?> = store.data.map { p ->
-        CheatDay(
-            startAt = p[Keys.CHEAT_START] ?: return@map null,
-            endAt = p[Keys.CHEAT_END] ?: return@map null,
-            createdAt = p[Keys.CHEAT_CREATED] ?: return@map null,
-        )
-    }
+    val cheatDayFlow: Flow<CheatDay?> = combine(
+        store.data.map { p ->
+            CheatDay(
+                startAt = p[Keys.CHEAT_START] ?: return@map null,
+                endAt = p[Keys.CHEAT_END] ?: return@map null,
+                createdAt = p[Keys.CHEAT_CREATED] ?: return@map null,
+                repeatDays = p[Keys.CHEAT_REPEAT_DAYS],
+            )
+        },
+        proFlow,
+    ) { cheat, pro -> cheat.takeIf { pro } } // a stored day stops applying (and showing) on a Free account; it is kept for Pro
 
     suspend fun setCheatDay(cheat: CheatDay?) {
         store.edit { p ->
             if (cheat == null) {
-                p.remove(Keys.CHEAT_START); p.remove(Keys.CHEAT_END); p.remove(Keys.CHEAT_CREATED)
+                p.remove(Keys.CHEAT_START); p.remove(Keys.CHEAT_END); p.remove(Keys.CHEAT_CREATED); p.remove(Keys.CHEAT_REPEAT_DAYS)
             } else {
                 p[Keys.CHEAT_START] = cheat.startAt; p[Keys.CHEAT_END] = cheat.endAt; p[Keys.CHEAT_CREATED] = cheat.createdAt
+                if (cheat.repeatDays != null) p[Keys.CHEAT_REPEAT_DAYS] = cheat.repeatDays else p.remove(Keys.CHEAT_REPEAT_DAYS)
             }
         }
     }

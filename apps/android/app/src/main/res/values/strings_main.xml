@@ -90,6 +90,8 @@
     <string name="stats_completed">Completed</string>
     <string name="stats_streak">Streak</string>
     <string name="stats_score">Focus score</string>
+    <string name="stats_bedtime_streak">Bedtime streak</string>
+    <string name="stats_bedtime_points">Bedtime points</string>
     <string name="stats_share">Share this week</string>
     <string name="stats_most">MOST TURNED AWAY</string>
     <string name="stats_nothing">Nothing yet this week.</string>

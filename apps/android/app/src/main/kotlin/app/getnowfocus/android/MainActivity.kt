@@ -78,6 +78,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -164,6 +165,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val cheat by viewModel.cheatDay.collectAsStateWithLifecycle()
+    val pro by viewModel.pro.collectAsStateWithLifecycle()
     val joinRemote by viewModel.joinRemote.collectAsStateWithLifecycle()
     val limits by viewModel.limits.collectAsStateWithLifecycle()
     val siteUsage by viewModel.siteUsage.collectAsStateWithLifecycle()
@@ -267,6 +269,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                 )
                 Screen.Setup -> SetupScreen(
                     policies = policies,
+                    pro = pro,
                     onBack = { screen = Screen.Home },
                     onManagePolicies = { screen = Screen.Policies },
                     onStart = { policyId, minutes, mode -> viewModel.startSession(policyId, minutes, mode); screen = Screen.Active },
@@ -309,6 +312,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                         onOpenPeople = { screen = Screen.People },
                         goalsCount = goals.size,
                         onOpenGoals = { screen = Screen.Goals },
+                        pro = pro,
                         extraRows = listOf(
                             dnsEntry(context) { backTo = Screen.Policies; screen = Screen.Dns },
                             ProtectionEntry(
@@ -375,7 +379,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                     onCancel = { viewModel.cancelCommitmentShield() },
                     onBack = { screen = backTo },
                 )
-                Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, onSave = viewModel::saveBedtimeSettings, onBack = { screen = backTo })
+                Screen.Bedtime -> BedtimeScreen(settings = bedtime, policies = policies, pro = pro, onSave = viewModel::saveBedtimeSettings, onBack = { screen = backTo })
                 Screen.Dns -> DnsScreen(sessionLive = running, resumeKey = resumeCount, onBack = { screen = backTo })
                 Screen.Devices -> DevicesScreen(resumeKey = resumeCount, account = syncStatus, onOpenAccount = { screen = Screen.Account }, onVpnResult = viewModel::restartEnforcementIfRunning)
                 Screen.Account -> when {
@@ -453,6 +457,8 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                     now = now,
                     onSchedule = viewModel::scheduleCheatDay,
                     onCancel = viewModel::cancelCheatDay,
+                    onStopRepeating = viewModel::stopCheatDayRepeating,
+                    pro = pro,
                     onBack = { screen = Screen.Policies },
                 )
                 Screen.Settings -> SettingsScreen(viewModel.sync, onOpenAbout = { screen = Screen.About })
@@ -627,6 +633,7 @@ private fun HomeScreen(
 @Composable
 private fun SetupScreen(
     policies: List<BlockPolicy>,
+    pro: Boolean,
     onBack: () -> Unit,
     onManagePolicies: () -> Unit,
     onStart: (String, Int, EnforcementMode) -> Unit,
@@ -799,9 +806,10 @@ private fun SetupScreen(
         }
 
         Spacer(Modifier.height(NowFocusSpace.s6))
-        if (!selected.enforcesHere) {
+        if (!selected.canStart(pro)) {
             Text(
-                stringResource(R.string.setup_allow_empty),
+                // Free + a whitelist is the only way to get here with apps listed.
+                stringResource(if (selected.enforcesHere) R.string.pro_allowlist_run else R.string.setup_allow_empty),
                 style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.accent700),
             )
         } else PrimaryButton(stringResource(R.string.setup_start, stringResource(DURATIONS.first { it.second == minutes }.first))) {
@@ -987,6 +995,8 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
     var allSessions by remember { mutableStateOf<List<SessionHistoryRow>>(emptyList()) }
     var weekEvents by remember { mutableStateOf<List<BlockEventRow>>(emptyList()) }
     var urgeEvents by remember { mutableStateOf<List<BlockEventRow>>(emptyList()) }
+    var bedtimeNights by remember { mutableStateOf<List<SessionHistoryRow>>(emptyList()) }
+    var bedtimePointsSpent by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) {
         val dao = HistoryDatabase.get(context).dao()
         allSessions = dao.sessionsBetween(0L, Long.MAX_VALUE)
@@ -994,6 +1004,8 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
         // A week is too thin to show a time-of-day pattern; 4 weeks isn't.
         val now = System.currentTimeMillis()
         urgeEvents = dao.blockEventsBetween(now - URGE_WINDOW_DAYS * 24 * 60 * 60 * 1000L, now + 1)
+        bedtimeNights = dao.bedtimeSessionsBetween(0L, Long.MAX_VALUE)
+        bedtimePointsSpent = SessionRepository(context).bedtimePointsSpentFlow.first()
     }
 
     val weekMinutes = HistoryStats.weekBucketsMinutes(allSessions, today, zone)
@@ -1002,6 +1014,8 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
     val completion = HistoryStats.completionRate(allSessions, weekFrom, weekTo)
     val streak = HistoryStats.currentStreakDays(allSessions, today, zone)
     val score = HistoryStats.focusScore(allSessions, weekFrom, weekTo, zone)
+    val bedtimeStreak = HistoryStats.currentBedtimeStreakDays(bedtimeNights, today, zone)
+    val bedtimePoints = (HistoryStats.bedtimeNightsCompleted(bedtimeNights, zone) - bedtimePointsSpent).coerceAtLeast(0)
     val topBlocked = HistoryStats.topBlockedPackages(weekEvents, weekFrom, weekTo)
     val maxMinutes = (weekMinutes.maxOrNull() ?: 0L).coerceAtLeast(1L)
     val dayLabels = listOf(R.string.dayl_mon, R.string.dayl_tue, R.string.dayl_wed, R.string.dayl_thu, R.string.dayl_fri, R.string.dayl_sat, R.string.dayl_sun).map { stringResource(it) }
@@ -1062,6 +1076,11 @@ private fun StatsScreen(onScheduleBlock: (AppRule, Int) -> Unit) {
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
                 }
             }
+        }
+        SectionRule()
+        Row(Modifier.fillMaxWidth()) {
+            StatCell(stringResource(R.string.stats_bedtime_streak), pluralStringResource(R.plurals.since_days, bedtimeStreak, bedtimeStreak), Modifier.weight(1f))
+            StatCell(stringResource(R.string.stats_bedtime_points), "$bedtimePoints", Modifier.weight(1f))
         }
         SectionRule()
         Spacer(Modifier.height(NowFocusSpace.s4))
@@ -1321,7 +1340,7 @@ private fun CommitmentDetail(shield: CommitmentShield, now: Long) {
 }
 
 @Composable
-private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>, onSave: (BedtimeSettings) -> Unit, onBack: () -> Unit) {
+private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>, pro: Boolean, onSave: (BedtimeSettings) -> Unit, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
     val notificationPolicyOk = remember(settings) {
@@ -1349,6 +1368,7 @@ private fun BedtimeScreen(settings: BedtimeSettings, policies: List<BlockPolicy>
             stringResource(R.string.bedtime_intro),
             style = TextStyle(fontFamily = ArchivoRegular, fontSize = 14.sp, color = NowFocusColors.neutral300),
         )
+        if (!pro) ProNote(R.string.pro_bedtime, color = NowFocusColors.neutral300)
         Spacer(Modifier.height(NowFocusSpace.s4))
 
         ToggleRow(stringResource(R.string.bedtime_on), stringResource(R.string.bedtime_on_sub), settings.enabled, { onSave(settings.copy(enabled = !settings.enabled)) }, dark = true)

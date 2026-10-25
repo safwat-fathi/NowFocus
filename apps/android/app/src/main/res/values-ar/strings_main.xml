@@ -87,6 +87,8 @@
     <string name="stats_completed">المكتملة</string>
     <string name="stats_streak">السلسلة</string>
     <string name="stats_score">درجة التركيز</string>
+    <string name="stats_bedtime_streak">سلسلة النوم</string>
+    <string name="stats_bedtime_points">نقاط النوم</string>
     <string name="stats_share">شارك هذا الأسبوع</string>
     <string name="stats_most">الأكثر حجبًا</string>
     <string name="stats_nothing">لا شيء بعد هذا الأسبوع.</string>
