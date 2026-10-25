@@ -3449,6 +3449,17 @@
           }
         }
       }
+    },
+    "Bedtime Wind-Down is part of NowFocus Pro. Your settings are kept, but nothing starts and the display isn't put to sleep until this account is on Pro.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تهدئة وقت النوم جزء من NowFocus Pro. تبقى إعداداتك محفوظة، لكن لن يبدأ شيء ولن تُطفأ الشاشة حتى يصبح هذا الحساب على Pro."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -9,6 +9,7 @@ import NowFocusCore
 struct BedtimeView: View {
     @State private var settings = BedtimeSettingsStore.shared.settings
     @State private var policies: [BlockPolicy] = []
+    @ObservedObject private var sync = SyncController.shared
     private let lockAvailability = BedtimeLockAvailability.check()
 
     var body: some View {
@@ -21,6 +22,13 @@ struct BedtimeView: View {
                     .font(NowFocusFonts.body(13))
                     .foregroundColor(NowFocusColors.neutral700)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if !Plan.isPro(sync.status.pro) {
+                    Text("Bedtime Wind-Down is part of NowFocus Pro. Your settings are kept, but nothing starts and the display isn't put to sleep until this account is on Pro.")
+                        .font(NowFocusFonts.body(12))
+                        .foregroundColor(NowFocusColors.accent700)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 NowFocusRule(thick: true)
 

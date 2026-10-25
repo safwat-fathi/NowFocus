@@ -536,6 +536,22 @@ check(NetworkSetupOutput.dnsServers("192.168.1.1\n8.8.8.8\n") == ["192.168.1.1",
 check(NetworkSetupOutput.dnsServers("https://family.adguard-dns.com/dns-query\n") == nil, "an encrypted-DNS profile is left alone, never overwritten or restored from")
 check(NetworkSetupOutput.dnsServers("2606:4700:4700::1111\n") == ["2606:4700:4700::1111"], "IPv6 servers are kept")
 
+// MARK: Free vs Pro
+
+check(Plan.isPro(nil, enforced: false) && Plan.isPro(false, enforced: false) && Plan.isPro(true, enforced: false), "everything is open while the gate is off")
+check(Plan.isPro(true, enforced: true), "enforced: a known Pro account counts")
+check(!Plan.isPro(false, enforced: true), "enforced: a Free account does not")
+check(!Plan.isPro(nil, enforced: true), "enforced: signed out or not asked yet is Free")
+check(Plan.enforced == false, "the shipped build is dormant (launching Pro? follow docs/pro-launch.md, then update this check)")
+
+// A sign-in saved before the plan existed must still decode (an unreadable blob signs the Mac out).
+let oldAuth = Data("{\"userId\":\"u\",\"email\":\"a@b.co\",\"deviceId\":\"d\",\"refreshToken\":\"d.s\"}".utf8)
+let decodedAuth = try? JSONDecoder().decode(StoredAuth.self, from: oldAuth)
+check(decodedAuth != nil, "a sign-in saved before the plan field still decodes")
+check(decodedAuth?.pro == nil && decodedAuth?.refreshToken == "d.s", "…with the plan unknown and the token kept")
+let freeAuth = StoredAuth(userId: "u", email: "a@b.co", deviceId: "d", refreshToken: "d.s", pro: false)
+check((try? JSONDecoder().decode(StoredAuth.self, from: JSONEncoder().encode(freeAuth))) == freeAuth, "the plan survives a save and load")
+
 // MARK: Existing self-checks
 
 HistoryStats.runSelfCheck()

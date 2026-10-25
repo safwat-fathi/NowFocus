@@ -43,6 +43,7 @@ final class SyncAPI: SyncAPIPort, @unchecked Sendable {
     private let refreshLock = AsyncLock()
     private let tokenLock = NSLock()
     private var token: String?
+    private var proKnown: Bool?
 
     init(baseURL: URL, userAgent: String, auth: AuthStore, session: URLSession = SyncAPI.defaultSession()) {
         self.base = baseURL; self.userAgent = userAgent; self.auth = auth; self.session = session
@@ -58,6 +59,25 @@ final class SyncAPI: SyncAPIPort, @unchecked Sendable {
     private var accessToken: String? {
         get { tokenLock.lock(); defer { tokenLock.unlock() }; return token }
         set { tokenLock.lock(); token = newValue; tokenLock.unlock() }
+    }
+
+    /// The plan the server last showed this launch: true Pro, false Free, nil not asked yet or signed out.
+    var pro: Bool? {
+        get { tokenLock.lock(); defer { tokenLock.unlock() }; return proKnown }
+        set { tokenLock.lock(); proKnown = newValue; tokenLock.unlock() }
+    }
+
+    /// Remembers the plan next to the refresh token. Under `refreshLock` because that blob also holds the single-use
+    /// refresh token: a write racing a refresh could put the old one back and sign the device out. The Keychain is
+    /// only touched when the answer changes (a rebuilt app asks the user to approve every read).
+    private func notePro(_ value: Bool) async {
+        if pro == value { return }
+        await refreshLock.withLock {
+            pro = value
+            guard var stored = auth.load(), stored.pro != value else { return }
+            stored.pro = value
+            try? auth.save(stored)
+        }
     }
 
     // MARK: account
@@ -77,6 +97,7 @@ final class SyncAPI: SyncAPIPort, @unchecked Sendable {
         }
         try auth.save(StoredAuth(userId: userId, email: email, deviceId: deviceId, refreshToken: refresh))
         accessToken = access
+        pro = nil
         return AccountSession(userId: userId, email: email, deviceId: deviceId)
     }
 
@@ -90,7 +111,7 @@ final class SyncAPI: SyncAPIPort, @unchecked Sendable {
         forget()
     }
 
-    func forget() { accessToken = nil; auth.clear() }
+    func forget() { accessToken = nil; pro = nil; auth.clear() }
 
     func deleteAccount(password: String) async throws {
         _ = try await authed(request("/v1/me/delete", method: "POST", body: ["password": password]))
@@ -122,7 +143,15 @@ final class SyncAPI: SyncAPIPort, @unchecked Sendable {
     // MARK: sync
 
     func pull(cursor: Int, limit: Int) async throws -> PullPage {
-        let res = try await authedJSON(request("/v1/sync/pull?cursor=\(cursor)&limit=\(limit)", method: "GET"))
+        // Pull doubles as the plan probe: 200 means Pro, 403 `pro_required` means Free (it lands before any local change).
+        let res: JSONObject
+        do {
+            res = try await authedJSON(request("/v1/sync/pull?cursor=\(cursor)&limit=\(limit)", method: "GET"))
+        } catch let e as ApiError where e.status == 403 && e.code == "pro_required" {
+            await notePro(false)
+            throw e
+        }
+        await notePro(true)
         return PullPage(changes: JSONKit.objects(res, "changes").map(Self.record), cursor: JSONKit.int(res, "cursor") ?? cursor, hasMore: JSONKit.bool(res, "hasMore") ?? false)
     }
 

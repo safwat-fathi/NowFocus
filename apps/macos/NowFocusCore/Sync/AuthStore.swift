@@ -8,6 +8,9 @@ struct StoredAuth: Codable, Equatable {
     var email: String
     var deviceId: String
     var refreshToken: String
+    /// What the server last said about the plan: true Pro, false Free, nil not asked yet. Optional on purpose: a
+    /// blob saved before this field existed must still decode, or every signed-in Mac would be signed out.
+    var pro: Bool?
 }
 
 protocol AuthStore {

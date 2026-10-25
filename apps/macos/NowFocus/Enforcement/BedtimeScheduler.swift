@@ -87,6 +87,8 @@ final class BedtimeScheduler {
     private func tick() {
         let settings = BedtimeSettingsStore.shared.settings
         guard settings.enabled, let policyId = settings.policyId else { return }
+        // Bedtime Wind-Down is Pro: a Free account keeps its saved settings, but nothing starts or sleeps the display.
+        guard Plan.isPro(SyncController.shared.status.pro) else { return }
 
         let now = Date()
         let calendar = Calendar.current

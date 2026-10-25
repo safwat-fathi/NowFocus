@@ -12,6 +12,8 @@ public struct SyncStatus: Equatable {
     public var problem: String?
     /// Changes the server refused (they stay on this Mac and are retried only after you edit them).
     public var rejected = 0
+    /// What the server last said about the plan: true Pro, false Free, nil signed out or not asked yet.
+    public var pro: Bool?
 }
 
 public enum SyncConfig {
@@ -73,6 +75,7 @@ public final class SyncController: ObservableObject {
             self.status.loaded = true
             self.status.signedIn = stored != nil
             self.status.email = stored?.email
+            self.status.pro = stored?.pro
             if stored != nil { self.begin() }
         }
     }
@@ -167,10 +170,16 @@ public final class SyncController: ObservableObject {
                 let report = try await engine.syncOnce()
                 backoff = 0
                 status.syncing = false; status.lastSyncedAt = Date(); status.problem = nil; status.rejected = report.rejected
+                status.pro = api.pro
             } catch is CancellationError {
                 return
             } catch is AuthExpired {
                 await expired(); return
+            } catch let e as ApiError where e.status == 403 && e.code == "pro_required" {
+                // A Free account: nothing syncs. Ask again in a while (an upgrade shows up then) instead of on the retry curve.
+                backoff = 0
+                status.syncing = false; status.pro = false; status.problem = friendly(e)
+                Task { try? await Task.sleep(for: .seconds(Self.freeRecheck)); continuation.yield() }
             } catch {
                 backoff = backoff == 0 ? 5 : min(backoff * 2, 300)
                 status.syncing = false
@@ -181,9 +190,13 @@ public final class SyncController: ObservableObject {
         }
     }
 
+    /// How long a Free account waits before asking whether it is Pro yet, on the socket and on a pass.
+    private static let freeRecheck = 300
+
     private func socketLoop(_ continuation: AsyncStream<Void>.Continuation) async {
         var wait = 1
         var refused: String?   // the token the server just rejected: the next connection must use a fresh one
+        var freeAccount = false   // the server closed with 4402: not on Pro
         while !Task.isCancelled {
             do {
                 let token: String
@@ -198,6 +211,7 @@ public final class SyncController: ObservableObject {
                     case .closed(let code):
                         if code == 4403 { throw AuthExpired() }
                         if code == 4401 || code == 401 { refused = token }   // access tokens last 15 minutes; a long-lived socket outlives one
+                        if code == 4402 { freeAccount = true }   // not 4403: that one signs this device out
                     }
                 }
             } catch is CancellationError {
@@ -205,6 +219,12 @@ public final class SyncController: ObservableObject {
             } catch is AuthExpired {
                 await expired(); return
             } catch { /* offline etc.: just reconnect */ }
+            if freeAccount {
+                freeAccount = false
+                status.pro = false
+                try? await Task.sleep(for: .seconds(Self.freeRecheck))
+                continue
+            }
             try? await Task.sleep(for: .seconds(wait))
             wait = min(wait * 2, 60)
         }
@@ -225,6 +245,7 @@ public final class SyncController: ObservableObject {
             switch (e.code, e.status) {
             case ("invalid_credentials", _): return String(localized: "Wrong email or password.", bundle: .nowFocusCore, locale: .nowFocusUI)
             case ("wrong_password", _): return String(localized: "Wrong password.", bundle: .nowFocusCore, locale: .nowFocusUI)
+            case ("pro_required", _): return String(localized: "That's part of NowFocus Pro, and this account is on the free plan.", bundle: .nowFocusCore, locale: .nowFocusUI)
             case (_, 429): return String(localized: "Too many attempts. Wait a minute and try again.", bundle: .nowFocusCore, locale: .nowFocusUI)
             case (_, 500...599): return String(localized: "NowFocus is having trouble right now. Try again shortly.", bundle: .nowFocusCore, locale: .nowFocusUI)
             default: return e.message

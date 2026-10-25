@@ -557,6 +557,17 @@
           }
         }
       }
+    },
+    "That's part of NowFocus Pro, and this account is on the free plan.": {
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "هذا جزء من NowFocus Pro، وهذا الحساب على الخطة المجانية."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
