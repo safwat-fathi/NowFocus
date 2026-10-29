@@ -15,5 +15,5 @@
     <string name="devices_enable_dnd">Enable Do Not Disturb access</string>
     <string name="devices_enable_hold">Hold notifications from blocked apps</string>
     <string name="notif_listener_title">Hold notifications from blocked apps?</string>
-    <string name="notif_listener_description">NowFocus uses Notification access to see which app posts each notification, so it can hide notifications from apps that are blocked right now and bring them back when the block ends. It never reads what a notification says, and it does not store or send any notification. Calls and alarms are never held. A short sound or vibration can still play before a notification is hidden.</string>
+    <string name="notif_listener_description">NowFocus uses Notification access to see which app posts each notification, so it can hide notifications from apps that are blocked right now and bring them back when the block ends. It also pauses video or music that a blocked app is playing, even in a floating window, and for that sees only that something is playing, never what. It never reads what a notification says, and it does not store or send any notification. Calls and alarms are never held. A short sound or vibration can still play before a notification is hidden.</string>
 </resources>

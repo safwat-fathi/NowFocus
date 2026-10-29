@@ -269,9 +269,12 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                 )
                 Screen.Setup -> SetupScreen(
                     policies = policies,
+                    groups = groups,
                     pro = pro,
                     onBack = { screen = Screen.Home },
                     onManagePolicies = { screen = Screen.Policies },
+                    onSavePolicy = viewModel::savePolicy,
+                    onSaveAsGroup = { viewModel.addGroup(it.name, it.domains, it.apps) },
                     onStart = { policyId, minutes, mode -> viewModel.startSession(policyId, minutes, mode); screen = Screen.Active },
                 )
                 Screen.Active -> session?.let { active ->
@@ -279,6 +282,7 @@ private fun App(viewModel: SessionViewModel, startOnUnlock: Boolean = false, sta
                         session = active,
                         now = now,
                         paused = cheat?.isActive(now) == true,
+                        resumeKey = resumeCount,
                         // Every mode confirms on the Unlock screen; Normal's is a one-tap "End session now".
                         onEndEarly = { screen = Screen.Unlock },
                     )
@@ -633,14 +637,19 @@ private fun HomeScreen(
 @Composable
 private fun SetupScreen(
     policies: List<BlockPolicy>,
+    groups: List<BlockPolicy>,
     pro: Boolean,
     onBack: () -> Unit,
     onManagePolicies: () -> Unit,
+    onSavePolicy: (BlockPolicy) -> Boolean,
+    onSaveAsGroup: (BlockPolicy) -> Unit,
     onStart: (String, Int, EnforcementMode) -> Unit,
 ) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
     var policyId by remember { mutableStateOf(policies.firstOrNull()?.id) }
+    // The editor opens here, not as its own screen, so the duration and mode picked below survive the trip.
+    var editingId by remember { mutableStateOf<String?>(null) }
     var minutes by remember { mutableIntStateOf(60) }
     var mode by remember { mutableStateOf(EnforcementMode.NORMAL) }
     var pendingStart by remember { mutableStateOf<Triple<String, Int, EnforcementMode>?>(null) }
@@ -688,6 +697,15 @@ private fun SetupScreen(
         if (granted) startRecording() else noteMessage = context.localized().getString(R.string.setup_mic_off)
     }
 
+    policies.find { it.id == editingId }?.let { editing ->
+        BackHandler { editingId = null }
+        PolicyEditorScreen(
+            editing, onSave = onSavePolicy, onBack = { editingId = null },
+            groups = groups, onSaveAsGroup = onSaveAsGroup, backLabel = R.string.back,
+        )
+        return
+    }
+
     // Scrolls: the STRICT voice-note section makes this taller than a small screen.
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = NowFocusSpace.s4)) {
         Spacer(Modifier.height(NowFocusSpace.s2))
@@ -716,10 +734,11 @@ private fun SetupScreen(
                     Modifier.size(18.dp).background(if (p.id == selected.id) NowFocusColors.accent else Color.Transparent),
                 )
                 Spacer(Modifier.width(NowFocusSpace.s3))
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(p.name, style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 15.sp))
                     Text(profileSummary(p), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 12.sp, color = NowFocusColors.neutral700))
                 }
+                GhostButton(stringResource(R.string.setup_edit)) { editingId = p.id }
             }
             SectionRule()
         }
@@ -829,7 +848,11 @@ private fun SetupScreen(
 }
 
 @Composable
-private fun ActiveScreen(session: FocusSession, now: Long, paused: Boolean, onEndEarly: () -> Unit) {
+private fun ActiveScreen(session: FocusSession, now: Long, paused: Boolean, resumeKey: Int, onEndEarly: () -> Unit) {
+    val context = LocalContext.current
+    val openListener = notificationListenerOpener()
+    // Pausing a blocked app's floating video needs the optional Notification access; re-read on resume from Settings.
+    val listenerOff = remember(resumeKey) { !Enforcement.isNotificationListenerEnabled(context) }
     val remainingSeconds = (session.endAt - now).coerceAtLeast(0) / 1000
     val hours = remainingSeconds / 3600
     val minutes = remainingSeconds % 3600 / 60
@@ -857,6 +880,12 @@ private fun ActiveScreen(session: FocusSession, now: Long, paused: Boolean, onEn
             Text(stringResource(R.string.active_cheat), style = TextStyle(fontFamily = ArchivoSemiBold, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = NowFocusColors.text))
         }
         Spacer(Modifier.weight(1f))
+        if (listenerOff) {
+            Text(stringResource(R.string.active_media_warning), style = TextStyle(fontFamily = ArchivoRegular, fontSize = 13.sp, color = NowFocusColors.text))
+            Spacer(Modifier.height(NowFocusSpace.s2))
+            SecondaryButton(stringResource(R.string.active_media_allow), onClick = openListener)
+            Spacer(Modifier.height(NowFocusSpace.s3))
+        }
         SecondaryButton(
             stringResource(if (session.enforcementMode == EnforcementMode.LOCKED) R.string.active_locked else R.string.active_end_early),
             onClick = onEndEarly,

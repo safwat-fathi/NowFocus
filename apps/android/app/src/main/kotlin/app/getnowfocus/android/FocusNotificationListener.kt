@@ -30,6 +30,9 @@ class FocusNotificationListener : NotificationListenerService() {
     private var rulesJob: Job? = null
 
     override fun onListenerConnected() {
+        // This access is what lets the accessibility service list media sessions, and granting it is no rules change,
+        // so tell it to look again: a video already playing in a blocked app's floating window gets paused now.
+        FocusAccessibilityService.instance?.pauseBlockedMedia()
         val repo = SessionRepository(this)
         rulesJob?.cancel()
         rulesJob = scope.launch {

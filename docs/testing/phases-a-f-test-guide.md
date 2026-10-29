@@ -581,6 +581,21 @@ Devices → **Hold notifications from blocked apps** → read the explanation �
 **Result:** [ ] pass  [ ] fail  [ ] skipped
 **Notes:**
 
+## K2 — Android: a blocked app's floating video gets paused
+Needs Notification access on (K1). Use YouTube, a session or Bedtime that blocks it, and `adb shell dumpsys media_session` if you want to see the state.
+
+1. **Already playing when the block starts.** Play a video, press Home so it floats, then start a session (or let Bedtime's alarm start it). The video pauses within about a second.
+2. **Tap play in the floating window.** It pauses again.
+3. **Fullscreen when the block starts.** Expected: the block screen, and no floating video left playing after it.
+4. **Open it during the block** (expand the floating window, or open the app): block screen, video stays paused.
+5. **Grant while it plays.** With the access off, a video floats during a session; switch Notification access on. It pauses without restarting anything.
+6. **A pass, or a cheat day, lets it play;** when it ends the video pauses again.
+7. **Access off:** the Active screen shows "A blocked app's floating video can keep playing" with an **Allow Notification access** button, and it disappears once granted. Nothing crashes.
+8. Known soft spots: the paused frame stays visible in the floating window; in allow-only mode music from unlisted apps is paused too; apps with no media session (a video call in PiP) are not covered.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
 ---
 
 # Things I know are rough (you don't need to report these as bugs)

@@ -2,10 +2,15 @@ package app.getnowfocus.android
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ComponentName
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.media.AudioManager
+import android.media.session.MediaController
+import android.media.session.MediaSession
+import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -52,6 +57,7 @@ class FocusAccessibilityService : AccessibilityService() {
         private const val MAX_NODES = 400
         private const val MAX_DEPTH = 30
         private const val SYSTEM_UI = "com.android.systemui"
+        private val PLAYING = setOf(PlaybackState.STATE_PLAYING, PlaybackState.STATE_BUFFERING)
         private const val PREFS = "nowfocus_cover"
         private const val KEY_MUTED = "muted_by_cover"
         private const val SITE_TICK_MS = 2_500L
@@ -117,6 +123,14 @@ class FocusAccessibilityService : AccessibilityService() {
     /** True while this service has the media stream muted for a cover, so only it ever unmutes. */
     private var mutedByCover = false
 
+    // Media sessions of closed apps, watched so a tap on play in a floating window is paused again.
+    private val watchedMedia = mutableMapOf<MediaSession.Token, MediaController>()
+    private var listeningForSessions = false
+    private val sessionsChanged = MediaSessionManager.OnActiveSessionsChangedListener { pauseBlockedMedia() }
+    private val mediaWatch = object : MediaController.Callback() {
+        override fun onPlaybackStateChanged(state: PlaybackState?) = pauseBlockedMedia()
+    }
+
     override fun onServiceConnected() {
         instance = this
         // A crash or a force-stop while a cover was up would have left the media stream muted for good.
@@ -160,19 +174,55 @@ class FocusAccessibilityService : AccessibilityService() {
         val partialLive = r.livePartial(now).isNotEmpty()
         if (!partialLive) { clearOverlay(); matchLog.clear() }
         syncServiceInfo()
-        // A session that starts while a browser is already open: no window event will announce it.
-        rootInActiveWindow?.packageName?.toString()?.let { watchSites(it) }
+        // A session that starts (or a pass or cheat day that ends) while an app is already in front: no window event
+        // will announce it, so look. A video already playing in a floating window is no window event either.
+        val front = rootInActiveWindow?.packageName?.toString()
+        front?.let { watchSites(it) }
+        front?.takeIf { it != packageName }?.let { blockApp(it) }
+        pauseBlockedMedia()
         expiryJob?.cancel()
         r.nextExpiryAfter(now)?.let { end ->
             expiryJob = scope.launch {
                 delay(end - now + 50)
                 applyRules(rules)
-                // A pass or a cheat day just ended: whatever is in front may be blocked again, and the
-                // notification's wording may have changed. No window event will say so.
+                // The notification's wording may have changed. No window event will say so.
                 SessionNotifier.sync(this@FocusAccessibilityService)
-                rootInActiveWindow?.packageName?.toString()?.takeIf { it != packageName }?.let { blockApp(it) }
             }
         }
+    }
+
+    /**
+     * Pauses what a closed app is playing, plus [also] (an app being bounced for another reason). Leaving a
+     * playing YouTube with HOME floats it and HOME never closes that window, so the bounce alone leaves it playing;
+     * a floating window is also no window event. Needs Notification access (optional): without it Android refuses the
+     * session list and this does nothing.
+     * ponytail: playback stops but the paused frame stays up; a cover over the floating window is the next step.
+     */
+    fun pauseBlockedMedia(also: String? = null) {
+        runCatching {
+            val manager = getSystemService(MediaSessionManager::class.java) ?: return
+            val listener = ComponentName(this, FocusNotificationListener::class.java)
+            if (!listeningForSessions) {
+                manager.addOnActiveSessionsChangedListener(sessionsChanged, listener)
+                listeningForSessions = true
+            }
+            val now = System.currentTimeMillis()
+            val closed = manager.getActiveSessions(listener)
+                .filter { it.packageName == also || rules.windowsBlocking(it.packageName, now, essentials::exempt).isNotEmpty() }
+            val tokens = closed.map { it.sessionToken }
+            watchedMedia.keys.filter { it !in tokens }.forEach { watchedMedia.remove(it)?.unregisterCallback(mediaWatch) }
+            closed.forEach { c ->
+                if (watchedMedia.putIfAbsent(c.sessionToken, c) == null) c.registerCallback(mediaWatch)
+                if (c.playbackState?.state in PLAYING) c.transportControls.pause()
+            }
+        }
+    }
+
+    private fun stopWatchingMedia() {
+        runCatching { getSystemService(MediaSessionManager::class.java)?.removeOnActiveSessionsChangedListener(sessionsChanged) }
+        watchedMedia.values.forEach { runCatching { it.unregisterCallback(mediaWatch) } }
+        watchedMedia.clear()
+        listeningForSessions = false
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -229,6 +279,7 @@ class FocusAccessibilityService : AccessibilityService() {
         val now = System.currentTimeMillis()
         if (!HistoryStats.shouldLogBlockEvent(now, lastBounce[pkg], BOUNCE_DEDUPE_MS)) return
         lastBounce[pkg] = now
+        pauseBlockedMedia(also = pkg) // before HOME: a playing video would float
         performGlobalAction(GLOBAL_ACTION_HOME)
         scope.launch {
             delay(HOME_SETTLE_MS)
@@ -560,6 +611,7 @@ class FocusAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         clearOverlay()
+        stopWatchingMedia()
         if (instance === this) instance = null
         scope.cancel()
         super.onDestroy()

@@ -232,6 +232,7 @@ fun PolicyEditorScreen(
     groups: List<BlockPolicy> = emptyList(),
     onSaveAsGroup: ((BlockPolicy) -> Unit)? = null,
     isGroup: Boolean = false,
+    backLabel: Int = if (isGroup) R.string.back_groups else R.string.back_rules,
 ) {
     val context = LocalContext.current
     var name by remember(policy.id) { mutableStateOf(policy.name) }
@@ -255,7 +256,7 @@ fun PolicyEditorScreen(
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = NowFocusSpace.s4)) {
         item {
             Spacer(Modifier.height(NowFocusSpace.s2))
-            GhostButton(stringResource(if (isGroup) R.string.back_groups else R.string.back_rules), onClick = onBack)
+            GhostButton(stringResource(backLabel), onClick = onBack)
             NowFocusTextField(
                 value = name,
                 onValueChange = { name = it; saveOrToast(policy.copy(name = it)) },

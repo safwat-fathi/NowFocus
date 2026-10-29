@@ -40,6 +40,7 @@
     <string name="setup_title">جلسة تركيز جديدة</string>
     <string name="setup_no_profiles">لا توجد أنماط بعد.</string>
     <string name="setup_manage">إدارة الأنماط</string>
+    <string name="setup_edit">تعديل</string>
     <string name="setup_profile">النمط</string>
     <string name="setup_duration">المدة</string>
     <string name="setup_mode_normal">يمكنك الإنهاء في أي وقت. مناسب للأيام الخفيفة.</string>
@@ -59,6 +60,8 @@
     <string name="active_title">جلسة تركيز</string>
     <string name="active_keep_going">أنت فيها. واصل.</string>
     <string name="active_cheat">يوم استراحة: الحجب متوقف حتى منتصف الليل.</string>
+    <string name="active_media_warning">قد يستمر فيديو عائم من تطبيق محجوب في التشغيل. اسمح بالوصول إلى الإشعارات ليوقفه NowFocus مؤقتًا.</string>
+    <string name="active_media_allow">السماح بالوصول إلى الإشعارات</string>
     <string name="active_locked">مقفل حتى ينتهي المؤقت</string>
     <string name="active_end_early">إنهاء الجلسة مبكرًا</string>
     <string name="unlock_title">إنهاء مبكر؟</string>
