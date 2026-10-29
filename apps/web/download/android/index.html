@@ -83,7 +83,7 @@
         "height": 630
       },
       "datePublished": "2026-09-30",
-      "dateModified": "2026-10-01",
+      "dateModified": "2026-10-29",
       "publisher": {
         "@id": "https://nowfocus.online/#org"
       },
@@ -376,7 +376,7 @@
   <p>Where you choose what to block, for how long, and how hard it is to quit.</p>
   <h4>What’s on it</h4>
   <ul>
-    <li><strong>Profile:</strong> pick one. Each row shows “N sites · N apps”. “Manage policies” opens the Rules tab.</li>
+    <li><strong>Profile:</strong> pick one. Each row shows “N sites · N apps”. “Edit” on a row opens that profile’s editor without leaving this screen, and Back returns here with your duration and mode kept. “Manage policies” opens the Rules tab.</li>
     <li><strong>Duration:</strong> 25 min, 45 min, 1 hour (default), 1.5 hrs, 2 hrs, 3 hrs or 4 hrs.</li>
     <li><strong>If I want to stop early:</strong> Normal (“You can end any time”), Strict (“type a short sentence, then wait 30 seconds”) or Locked (“No early exit on this device until the timer ends”).</li>
     <li><strong>Your voice note</strong> (Strict only): record 10 seconds to yourself; you’ll have to hear it before you can leave.</li>
@@ -384,7 +384,7 @@
   </ul>
   <h4>How to use it</h4>
   <ol>
-    <li>Choose a profile.</li>
+    <li>Choose a profile. Tap Edit on its row first if it needs changing.</li>
     <li>Pick a duration.</li>
     <li>Choose how hard quitting should be.</li>
     <li>For Strict, optionally tap Record and say why you’re doing this. It stops by itself at 10 seconds.</li>
@@ -398,6 +398,7 @@
   <ul>
     <li>Countdown (mm:ss, or h:mm:ss) and progress bar.</li>
     <li>“End session early”. In Locked mode it reads “Locked until timer ends”.</li>
+    <li>While Notification access is off, a note says a blocked app’s floating video can keep playing, with an “Allow Notification access” button. Both disappear once the access is on.</li>
   </ul>
   <h4>How to use it</h4>
   <ol>
@@ -586,6 +587,7 @@
   <li>Turning off Accessibility, revoking the VPN permission or uninstalling NowFocus defeats Normal, Strict, Locked, Bedtime and the Commitment Shield alike.</li>
   <li>Website blocking works at the DNS level. Blocked sites fail to load (there’s no block page). While the screen is on, NowFocus posts a short “NowFocus blocked a site” notification, at most once a minute, that doesn’t name the site and stays off the lock screen, and the session notification says blocked sites won’t load until the timer ends. You can pick which DNS server NowFocus asks for everything else in Rules → DNS (Cloudflare Family, AdGuard Family, CleanBrowsing, Quad9, or your own server), so a filtering DNS keeps working alongside it. While Private DNS is set to a hostname, no app can filter it: keep that provider in Rules → DNS, then set Private DNS to Automatic or Off. Until you do, NowFocus only closes blocked sites it sees in the address bar of common browsers. Apps and browsers that use their own encrypted DNS can bypass the DNS filter, and only one VPN can run at a time.</li>
   <li>Partial blocking is experimental (see above).</li>
+  <li>Pausing a blocked app’s floating (picture-in-picture) video needs the optional Notification access. The paused frame stays visible, and apps that publish no media session (a video call in a floating window, for example) aren’t covered.</li>
   <li>Daily limits count an app’s time from Android’s usage access, and a website’s time by reading your browser’s address bar through Accessibility while that browser is in front. Only the minutes on the sites you limited are kept. That works for Chrome, Brave, Edge, Samsung Internet, Firefox, Opera and Vivaldi, but not in other browsers or in-app browsers, and a browser update can break it. When a site’s time is used up NowFocus steps back out of the page; it doesn’t block the site everywhere. Everything resets at your phone’s local midnight.</li>
   <li>Bedtime alarms can be a few minutes off, and “lock at sleep time” is skipped when Accessibility is off or on Android 8.</li>
   <li>We’ve tested NowFocus on a Samsung Galaxy M52 5G running Android 13 (One UI 5.1), where focus sessions and Bedtime Wind-Down kept working. Other makers’ battery savers (Xiaomi, Huawei, Oppo and similar) haven’t been tested.</li>

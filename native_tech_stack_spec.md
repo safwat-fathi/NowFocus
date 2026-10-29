@@ -203,6 +203,7 @@ Recommended stack:
 | App blocking | `AccessibilityService` |
 | Usage data | `UsageStatsManager` |
 | Notification/DND | `NotificationManager`, `AutomaticZenRule` |
+| Held notifications, media pause (optional access) | `NotificationListenerService`, `MediaSessionManager` |
 | Background work | WorkManager |
 | Secrets | Android Keystore |
 
@@ -212,7 +213,8 @@ Android responsibilities:
 - Persist session state in Room.
 - Store lightweight preferences in DataStore.
 - Block domains visible to the local VPN's DNS policy.
-- Detect foreground apps through accessibility where permitted.
+- Detect foreground apps through accessibility where permitted, and re-check the app in front whenever the rules change: a session that starts raises no window event for an app that is already open.
+- With the optional Notification access, hold notifications from blocked apps and pause their media sessions. Closing a blocked app does not close a video it left floating in a picture-in-picture window, so playback is paused instead; without the access that video keeps playing.
 - Enforce Bedtime Wind-Down schedules (block high-stimulation apps, preserve emergency/alarm allowlists, and trigger DND via `AutomaticZenRule`).
 - Integrate with Android DND where the user grants permission.
 - Recover enforcement after process death or device restart where possible.

@@ -48,12 +48,18 @@ Everything marked **proposed** has no precedent on the site and needs a native r
 | schedule | جدول |
 | notification | إشعار (plural: إشعارات) |
 | hold / snooze a notification until the block ends | تأجيل الإشعار |
+| Notification access (the Android permission) | الوصول إلى الإشعارات |
+| pause playback of a blocked app's video or audio | إيقاف … مؤقتًا ("يوقف مؤقتًا الفيديو أو الصوت") |
+| floating window (picture-in-picture) | نافذة عائمة |
+| Edit (a profile) | تعديل |
 | pass / limit pass | تصريح |
 | cheat day | يوم استراحة |
 | unlock | فك القفل |
 | about | حول التطبيق |
 | language | اللغة |
 | system default | لغة الجهاز |
+
+Android 0.9.5 added Arabic for pausing playback, floating windows and the Notification-access consent text (app strings, privacy and download pages). They were written without a native review; have a native speaker read them.
 
 False friends to avoid: `تمرير` (the site uses it for DNS forwarding and hover), bare `حدود` (also "borders / limitations"), `سجّل` (also the verb "record").
 

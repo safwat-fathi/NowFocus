@@ -20,7 +20,7 @@ If something fails, assume it is real. Several parts have never run on a device 
 ## Before you start
 
 **Android (Samsung Galaxy M52 5G, Android 13)**
-- Build and install the branch: `cd apps/android && ./gradlew installDebug` with the phone on USB. This replaces the installed 0.3 in place and keeps its data.
+- Build and install the branch: `cd apps/android && ./gradlew installDebug` with the phone on USB. This replaces the installed 0.3 in place and keeps its data. If the phone has the Play-signed build instead, `installDebug` fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`: the debug build has the same package name but a different signature. Uninstall first (this erases local data); a later Play update then needs another uninstall.
 - Replaying onboarding (test A4) needs the app's data cleared, which **erases your sessions, stats and profiles on that phone**. Only do it if you accept that, or use a second phone/emulator.
 - Optional but useful: keep `adb logcat -s FocusVpn AndroidRuntime` open in a terminal.
 
@@ -596,6 +596,19 @@ Needs Notification access on (K1). Use YouTube, a session or Bedtime that blocks
 **Result:** [ ] pass  [ ] fail  [ ] skipped
 **Notes:**
 
+## K3 — Android: edit a profile from New focus session
+Focus → start a session. Every profile row has an **Edit** button.
+
+1. Pick the second profile, choose a non-default duration (say 2 hours) and Strict, then tap **Edit** on any profile. The editor opens on this same screen, without the bottom tabs.
+2. Rename it, add a site, remove one. Changes save as you type, same as in Rules.
+3. Go back with the on-screen Back button. Then tap Edit again and go back with the system back gesture instead. Both land on New focus session with the profile, duration and mode you picked still set, and the row shows the new name and "N sites · N apps". (System back from the editor must not jump to Home.)
+4. Tapping a row (not Edit) still only selects it. Edit on an allow-only profile shows the allowed-apps editor.
+5. Start the session: it uses the edited profile.
+6. Arabic: the button reads «تعديل» at the end of the row, and back works in right-to-left.
+
+**Result:** [ ] pass  [ ] fail  [ ] skipped
+**Notes:**
+
 ---
 
 # Things I know are rough (you don't need to report these as bugs)
@@ -608,6 +621,7 @@ Needs Notification access on (K1). Use YouTube, a session or Bedtime that blocks
 - **Windows has no autostart**, so schedules, Bedtime and sync only work while the app is running.
 - **Windows and macOS in-app blocking is address-only and unverified.** It closes the tab on Shorts / Reels pages (Windows: Chrome, Edge, Brave, Firefox; macOS: Safari, Chrome, Brave, Edge, Arc). It can't hide parts of a page, so X For you, TikTok and YouTube Home/Related stay Android-only. Another browser, or turning Automation off on a Mac, gets around it. Closing the last tab closes the window.
 - **Held notifications (Android):** the sound or vibration can still play briefly before a notification is hidden, and ending a session early (or a pass or cheat day) doesn't bring held ones back until the original end. Daily limits and partial blocks don't hold notifications.
+- **Floating video pause (Android):** it needs the optional Notification access (the session screen says when it is off). It stops playback but the paused frame stays in the floating window; in an allow-only session music from unlisted apps is paused too; apps that publish no media session (a video call in a floating window) are not covered.
 - **Android background sync is every ~15 minutes and inexact.** Samsung's battery manager may delay it; the session joins sooner if you open the app.
 - **A remote Locked session can lock a device for up to 24 hours** (the phone and PC cap it; the server cap is not deployed). Turn "Join sessions from my other devices" off if that worries you.
 - **Cheat day uses the wall clock**, so changing the date can start one early. It is a plan-ahead tool, not tamper-proof.

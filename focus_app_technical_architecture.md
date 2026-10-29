@@ -309,6 +309,7 @@ Family Controls distribution requires Apple's entitlement approval before App St
 - App detection/blocking: `AccessibilityService` for MVP/V1 where permitted
 - Usage statistics: `UsageStatsManager`
 - Notification suppression: `NotificationManager` / `AutomaticZenRule`
+- Optional Notification access: `NotificationListenerService` holds blocked apps' notifications and, with `MediaSessionManager`, pauses their playback (a floating picture-in-picture video outlives closing the app)
 - Background scheduling: WorkManager where appropriate
 - Secrets: Android Keystore
 
